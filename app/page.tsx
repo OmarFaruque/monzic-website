@@ -1,0 +1,284 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useCallback, useMemo } from "react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Check, Menu, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useNotifications } from "@/hooks/use-notifications"
+import { NotificationContainer } from "@/components/notification"
+import { checkBlacklist } from "@/lib/blacklist"
+
+export default function MonzicHomepage() {
+  const [message, setMessage] = useState("")
+  const [mainInput, setMainInput] = useState("")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const router = useRouter()
+  const { notifications, removeNotification, showError } = useNotifications()
+
+  const formatRegistration = useCallback((value: string) => {
+    let formatted = value.toUpperCase()
+    if (formatted.length > 7) {
+      formatted = formatted.substring(0, 7)
+    }
+    return formatted
+  }, [])
+
+  const handleMainFormSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!mainInput.trim()) {
+        setMessage("Please enter a vehicle registration number.")
+        return
+      }
+
+      const cleanReg = mainInput.replace(/\s+/g, "").toUpperCase()
+
+      // Check blacklist first
+      try {
+        const response = await fetch("/api/get-client-ip")
+        const { ip } = await response.json()
+
+        const blacklistCheck = checkBlacklist(undefined, undefined, undefined, ip)
+        if (blacklistCheck.isBlacklisted) {
+          showError(
+            "Access Restricted",
+            `Your access has been restricted. Reason: ${blacklistCheck.reason}. Please contact support@monzic.co.uk for assistance.`,
+          )
+          return
+        }
+      } catch (error) {
+        console.error("Failed to check blacklist:", error)
+      }
+
+      if (cleanReg !== "LX61JYE") {
+        showError("Vehicle Not Found", "Vehicle registration not found. Please check and try again.")
+        return
+      }
+
+      router.push(`/get-quote?reg=${encodeURIComponent(cleanReg)}`)
+    },
+    [mainInput, router, showError],
+  )
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatRegistration(e.target.value)
+      setMainInput(formatted)
+
+      if (message) {
+        setMessage("")
+      }
+    },
+    [formatRegistration, message],
+  )
+
+  const toggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen((prev) => !prev)
+  }, [])
+
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuOpen(false)
+  }, [])
+
+  // Memoize the features list to prevent re-renders
+  const features = useMemo(
+    () => [
+      "Instant professional document creation",
+      "Multiple formats and templates",
+      "Download ready documents instantly",
+    ],
+    [],
+  )
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 shadow-md">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <Link href="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors">
+              MONZIC
+            </Link>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden sm:flex gap-2 md:gap-3" role="navigation">
+            <Link href="/ai-documents">
+              <Button className="bg-white hover:bg-gray-100 text-teal-600 font-medium text-sm md:text-base px-3 md:px-4">
+                AI Documents
+              </Button>
+            </Link>
+            <Link href="/contact">
+              <Button
+                variant="outline"
+                className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4"
+              >
+                Contact
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button
+                variant="outline"
+                className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4"
+              >
+                Sign In
+              </Button>
+            </Link>
+          </nav>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={toggleMobileMenu}
+            className="sm:hidden p-2 text-white hover:bg-teal-700 rounded-md transition-colors"
+            aria-label="Toggle mobile menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <nav className="sm:hidden mt-4 pb-4 border-t border-teal-500 pt-4" role="navigation">
+            <div className="flex flex-col space-y-3">
+              <Link href="/ai-documents" onClick={closeMobileMenu}>
+                <Button className="w-full bg-white hover:bg-gray-100 text-teal-600 font-medium">AI Documents</Button>
+              </Link>
+              <Link href="/contact" onClick={closeMobileMenu}>
+                <Button
+                  variant="outline"
+                  className="w-full border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent"
+                >
+                  Contact
+                </Button>
+              </Link>
+              <Link href="/login" onClick={closeMobileMenu}>
+                <Button
+                  variant="outline"
+                  className="w-full border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent"
+                >
+                  Sign In
+                </Button>
+              </Link>
+            </div>
+          </nav>
+        )}
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-start px-4 sm:px-6 py-6 sm:py-8 bg-teal-50">
+        <div className="w-full max-w-sm sm:max-w-md text-center space-y-6 sm:space-y-8">
+          {/* Logo */}
+          <div className="flex flex-col items-center space-y-3 sm:space-y-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-teal-600 rounded-full flex items-center justify-center">
+              <span className="text-xl sm:text-2xl font-bold text-white">M</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-teal-600">MONZIC</h1>
+          </div>
+
+          {/* Main Heading */}
+          <div className="space-y-2">
+            <h2 className="text-lg sm:text-xl font-medium text-teal-700 px-2">Affordable, Lightning-Fast Delivery</h2>
+            <p className="text-base sm:text-lg text-teal-500">Only at Monzic</p>
+          </div>
+
+          {/* Message Display */}
+          {message && (
+            <div className="bg-white p-4 rounded-lg border border-teal-200 text-teal-700 shadow-sm text-sm sm:text-base mx-2">
+              {message}
+            </div>
+          )}
+
+          {/* Main Form */}
+          <form
+            onSubmit={handleMainFormSubmit}
+            className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-teal-100 space-y-4 mx-2 sm:mx-0"
+          >
+            <div className="flex border-2 border-teal-200 rounded-lg overflow-hidden">
+              <div className="bg-teal-600 text-white px-3 sm:px-4 py-3 sm:py-4 font-bold text-base sm:text-lg flex items-center justify-center">
+                GB
+              </div>
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={mainInput}
+                  onChange={handleInputChange}
+                  placeholder="ENTER HERE"
+                  className="w-full h-full py-3 sm:py-4 px-3 sm:px-4 text-center text-xl sm:text-2xl font-bold uppercase bg-white border-0 outline-0 focus:ring-0"
+                  style={{
+                    border: "none",
+                    outline: "none",
+                    boxShadow: "none",
+                    fontSize: "clamp(1.25rem, 4vw, 2rem)",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                  required
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 sm:py-4 rounded-md font-medium text-base sm:text-lg"
+            >
+              SUBMIT
+            </Button>
+          </form>
+        </div>
+
+        {/* AI Document Generation Card */}
+        <div className="w-full max-w-sm sm:max-w-lg mt-8 sm:mt-12 mb-6 sm:mb-8 px-2 sm:px-0">
+          <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-teal-100">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">AI Document Generation</h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
+              Transform your ideas into professional documents instantly. From business proposals to technical
+              specifications, our AI creates high-quality content in seconds.
+            </p>
+
+            <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
+              {features.map((feature, index) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-teal-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                  </div>
+                  <span className="text-sm sm:text-base text-gray-700">{feature}</span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              onClick={() => router.push("/ai-documents")}
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 sm:py-4 rounded-md font-medium text-base sm:text-lg"
+            >
+              GET STARTED
+            </Button>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-teal-600 py-4 sm:py-6 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-white">
+            <Link href="/privacy-policy" className="hover:text-teal-200 transition-colors text-center sm:text-left">
+              Privacy Policy
+            </Link>
+            <Link href="/terms-of-services" className="hover:text-teal-200 transition-colors text-center sm:text-left">
+              Terms of Services
+            </Link>
+            <Link href="/return-policy" className="hover:text-teal-200 transition-colors text-center sm:text-left">
+              Return Policy
+            </Link>
+          </div>
+          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 MONZIC. All rights reserved.</div>
+        </div>
+      </footer>
+
+      {/* Notification Container */}
+      <NotificationContainer notifications={notifications} onClose={removeNotification} />
+    </div>
+  )
+}
