@@ -19,17 +19,22 @@ export default function DashboardPage() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const { notifications, removeNotification, showSuccess } = useNotifications()
   const router = useRouter()
-  const { isAuthenticated, isLoading, user } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
 
   // Redirect to login if not authenticated
+
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login")
-    }
-  }, [isAuthenticated, isLoading, router])
+      if (loading === false) {
+        if (!isAuthenticated) {
+          // Now, this will only run if loading is done AND the user is truly not logged in.
+          router.push("/login")
+        }
+      }
+  }, [isAuthenticated, loading, router])
 
   // Show loading state while checking authentication
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-teal-50 flex items-center justify-center">
         <div className="text-center">
@@ -66,7 +71,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          {user && <span className="text-white text-sm hidden sm:block">Welcome, {user.firstName || user.email}</span>}
+          {user && <span className="text-white text-sm hidden sm:block">Welcome, {user.first_name || user.email}</span>}
           <Link href="/contact">
             <Button
               variant="outline"

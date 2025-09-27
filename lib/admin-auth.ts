@@ -1,76 +1,42 @@
 import { createRateLimiter } from "./validation"
+import { db } from '@/lib/db';
+import { admins } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
+import { compare } from 'bcrypt';
 
 // Rate limiter for admin login attempts
 const adminLoginRateLimit = createRateLimiter(15 * 60 * 1000, 3) // 3 attempts per 15 minutes
 
 export interface AdminUser {
-  id: string
-  email: string
-  password: string // In production, this would be hashed
-  role: "Admin" | "Manager"
-  isActive: boolean
-  lastLogin?: number
+  admin_id: number;
+  email: string | null;
+  role: string | null;
 }
 
-// Mock admin users - In production, store in secure database with hashed passwords
-const adminUsers: AdminUser[] = [
-  {
-    id: "admin1",
-    email: "admin@monzic.co.uk",
-    password: "MonzicAdmin2024!", // In production: hash this
-    role: "Admin",
-    isActive: true,
-  },
-  {
-    id: "manager1",
-    email: "manager@monzic.co.uk",
-    password: "MonzicManager2024!", // In production: hash this
-    role: "Manager",
-    isActive: true,
-  },
-]
-
-export function validateAdminCredentials(
-  email: string,
-  password: string,
-  clientIP: string,
-): { isValid: boolean; user?: AdminUser; error?: string; rateLimited?: boolean } {
-  // Check rate limiting
-  if (adminLoginRateLimit(clientIP)) {
-    return {
-      isValid: false,
-      error: "Too many login attempts. Please try again in 15 minutes.",
-      rateLimited: true,
+export async function validateAdminCredentials(email: string, password_provided: string, clientIP: string) {
+    const { success, remaining } = adminLoginRateLimit.limit(clientIP);
+    if (!success) {
+        return { isValid: false, rateLimited: true, error: "Too many login attempts. Please try again later." };
     }
-  }
 
-  // Find admin user
-  const user = adminUsers.find((u) => u.email.toLowerCase() === email.toLowerCase().trim() && u.isActive)
+    const adminUsers = await db.select().from(admins).where(eq(admins.email, email));
 
-  if (!user) {
-    return { isValid: false, error: "Invalid admin credentials" }
-  }
+    if (adminUsers.length === 0) {
+        return { isValid: false, error: "Invalid credentials" };
+    }
 
-  // In production, use bcrypt.compare() for password verification
-  if (user.password !== password) {
-    return { isValid: false, error: "Invalid admin credentials" }
-  }
+    const adminUser = adminUsers[0];
+    const storedPassword = adminUser.password || "";
 
-  // Update last login
-  user.lastLogin = Date.now()
+    const isPasswordValid = await compare(password_provided, storedPassword);
 
-  return { isValid: true, user }
+    if (!isPasswordValid) {
+        return { isValid: false, error: "Invalid credentials" };
+    }
+
+    return { isValid: true, user: { id: adminUser.admin_id, email: adminUser.email, role: adminUser.role } };
 }
 
-export function getAdminUsers(): Omit<AdminUser, "password">[] {
-  return adminUsers.map(({ password, ...user }) => user)
-}
-
-// Demo credentials for testing
-export const DEMO_ADMIN_CREDENTIALS = [
-  "admin@monzic.co.uk / MonzicAdmin2024!",
-  "manager@monzic.co.uk / MonzicManager2024!",
-]
 
 export async function isAdminAuthenticated(): Promise<boolean> {
   // In a real application, this would verify a JWT token or session

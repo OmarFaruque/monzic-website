@@ -118,83 +118,65 @@ export default function LoginPage() {
         return
       }
 
-       // --- REGISTRATION LOGIC ---
       if (!isLogin) {
         if (formData.password !== formData.confirmPassword) {
-          showError("Password Mismatch", "The passwords you entered do not match.");
-          setIsLoading(false);
-          return;
+          showError("Password Mismatch", "The passwords you entered do not match.")
+          setIsLoading(false)
+          return
         }
         if (!formData.agreeToTerms) {
-          showWarning("Terms Required", "Please agree to the Terms of Service and Privacy Policy.");
-          setIsLoading(false);
-          return;
+          showWarning("Terms Required", "Please agree to the Terms of Service and Privacy Policy.")
+          setIsLoading(false)
+          return
         }
 
-        const response = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            password: formData.password,
-          }),
-        });
+        // For signup, we'll simulate account creation
+        setUserEmail(formData.email)
+        setCurrentUser({
+          email: formData.email,
+          password: formData.password,
+          isAdmin: false,
+        })
 
-        const data = await response.json();
+        // Show verification popup for new account
+        setShowVerification(true)
+        setTimeLeft(60)
+        setCanResend(false)
+        setVerificationCode(["", "", "", "", "", ""])
 
-        if (!response.ok) {
-          showError("Registration Failed", data.error || "An unknown error occurred.");
-        } else {
-          // Use the auth context to set user state and handle token
-          // login({
-          //   id: data.user.id,
-          //   email: data.user.email,
-          //   isAdmin: data.user.role === "admin",
-          // }, data.token);
-
-          // showSuccess("Account Created!", "Your account has been created successfully!");
-          // setTimeout(() => router.push("/dashboard"), 1500);
-
-          showInfo("Verification Required", "Please check your email for a 6-digit verification code.");
-          setUserEmail(formData.email); // Store email for verification modal
-          setShowVerification(true); // Show the verification modal
-          setTimeLeft(300); // Start 5-minute timer
-          setCanResend(false);
-
-        }
+        showInfo(
+          "Verification Required",
+          `A 6-digit verification code has been sent to ${formData.email}. Please check your inbox.`,
+          8000,
+        )
+        setIsLoading(false)
+        return
       }
+
       // For login, validate credentials
-      else {
-        if (!formData.email || !formData.password) {
-          showError("Missing Information", "Please fill in all required fields.");
-          setIsLoading(false);
-          return;
-        }
+      const result = validateCredentials(formData.email, formData.password)
 
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: formData.email,
-            password: formData.password,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          showError("Authentication Failed", data.error || "Invalid credentials.");
-        } else {
-          // Use the auth context to set user state and handle token
-          // login(data.user, data.token);
-          console.log('datauser 45: ', data);
-          login({ user: data.user, token: data.token });
-          showSuccess("Login Successful!", "Welcome back! Redirecting...");
-          setTimeout(() => router.push("/dashboard"), 1500);
-        }
+      if (!result.valid) {
+        showError("Authentication Failed", result.message)
+        setIsLoading(false)
+        return
       }
+
+      // Credentials are valid, store the user
+      setCurrentUser(result.account)
+      setUserEmail(formData.email)
+
+      // Show verification popup
+      setShowVerification(true)
+      setTimeLeft(60)
+      setCanResend(false)
+      setVerificationCode(["", "", "", "", "", ""])
+
+      showInfo(
+        "Verification Required",
+        `A 6-digit verification code has been sent to ${formData.email}. Please check your inbox.`,
+        8000,
+      )
     } catch (error) {
       console.error("Form submission error:", error)
       showError("Error", "An error occurred. Please try again.")
@@ -255,57 +237,70 @@ export default function LoginPage() {
 
   const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const code = verificationCode.join("");
+    const code = verificationCode.join("")
 
     if (code.length !== 6) {
-      showWarning("Incomplete Code", "Please enter the complete 6-digit verification code.");
-      return;
+      showWarning("Incomplete Code", "Please enter the complete 6-digit verification code.")
+      return
     }
 
-    try {
-      const response = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, code }),
-      });
+    if (code === "000000" && currentUser) {
+      try {
+        // Set authentication cookies
+        const expires = new Date()
+        expires.setTime(expires.getTime() + 24 * 60 * 60 * 1000) // 24 hours
 
-      const data = await response.json();
-      
+        document.cookie = `userLoggedIn=true; path=/; expires=${expires.toUTCString()}; SameSite=Lax`
+        document.cookie = `userIsAdmin=${currentUser.isAdmin}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`
+        document.cookie = `userEmail=${currentUser.email}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`
 
-      if (!response.ok) {
-        showError("Verification Failed", data.error || "An unknown error occurred.");
-        setVerificationCode(["", "", "", "", "", ""]);
-        document.getElementById("code-0")?.focus();
-      } else {
-        // On successful verification, log the user in
-        console.log('user after verification: ', data.user);
+        // Store in localStorage if remember me is checked
+        if (rememberMe) {
+          localStorage.setItem("userLoggedIn", "true")
+          localStorage.setItem("userEmail", currentUser.email)
+          localStorage.setItem("userIsAdmin", String(currentUser.isAdmin))
+          localStorage.setItem("rememberMe", "true")
+        } else {
+          sessionStorage.setItem("userLoggedIn", "true")
+          sessionStorage.setItem("userEmail", currentUser.email)
+          sessionStorage.setItem("userIsAdmin", String(currentUser.isAdmin))
+        }
 
-        login({ user: data.user, token: data.token });
-        showSuccess("Email Verified!", "Your account is now active. Redirecting...");
-        setShowVerification(false);
-        setTimeout(() => router.push("/dashboard"), 1500);
+        // Use the auth context
+        login({
+          id: `user-${Date.now()}`,
+          email: currentUser.email,
+          isAdmin: currentUser.isAdmin,
+        })
+
+        showSuccess(
+          isLogin ? "Login Successful!" : "Account Created!",
+          isLogin ? "Welcome back! Redirecting to dashboard..." : "Your account has been created successfully!",
+        )
+
+        setShowVerification(false)
+
+        // Redirect to dashboard
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1500)
+      } catch (error) {
+        console.error("Authentication error:", error)
+        showError("Authentication Error", "An error occurred during authentication.")
       }
-    } catch (error) {
-      console.error("Verification submission error:", error);
-      showError("Error", "An error occurred during verification.");
+    } else {
+      showError("Invalid Code", "The verification code is incorrect. Please try again.")
+      setVerificationCode(["", "", "", "", "", ""])
+      const firstInput = document.getElementById("code-0")
+      firstInput?.focus()
     }
   }
 
-  const handleResendCode = async () => {
-    if (!userEmail) return;
-    try {
-      await fetch("/api/auth/resend-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail }),
-      });
-      setTimeLeft(300); // Reset timer to 5 minutes
-      setCanResend(false);
-      setVerificationCode(["", "", "", "", "", ""]);
-      showInfo("Verification Code Resent", "A new verification code has been sent to your email.");
-    } catch (error) {
-      showError("Error", "Failed to resend code. Please try again.");
-    }
+  const handleResendCode = () => {
+    setTimeLeft(60)
+    setCanResend(false)
+    setVerificationCode(["", "", "", "", "", ""])
+    showInfo("Verification Code Resent", "A new verification code has been sent to your email.")
   }
 
   const toggleMode = () => {

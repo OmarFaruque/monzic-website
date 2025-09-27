@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Lock, Mail, Shield, AlertCircle, Loader2 } from "lucide-react"
 import { useAdminAuth } from "@/context/admin-auth"
-import { DEMO_ADMIN_CREDENTIALS } from "@/lib/admin-auth"
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("")
@@ -75,19 +74,6 @@ export default function AdminLoginPage() {
         </CardHeader>
 
         <CardContent className="p-6 space-y-6">
-          {/* Demo Credentials */}
-          <Alert className="border-blue-200 bg-blue-50">
-            <Shield className="w-4 h-4 text-blue-600" />
-            <AlertDescription className="text-blue-800">
-              <div className="font-medium mb-2">Demo Admin Credentials:</div>
-              {DEMO_ADMIN_CREDENTIALS.map((cred, index) => (
-                <div key={index} className="text-sm font-mono bg-white bg-opacity-50 p-2 rounded mb-1">
-                  {cred}
-                </div>
-              ))}
-            </AlertDescription>
-          </Alert>
-
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="w-4 h-4" />

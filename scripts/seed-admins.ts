@@ -1,0 +1,30 @@
+
+import { db } from '../lib/db';
+import { admins } from '../lib/schema.ts.back';
+import bcrypt from 'bcrypt';
+
+async function main() {
+  const passwordAdmin = await bcrypt.hash('MonzicAdmin2024!', 10);
+  const passwordManager = await bcrypt.hash('MonzicManager2024!', 10);
+
+  await db.insert(admins).values([
+    {
+      fname: 'Admin',
+      lname: 'User',
+      email: 'admin@monzic.co.uk',
+      phone: '1234567890',
+      password: passwordAdmin,
+      role: 'Admin',
+    },
+    {
+      fname: 'Manager',
+      lname: 'User',
+      email: 'manager@monzic.co.uk',
+      phone: '0987654321',
+      password: passwordManager,
+      role: 'Manager',
+    },
+  ]);
+}
+
+main();

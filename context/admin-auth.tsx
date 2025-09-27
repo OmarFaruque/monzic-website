@@ -3,98 +3,116 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 
+import { jwtDecode } from "jwt-decode";
+
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number) => {
+  let expires = "";
+  if (days) {
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    expires = "; expires=" + date.toUTCString();
+  }
+  document.cookie = name + "=" + (value || "") + expires + "; path=/";
+};
+
+const getCookie = (name: string): string | null => {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(";");
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === " ") c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+};
+
+const removeCookie = (name: string) => {
+  document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+};
+
 interface AdminAuthContextType {
-  isAdminAuthenticated: boolean
-  adminUser: { id: string; email: string; role: string } | null
-  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  adminLogout: () => void
-  loading: boolean
+  isAdminAuthenticated: boolean;
+  adminUser: { id: string; email: string; role: string } | null;
+  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  adminLogout: () => void;
+  loading: boolean;
 }
 
-const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined)
+const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
-  const [adminUser, setAdminUser] = useState<{ id: string; email: string; role: string } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminUser, setAdminUser] = useState<{ id: string; email: string; role: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    // Check if admin is logged in on mount
     const checkAdminAuth = () => {
       try {
-        const storedAdminUser = localStorage.getItem("adminUser")
-        const storedAdminAuth = localStorage.getItem("isAdminAuthenticated")
-        const adminToken = localStorage.getItem("adminAuthToken")
+        const adminToken = getCookie("adminAuthToken");
 
-        if (storedAdminUser && storedAdminAuth === "true" && adminToken) {
-          const userData = JSON.parse(storedAdminUser)
-          setAdminUser(userData)
-          setIsAdminAuthenticated(true)
+        if (adminToken) {
+          const decodedToken: { id: string; email: string; role: string; exp: number } = jwtDecode(adminToken);
+          if (decodedToken.exp * 1000 > Date.now()) {
+            setAdminUser({ id: decodedToken.id, email: decodedToken.email, role: decodedToken.role });
+            setIsAdminAuthenticated(true);
+          }
         }
       } catch (error) {
-        console.error("Admin auth check failed:", error)
+        console.error("[Auth Context] Error in checkAdminAuth:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    checkAdminAuth()
-  }, [])
+    checkAdminAuth();
+  }, []);
 
   const adminLogin = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Get client IP for rate limiting
-      const ipResponse = await fetch("/api/get-client-ip")
-      const { ip } = await ipResponse.json()
-
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password, clientIP: ip }),
-      })
+        body: JSON.stringify({ email, password }),
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
-      if (data.success && data.user) {
+      if (data.token) {
+        const decodedToken: { id: string; email: string; role: string } = jwtDecode(data.token);
+
         const adminUserData = {
-          id: data.user.id,
-          email: data.user.email,
-          role: data.user.role,
-        }
+          id: decodedToken.id,
+          email: decodedToken.email,
+          role: decodedToken.role,
+        };
 
-        // Store admin auth data
-        localStorage.setItem("adminUser", JSON.stringify(adminUserData))
-        localStorage.setItem("isAdminAuthenticated", "true")
-        localStorage.setItem("adminAuthToken", data.token || `admin-token-${Date.now()}`)
+        setCookie("adminAuthToken", data.token, 7);
 
-        setAdminUser(adminUserData)
-        setIsAdminAuthenticated(true)
+        setAdminUser(adminUserData);
+        setIsAdminAuthenticated(true);
 
-        return { success: true }
+        return { success: true };
       } else {
-        return { success: false, error: data.error || "Login failed" }
+        return { success: false, error: data.error || "Login failed" };
       }
     } catch (error) {
-      console.error("Admin login error:", error)
-      return { success: false, error: "Network error. Please try again." }
+      console.error("Admin login error:", error);
+      return { success: false, error: "Network error. Please try again." };
     }
-  }
+  };
 
   const adminLogout = () => {
-    // Clear admin auth data
-    localStorage.removeItem("adminUser")
-    localStorage.removeItem("isAdminAuthenticated")
-    localStorage.removeItem("adminAuthToken")
+    removeCookie("adminAuthToken");
 
-    setAdminUser(null)
-    setIsAdminAuthenticated(false)
+    setAdminUser(null);
+    setIsAdminAuthenticated(false);
 
-    // Redirect to admin login
-    router.push("/admin-login")
-  }
+    router.push("/admin-login");
+  };
 
   return (
     <AdminAuthContext.Provider
@@ -108,13 +126,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </AdminAuthContext.Provider>
-  )
+  );
 }
 
 export function useAdminAuth() {
-  const context = useContext(AdminAuthContext)
+  const context = useContext(AdminAuthContext);
   if (context === undefined) {
-    throw new Error("useAdminAuth must be used within an AdminAuthProvider")
+    throw new Error("useAdminAuth must be used within an AdminAuthProvider");
   }
-  return context
+  return context;
 }

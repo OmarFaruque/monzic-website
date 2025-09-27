@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Check, Menu, X } from "lucide-react"
@@ -10,13 +10,22 @@ import { useRouter } from "next/navigation"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
 import { checkBlacklist } from "@/lib/blacklist"
+import Cookies from "js-cookie"; // Import js-cookie at the top
 
 export default function MonzicHomepage() {
   const [message, setMessage] = useState("")
   const [mainInput, setMainInput] = useState("")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // State for auth status
   const router = useRouter()
   const { notifications, removeNotification, showError } = useNotifications()
+
+  useEffect(() => {
+    const token = Cookies.get("auth_token");
+    if (token) {
+      setIsAuthenticated(true);
+    }
+  }, []);
 
   const formatRegistration = useCallback((value: string) => {
     let formatted = value.toUpperCase()
@@ -53,12 +62,28 @@ export default function MonzicHomepage() {
         console.error("Failed to check blacklist:", error)
       }
 
-      if (cleanReg !== "LX61JYE") {
-        showError("Vehicle Not Found", "Vehicle registration not found. Please check and try again.")
-        return
-      }
+      
+      try {
+        const vehicleResponse = await fetch('/api/check-vehicle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registration: cleanReg }),
+        });
 
-      router.push(`/get-quote?reg=${encodeURIComponent(cleanReg)}`)
+        if (!vehicleResponse.ok) {
+          // If the API returns an error (e.g., 404 Not Found), show an error.
+          const errorData = await vehicleResponse.json();
+          showError("Vehicle Not Found", errorData.message || "Vehicle registration not found. Please check and try again.");
+          return;
+        }
+
+        // If the vehicle is found and valid, proceed to the next page.
+        router.push(`/get-quote?reg=${encodeURIComponent(cleanReg)}`);
+
+      } catch (error) {
+        console.error("Vehicle check failed:", error);
+        showError("Service Unavailable", "Could not verify vehicle registration at this time. Please try again later.");
+      }
     },
     [mainInput, router, showError],
   )
@@ -119,14 +144,25 @@ export default function MonzicHomepage() {
                 Contact
               </Button>
             </Link>
-            <Link href="/login">
+            {isAuthenticated ? (
+              <Link href="/dashboard">
+              <Button
+                variant="outline"
+                className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4"
+              >
+                Dashboard
+              </Button>
+              </Link>
+            ) : (
+              <Link href="/login">
               <Button
                 variant="outline"
                 className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4"
               >
                 Sign In
               </Button>
-            </Link>
+              </Link>
+            )}
           </nav>
 
           {/* Mobile Menu Button */}

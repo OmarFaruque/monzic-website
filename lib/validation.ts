@@ -161,20 +161,22 @@ export function sanitizeInput(input: string): string {
 export function createRateLimiter(windowMs: number, maxRequests: number) {
   const requests = new Map<string, { count: number; resetTime: number }>()
 
-  return function isRateLimited(identifier: string): boolean {
-    const now = Date.now()
-    const userRequests = requests.get(identifier)
+  return {
+    limit: function (identifier: string): { success: boolean; remaining: number } {
+      const now = Date.now()
+      const userRequests = requests.get(identifier)
 
-    if (!userRequests || now > userRequests.resetTime) {
-      requests.set(identifier, { count: 1, resetTime: now + windowMs })
-      return false
+      if (!userRequests || now > userRequests.resetTime) {
+        requests.set(identifier, { count: 1, resetTime: now + windowMs })
+        return { success: true, remaining: maxRequests - 1 };
+      }
+
+      if (userRequests.count >= maxRequests) {
+        return { success: false, remaining: 0 };
+      }
+
+      userRequests.count++
+      return { success: true, remaining: maxRequests - userRequests.count };
     }
-
-    if (userRequests.count >= maxRequests) {
-      return true
-    }
-
-    userRequests.count++
-    return false
   }
 }

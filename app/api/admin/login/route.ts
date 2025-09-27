@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { validateAdminCredentials } from "@/lib/admin-auth"
+import { sign } from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
     }
 
-    const result = validateAdminCredentials(email, password, clientIP || "unknown")
+    const result = await validateAdminCredentials(email, password, clientIP || "unknown")
 
     if (result.rateLimited) {
       return NextResponse.json({ success: false, error: result.error }, { status: 429 })
@@ -19,8 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error }, { status: 401 })
     }
 
-    // Generate a simple token (in production, use JWT)
-    const token = `admin-${result.user.id}-${Date.now()}`
+    const token = sign({ userId: result.user.id, role: result.user.role }, process.env.JWT_SECRET!, { expiresIn: '1h' });
 
     return NextResponse.json({
       success: true,
