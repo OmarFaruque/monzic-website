@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const user = userResult[0];
 
     // Check if email is verified before allowing login
-    if (!user.email_verified_at) {
+    if (!user.emailVerifiedAt) {
       return NextResponse.json({ message: 'Please verify your email before logging in.' }, { status: 403 });
     }
 
@@ -30,14 +30,16 @@ export async function POST(req: Request) {
 
     // Create a user object to return to the frontend
     const userForFrontend = {
-      id: user.user_id,
+      id: user.userId,
       email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
       role: 'user', // Assuming a default role of 'user'
     };
 
     // Create a JWT with more user info for session restoration
     const token = sign(
-      { id: userForFrontend.id, email: userForFrontend.email, role: userForFrontend.role },
+      { id: userForFrontend.id, email: userForFrontend.email, role: userForFrontend.role, firstName: user.firstName, lastName: user.lastName },
       process.env.JWT_SECRET!,
       { expiresIn: '24h' }
     );

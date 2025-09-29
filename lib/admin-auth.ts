@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { compare } from 'bcrypt';
 
 // Rate limiter for admin login attempts
-const adminLoginRateLimit = createRateLimiter(15 * 60 * 1000, 3) // 3 attempts per 15 minutes
+const adminLoginRateLimit = createRateLimiter(15 * 60 * 1000, 5) // 5 attempts per 15 minutes
 
 export interface AdminUser {
   admin_id: number;
@@ -34,7 +34,7 @@ export async function validateAdminCredentials(email: string, password_provided:
         return { isValid: false, error: "Invalid credentials" };
     }
 
-    return { isValid: true, user: { id: adminUser.admin_id, email: adminUser.email, role: adminUser.role } };
+    return { isValid: true, user: { id: adminUser.adminId, email: adminUser.email, role: adminUser.role } };
 }
 
 

@@ -2,38 +2,15 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { useEffect, useState, useCallback } from "react"
+import { useState } from "react"
 import { usePathname } from "next/navigation"
-import { useAuth } from "@/app/auth-provider"
+import { useAuth } from "@/context/auth"
 import { Menu, X } from "lucide-react"
 
 export function Header() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
-  const { isAuthenticated: authIsAuthenticated, loading } = useAuth()
-
-  // Check both localStorage and auth context for authentication
-  const checkAuth = useCallback(() => {
-    const localStorageAuth = localStorage.getItem("userLoggedIn") === "true"
-    const contextAuth = authIsAuthenticated
-    setIsAuthenticated(localStorageAuth || contextAuth)
-  }, [authIsAuthenticated])
-
-  useEffect(() => {
-    if (!loading) {
-      checkAuth()
-    }
-
-    const handleStorageChange = () => {
-      checkAuth()
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    return () => {
-      window.removeEventListener("storage", handleStorageChange)
-    }
-  }, [checkAuth, loading])
+  const { isAuthenticated } = useAuth()
 
   return (
     <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 shadow-md">

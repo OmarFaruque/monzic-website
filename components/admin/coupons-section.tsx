@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,120 +15,44 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 import { Search, Plus, AlertTriangle, X } from "lucide-react"
+import { format } from "date-fns"
 
-// Mock data for coupons
-const mockCoupons = [
-  {
-    id: 1,
-    promoCode: "MAZHAR",
-    discount: { type: "percentage", value: 15 },
-    minSpent: 0,
-    maxDiscount: null,
-    quotaAvailable: 19,
-    usedQuota: 1,
-    totalUsage: 1,
-    expires: "2025-12-23 23:59:59",
-    createdAt: "14-05-25 08:17:11 AM",
-    isActive: true,
-    restrictions: {
-      firstTimeOnly: false,
-      maxUsesPerUser: 1,
-      validDays: [],
-      validHours: { start: "00:00", end: "23:59" },
-    },
-    matches: {
-      lastName: "",
-      dateOfBirth: "",
-      registrations: [],
-    },
-  },
-  {
-    id: 2,
-    promoCode: "X8978DF",
-    discount: { type: "percentage", value: 20 },
-    minSpent: 0,
-    maxDiscount: null,
-    quotaAvailable: 0,
-    usedQuota: 0,
-    totalUsage: 0,
-    expires: "2025-12-23 23:59:59",
-    createdAt: "14-05-25 06:11:29 PM",
-    isActive: true,
-    restrictions: {
-      firstTimeOnly: false,
-      maxUsesPerUser: 1,
-      validDays: [],
-      validHours: { start: "00:00", end: "23:59" },
-    },
-    matches: {
-      lastName: "",
-      dateOfBirth: "",
-      registrations: [],
-    },
-  },
-  {
-    id: 3,
-    promoCode: "FRIDAY35",
-    discount: { type: "percentage", value: 30 },
-    minSpent: 0,
-    maxDiscount: null,
-    quotaAvailable: 5,
-    usedQuota: 5,
-    totalUsage: 5,
-    expires: "2025-12-23 23:59:59",
-    createdAt: "29-05-25 05:53:30 PM",
-    isActive: true,
-    restrictions: {
-      firstTimeOnly: false,
-      maxUsesPerUser: 1,
-      validDays: [],
-      validHours: { start: "00:00", end: "23:59" },
-    },
-    matches: {
-      lastName: "",
-      dateOfBirth: "",
-      registrations: [],
-    },
-  },
-  {
-    id: 4,
-    promoCode: "WELCOME10",
-    discount: { type: "percentage", value: 10 },
-    minSpent: 0,
-    maxDiscount: null,
-    quotaAvailable: 0,
-    usedQuota: 0,
-    totalUsage: 0,
-    expires: "2025-12-23 23:59:59",
-    createdAt: "30-05-25 11:53:14 AM",
-    isActive: true,
-    restrictions: {
-      firstTimeOnly: false,
-      maxUsesPerUser: 1,
-      validDays: [],
-      validHours: { start: "00:00", end: "23:59" },
-    },
-    matches: {
-      lastName: "",
-      dateOfBirth: "",
-      registrations: [],
-    },
-  },
-]
+interface Coupon {
+  promoCode: string;
+  discount: { type: string; value: number };
+  minSpent: string;
+  maxDiscount: string;
+  quotaAvailable: string;
+  expires: Date | undefined;
+  matches: {
+    lastName: string;
+    dateOfBirth: string;
+    registrations: string;
+  };
+  restrictions: {
+    firstTimeOnly: boolean;
+    maxUsesPerUser: number;
+    validDays: string[];
+    validHours: { start: string; end: string };
+  };
+}
 
 export function CouponsSection() {
+  const [coupons, setCoupons] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedCoupon, setSelectedCoupon] = useState<any>(null)
-  const [newCoupon, setNewCoupon] = useState({
+  const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null)
+  const [newCoupon, setNewCoupon] = useState<Coupon>({
     promoCode: "",
     discount: { type: "percentage", value: 0 },
     minSpent: "",
+    maxDiscount: "",
     quotaAvailable: "",
-    expires: "",
+    expires: undefined,
     matches: {
       lastName: "",
       dateOfBirth: "",
@@ -140,11 +64,85 @@ export function CouponsSection() {
       validDays: [],
       validHours: { start: "00:00", end: "23:59" },
     },
-  })
+  } as Coupon)
 
-  const filteredCoupons = mockCoupons.filter((coupon) =>
+  useEffect(() => {
+    fetchCoupons()
+  }, [])
+
+  const fetchCoupons = async () => {
+    try {
+      const response = await fetch("/api/coupons")
+      const data = await response.json()
+      setCoupons(data)
+    } catch (error) {
+      console.error("Error fetching coupons:", error)
+    }
+  }
+
+  const createCoupon = async () => {
+    const formattedNewCoupon = {
+      ...newCoupon,
+      expires: newCoupon.expires ? format(newCoupon.expires, "yyyy-MM-dd HH:mm:ss") : "",
+    };
+
+    console.log('new coupon:', formattedNewCoupon)
+
+    try {
+      await fetch("/api/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formattedNewCoupon),
+      })
+      fetchCoupons()
+      resetNewCoupon()
+      setIsCreateDialogOpen(false)
+    } catch (error) {
+      console.error("Error creating coupon:", error)
+    }
+  }
+
+  const updateCoupon = async () => {
+    if (!selectedCoupon) return
+
+    const formattedSelectedCoupon = {
+      ...selectedCoupon,
+      expires: selectedCoupon.expires ? format(new Date(selectedCoupon.expires), "yyyy-MM-dd HH:mm:ss") : "",
+    };
+
+    try {
+      await fetch("/api/coupons", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formattedSelectedCoupon),
+      })
+      fetchCoupons()
+      setIsEditDialogOpen(false)
+      setSelectedCoupon(null)
+    } catch (error) {
+      console.error("Error updating coupon:", error)
+    }
+  }
+
+  const deleteCoupon = async () => {
+    if (!selectedCoupon) return
+    try {
+      await fetch("/api/coupons", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedCoupon.id }),
+      })
+      fetchCoupons()
+      setIsDeleteDialogOpen(false)
+      setSelectedCoupon(null)
+    } catch (error) {
+      console.error("Error deleting coupon:", error)
+    }
+  }
+
+  const filteredCoupons = Array.isArray(coupons) ? coupons.filter((coupon) =>
     coupon.promoCode.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  ) : []
 
   const formatDiscount = (discount: any) => {
     if (discount.type === "percentage") {
@@ -158,8 +156,9 @@ export function CouponsSection() {
       promoCode: "",
       discount: { type: "percentage", value: 0 },
       minSpent: "",
+      maxDiscount: "",
       quotaAvailable: "",
-      expires: "",
+      expires: undefined,
       matches: {
         lastName: "",
         dateOfBirth: "",
@@ -219,8 +218,8 @@ export function CouponsSection() {
                   <TableCell>{index + 1}</TableCell>
                   <TableCell className="font-medium">{coupon.promoCode}</TableCell>
                   <TableCell>{formatDiscount(coupon.discount)}</TableCell>
-                  <TableCell>{coupon.minSpent.toFixed(2)}</TableCell>
-                  <TableCell>-</TableCell>
+                  <TableCell>{coupon.minSpent}</TableCell>
+                  <TableCell>{coupon.maxDiscount}</TableCell>
                   <TableCell>
                     <div className="text-center">
                       <div className="text-sm font-medium">
@@ -233,7 +232,7 @@ export function CouponsSection() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{coupon.expires}</TableCell>
+                  <TableCell>{coupon.expires ? format(new Date(coupon.expires), "PPP HH:mm") : "N/A"}</TableCell>
                   <TableCell>{coupon.createdAt}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -241,7 +240,10 @@ export function CouponsSection() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          setSelectedCoupon(coupon)
+                          setSelectedCoupon({
+                            ...coupon,
+                            expires: coupon.expires ? new Date(coupon.expires) : undefined,
+                          })
                           setIsEditDialogOpen(true)
                         }}
                         className="bg-blue-500 text-white hover:bg-blue-600"
@@ -273,9 +275,9 @@ export function CouponsSection() {
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
                 Create Coupon
-                <Button variant="ghost" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
+                {/* <Button variant="ghost" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
                   <X className="h-4 w-4" />
-                </Button>
+                </Button> */}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -338,6 +340,16 @@ export function CouponsSection() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="max-discount">Max. Discount - Optional</Label>
+                  <Input
+                    id="max-discount"
+                    type="number"
+                    placeholder="0.00"
+                    value={newCoupon.maxDiscount}
+                    onChange={(e) => setNewCoupon({ ...newCoupon, maxDiscount: e.target.value })}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="quota">Quota Available</Label>
                   <Input
                     id="quota"
@@ -350,12 +362,10 @@ export function CouponsSection() {
               </div>
 
               <div>
-                <Label htmlFor="expires">Expires (e.g 2025-12-23 23:59:59)</Label>
-                <Input
-                  id="expires"
-                  placeholder="YYYY-mm-dd HH:mm:ss"
-                  value={newCoupon.expires}
-                  onChange={(e) => setNewCoupon({ ...newCoupon, expires: e.target.value })}
+                <Label htmlFor="expires">Expires</Label>
+                <DateTimePicker
+                  date={newCoupon.expires}
+                  setDate={(date) => setNewCoupon({ ...newCoupon, expires: date })}
                 />
               </div>
 
@@ -458,10 +468,7 @@ export function CouponsSection() {
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  resetNewCoupon()
-                  setIsCreateDialogOpen(false)
-                }}
+                onClick={createCoupon}
                 className="bg-teal-600 hover:bg-teal-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -482,11 +489,11 @@ export function CouponsSection() {
                 </Button>
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            {selectedCoupon && <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-promo-code">Promo Code</Label>
-                  <Input id="edit-promo-code" defaultValue={selectedCoupon?.promoCode} />
+                  <Input id="edit-promo-code" value={selectedCoupon?.promoCode} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, promoCode: e.target.value })} />
                 </div>
                 <div>
                   <Label htmlFor="edit-discount">Discount</Label>
@@ -494,10 +501,11 @@ export function CouponsSection() {
                     <Input
                       id="edit-discount"
                       type="number"
-                      defaultValue={selectedCoupon?.discount.value}
+                      value={selectedCoupon?.discount.value}
+                      onChange={(e) => setSelectedCoupon({ ...selectedCoupon, discount: { ...selectedCoupon.discount, value: Number.parseInt(e.target.value) || 0 } })}
                       className="flex-1"
                     />
-                    <Select defaultValue={selectedCoupon?.discount.type}>
+                    <Select value={selectedCoupon?.discount.type} onValueChange={(value) => setSelectedCoupon({ ...selectedCoupon, discount: { ...selectedCoupon.discount, type: value } })}>
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -513,17 +521,24 @@ export function CouponsSection() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-min-spent">Min. Spent</Label>
-                  <Input id="edit-min-spent" type="number" defaultValue={selectedCoupon?.minSpent} />
+                  <Input id="edit-min-spent" type="number" value={selectedCoupon?.minSpent} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, minSpent: e.target.value })} />
+                </div>
+                <div>
+                  <Label htmlFor="edit-max-discount">Max. Discount</Label>
+                  <Input id="edit-max-discount" type="number" value={selectedCoupon?.maxDiscount} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, maxDiscount: e.target.value })} />
                 </div>
                 <div>
                   <Label htmlFor="edit-quota">Quota Available</Label>
-                  <Input id="edit-quota" type="number" defaultValue={selectedCoupon?.quotaAvailable} />
+                  <Input id="edit-quota" type="number" value={selectedCoupon?.quotaAvailable} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, quotaAvailable: e.target.value })} />
                 </div>
               </div>
 
               <div>
                 <Label htmlFor="edit-expires">Expires</Label>
-                <Input id="edit-expires" defaultValue={selectedCoupon?.expires} />
+                <DateTimePicker
+                  date={selectedCoupon?.expires ? new Date(selectedCoupon.expires) : undefined}
+                  setDate={(date) => setSelectedCoupon({ ...selectedCoupon, expires: date })}
+                />
               </div>
 
               <div className="space-y-3">
@@ -533,7 +548,8 @@ export function CouponsSection() {
                   <input
                     type="checkbox"
                     id="first-time-only"
-                    defaultChecked={selectedCoupon?.restrictions?.firstTimeOnly || false}
+                    checked={selectedCoupon?.restrictions?.firstTimeOnly || false}
+                    onChange={(e) => setSelectedCoupon({ ...selectedCoupon, restrictions: { ...selectedCoupon.restrictions, firstTimeOnly: e.target.checked } })}
                     className="h-4 w-4"
                   />
                   <Label htmlFor="first-time-only">First-time customers only</Label>
@@ -546,16 +562,17 @@ export function CouponsSection() {
                     type="number"
                     min="1"
                     placeholder="1"
-                    defaultValue={selectedCoupon?.restrictions?.maxUsesPerUser || ""}
+                    value={selectedCoupon?.restrictions?.maxUsesPerUser || ""}
+                    onChange={(e) => setSelectedCoupon({ ...selectedCoupon, restrictions: { ...selectedCoupon.restrictions, maxUsesPerUser: Number.parseInt(e.target.value) || 1 } })}
                   />
                 </div>
               </div>
-            </div>
+            </div>}
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setIsEditDialogOpen(false)}>Save Changes</Button>
+              <Button onClick={updateCoupon}>Save Changes</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -576,7 +593,7 @@ export function CouponsSection() {
               <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(false)}>
+              <Button variant="destructive" onClick={deleteCoupon}>
                 Delete Coupon
               </Button>
             </DialogFooter>

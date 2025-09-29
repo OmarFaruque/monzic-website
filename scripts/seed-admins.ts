@@ -1,6 +1,6 @@
 
 import { db } from '../lib/db';
-import { admins } from '../lib/schema.ts.back';
+import { admins } from '../lib/schema.ts';
 import bcrypt from 'bcrypt';
 
 async function main() {

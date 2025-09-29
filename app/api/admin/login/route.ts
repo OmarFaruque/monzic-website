@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error }, { status: 401 })
     }
 
-    const token = sign({ userId: result.user.id, role: result.user.role }, process.env.JWT_SECRET!, { expiresIn: '1h' });
+
+    const token = sign({ id: result.user.id, email: result.user.email, role: result.user.role }, process.env.JWT_SECRET!, { expiresIn: '1h' });
 
     return NextResponse.json({
       success: true,

@@ -53,9 +53,7 @@ const AdministratorPage = () => {
 
   // Redirect if not authenticated
   useEffect(() => {
-
-    console.log("Auth status:", { isAdminAuthenticated, loading })
-
+    
     if (!loading && !isAdminAuthenticated) {
       router.push("/admin-login")
     }

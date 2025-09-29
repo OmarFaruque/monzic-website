@@ -9,16 +9,18 @@ interface User {
   id: string;
   email: string;
   isAdmin: boolean;
+  firstName: string;
+  lastName: string;
 }
 interface LoginArgs {
-  user: { id: string; email: string; role: string };
+  user: { id: string; email: string; role: string; firstName: string; lastName: string; };
   token: string;
 }
 interface AuthContextType {
   isAuthenticated: boolean
   isAdmin: boolean
   user: User | null
-  login: (apiUser: { id: string; email: string; role: string }, token: string) => void;
+  login: (args: LoginArgs) => void;
   logout: () => void
   loading: boolean
 }
@@ -28,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [user, setUser] = useState<{ id: string; email: string; isAdmin: boolean } | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -42,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (token) {
           // Decode the token to get user data and expiration
-          const decodedToken: { id: string; email: string; role: string; exp: number } = jwtDecode(token);
+          const decodedToken: { id: string; email: string; role: string; exp: number; firstName: string; lastName: string; } = jwtDecode(token);
 
      
           // Check if the token is expired
@@ -53,6 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: decodedToken.id,
               email: decodedToken.email,
               isAdmin: userIsAdmin,
+              firstName: decodedToken.firstName,
+              lastName: decodedToken.lastName,
             };
             setUser(userData);
             setIsAuthenticated(true);
@@ -94,6 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: apiUser.id,
       email: apiUser.email,
       isAdmin: userIsAdmin,
+      firstName: apiUser.firstName,
+      lastName: apiUser.lastName,
     };
 
     console.log("Login called with:", userToStore);

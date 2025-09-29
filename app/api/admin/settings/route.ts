@@ -1,104 +1,88 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-// Remove the problematic import that's causing the error
-// import { isAdminAuthenticated } from "@/lib/auth"
-
-// In a real app, you'd store these in a secure database
-// For demo purposes, we'll use a simple in-memory store
-let settingsStore: any = {}
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { settings as settingsTable } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
-  // For demo purposes, skip authentication check that's causing issues
-  // In production, implement proper authentication
   try {
-    // In production, fetch from database
-    // For now, return default settings
-    const defaultSettings = {
-      paddle: {
-        vendorId: process.env.PADDLE_VENDOR_ID || "",
-        apiKey: process.env.PADDLE_API_KEY || "",
-        publicKey: process.env.NEXT_PUBLIC_PADDLE_PUBLIC_KEY || "",
-        webhookKey: process.env.PADDLE_WEBHOOK_PUBLIC_KEY || "",
-        environment: process.env.PADDLE_ENVIRONMENT || "sandbox",
-      },
-      openai: {
-        apiKey: process.env.OPENAI_API_KEY || "",
-        model: "gpt-4",
-        maxTokens: 2048,
-        temperature: 0.7,
-      },
-      resend: {
-        apiKey: process.env.RESEND_API_KEY || "",
-        domain: process.env.EMAIL_DOMAIN || "monzic.com",
-        fromEmail: `noreply@${process.env.EMAIL_DOMAIN || "monzic.com"}`,
-      },
-      vehicleApi: {
-        apiKey: process.env.VEHICLE_API_KEY || "",
-        provider: "dvla",
-        endpoint: "https://api.vehicledata.com",
-      },
-      security: {
-        sessionTimeout: 30,
-        maxLoginAttempts: 5,
-        requireTwoFactor: false,
-        allowedDomains: ["monzic.com"],
-      },
-      general: {
-        siteName: "MONZIC",
-        supportEmail: process.env.ADMIN_EMAIL || "support@monzic.com",
-        adminEmail: process.env.ADMIN_EMAIL || "admin@monzic.com",
-        timezone: "Europe/London",
-        currency: "GBP",
-      },
-    }
+    const settingsFromDb = await db.select().from(settingsTable);
+
+    const settings = settingsFromDb.reduce((acc, setting) => {
+      try {
+        // The value is stored as a JSON string, so we need to parse it.
+        // Make sure to handle cases where parsing might fail.
+        acc[setting.param] = setting.value ? JSON.parse(setting.value) : {};
+      } catch (e) {
+        console.error(`Failed to parse setting value for param: ${setting.param}`, e);
+        // Assign a default or empty object if parsing fails
+        acc[setting.param] = {};
+      }
+      return acc;
+    }, {} as { [key: string]: any });
 
     return NextResponse.json({
       success: true,
-      settings: { ...defaultSettings, ...settingsStore },
-    })
+      settings: settings,
+    });
   } catch (error) {
-    console.error("Error fetching settings:", error)
-    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 })
+    console.error("Error fetching settings:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch settings" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
-  // For demo purposes, skip authentication check that's causing issues
-  // In production, implement proper authentication
   try {
-    const settings = await request.json()
+    const settings = await request.json();
 
-    // Validate required fields
     if (!settings) {
-      return NextResponse.json({ error: "Settings data required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Settings data required" },
+        { status: 400 }
+      );
     }
 
-    // In production, you would:
-    // 1. Validate all settings
-    // 2. Encrypt sensitive data (API keys)
-    // 3. Store in secure database
-    // 4. Update environment variables if needed
-    // 5. Log the change for audit purposes
+    // Use a transaction to ensure all settings are saved or none are.
+    await db.transaction(async (tx) => {
+      for (const key in settings) {
+        if (Object.prototype.hasOwnProperty.call(settings, key)) {
+          const value = JSON.stringify(settings[key]);
+          await tx
+            .insert(settingsTable)
+            .values({ param: key, value: value })
+            .onConflictDoUpdate({
+              target: settingsTable.param,
+              set: { value: value },
+            });
+        }
+      }
+    });
 
-    // For demo, store in memory
-    settingsStore = settings
+    // Redact sensitive data before logging
+    const logData = JSON.parse(JSON.stringify(settings));
+    if (logData.paddle?.apiKey) logData.paddle.apiKey = "[REDACTED]";
+    if (logData.openai?.apiKey) logData.openai.apiKey = "[REDACTED]";
+    if (logData.resend?.apiKey) logData.resend.apiKey = "[REDACTED]";
+    if (logData.vehicleApi?.apiKey) logData.vehicleApi.apiKey = "[REDACTED]";
+    if (logData.stripe?.secretKey) logData.stripe.secretKey = "[REDACTED]";
+    if (logData.mollie?.apiKey) logData.mollie.apiKey = "[REDACTED]";
 
-    // Log the settings update (remove sensitive data from logs)
-    const logData = JSON.parse(JSON.stringify(settings))
-    if (logData.paddle?.apiKey) logData.paddle.apiKey = "[REDACTED]"
-    if (logData.openai?.apiKey) logData.openai.apiKey = "[REDACTED]"
-    if (logData.resend?.apiKey) logData.resend.apiKey = "[REDACTED]"
-    if (logData.vehicleApi?.apiKey) logData.vehicleApi.apiKey = "[REDACTED]"
 
-    console.log("Settings updated:", logData)
+    console.log("Settings updated:", logData);
 
     return NextResponse.json({
       success: true,
       message: "Settings saved successfully",
       timestamp: new Date().toISOString(),
-    })
+    });
   } catch (error) {
-    console.error("Error saving settings:", error)
-    return NextResponse.json({ error: "Failed to save settings" }, { status: 500 })
+    console.error("Error saving settings:", error);
+    return NextResponse.json(
+      { error: "Failed to save settings" },
+      { status: 500 }
+    );
   }
 }

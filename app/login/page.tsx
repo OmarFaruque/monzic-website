@@ -189,7 +189,6 @@ export default function LoginPage() {
         } else {
           // Use the auth context to set user state and handle token
           // login(data.user, data.token);
-          console.log('datauser 45: ', data);
           login({ user: data.user, token: data.token });
           showSuccess("Login Successful!", "Welcome back! Redirecting...");
           setTimeout(() => router.push("/dashboard"), 1500);

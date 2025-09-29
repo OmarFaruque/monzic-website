@@ -75,15 +75,15 @@ const occupations = [
 ]
 
 // Mock address data for HA35RQ
-const addressData = {
-  HA35RQ: [
-    "1 High Street, Harrow, HA3 5RQ",
-    "2 High Street, Harrow, HA3 5RQ",
-    "3 High Street, Harrow, HA3 5RQ",
-    "4 High Street, Harrow, HA3 5RQ",
-    "5 High Street, Harrow, HA3 5RQ",
-  ],
-}
+// const addressData = {
+//   HA35RQ: [
+//     "1 High Street, Harrow, HA3 5RQ",
+//     "2 High Street, Harrow, HA3 5RQ",
+//     "3 High Street, Harrow, HA3 5RQ",
+//     "4 High Street, Harrow, HA3 5RQ",
+//     "5 High Street, Harrow, HA3 5RQ",
+//   ],
+// }
 
 // Add a new function to calculate the next 5-minute increment time
 const getNext5MinuteTime = () => {
@@ -332,7 +332,7 @@ export default function GetQuotePage() {
     }))
   }
 
-  const handlePostcodeLookup = () => {
+  const handlePostcodeLookup = async () => {
     // Reset any previous errors
     setPostcodeError("")
 
@@ -342,20 +342,28 @@ export default function GetQuotePage() {
       return
     }
 
-    // Check if postcode exists in our mock data
-    const formattedPostcode = formData.postcode.toUpperCase().replace(/\s/g, "")
+    try {
+      const response = await fetch(`/api/postcode-lookup?postcode=${encodeURIComponent(formData.postcode)}`);
 
-    if (addressData[formattedPostcode]) {
-      setAddresses(addressData[formattedPostcode])
-      setShowAddresses(true)
-    } else {
-      // For demo purposes, show some addresses anyway
-      setAddresses([
-        `1 Example Street, ${formData.postcode}`,
-        `2 Example Street, ${formData.postcode}`,
-        `3 Example Street, ${formData.postcode}`,
-      ])
-      setShowAddresses(true)
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.addresses && data.addresses.length > 0) {
+          setAddresses(data.addresses);
+          setShowAddresses(true);
+        } else {
+          setPostcodeError("No addresses found for this postcode.");
+          setAddresses([]);
+          setShowAddresses(false);
+        }
+      } else {
+        setPostcodeError("Failed to fetch addresses. Please try again.");
+        setShowAddresses(false);
+      }
+    } catch (error) {
+      console.error("An error occurred during postcode lookup", error);
+      setPostcodeError("An unexpected error occurred. Please try again.");
+      setShowAddresses(false);
     }
   }
 
@@ -730,7 +738,7 @@ export default function GetQuotePage() {
       }
 
       // Save quote data to localStorage
-      localStorage.setItem("quoteData", JSON.JSON.stringify(quoteDataForCheckout))
+      localStorage.setItem("quoteData", JSON.stringify(quoteDataForCheckout))
 
       setIsCalculating(false)
 
@@ -1650,9 +1658,9 @@ export default function GetQuotePage() {
                         required
                       >
                         <option value="">Select an address...</option>
-                        {addresses.map((address, index) => (
-                          <option key={index} value={address}>
-                            {address}
+                        {addresses.map((address: any, index) => (
+                          <option key={index} value={address.address_selector}>
+                            {address.address_selector}
                           </option>
                         ))}
                       </select>

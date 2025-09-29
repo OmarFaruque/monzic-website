@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const { notifications, removeNotification, showSuccess } = useNotifications()
   const router = useRouter()
-  const { isAuthenticated, loading, user } = useAuth()
+  const { isAuthenticated, loading, user, logout } = useAuth()
 
   // Redirect to login if not authenticated
 
@@ -51,12 +51,9 @@ export default function DashboardPage() {
   }
 
   const handleLogout = () => {
+    logout();
     showSuccess("Logged Out Successfully", "You have been logged out of your account.", 5000)
     setShowLogoutDialog(false)
-    // Redirect to login page after a short delay
-    setTimeout(() => {
-      router.push("/account")
-    }, 1500)
   }
 
   return (
@@ -71,7 +68,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          {user && <span className="text-white text-sm hidden sm:block">Welcome, {user.first_name || user.email}</span>}
+          {user && <span className="text-white text-sm hidden sm:block">Welcome, {user.firstName || user.email}</span>}
           <Link href="/contact">
             <Button
               variant="outline"

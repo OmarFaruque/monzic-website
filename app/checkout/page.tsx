@@ -9,10 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 import { CreditCard, X, ChevronDown, ChevronUp } from "lucide-react"
-import { useAuth } from "../auth-provider"
+import { useAuth } from "@/context/auth"
 import { useNotifications } from "@/hooks/use-notifications"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
+import usePaddle from "@/hooks/use-paddle"
 
 interface QuoteData {
   total: number
@@ -46,13 +47,16 @@ interface QuoteData {
 }
 
 export default function CheckoutPage() {
-  const { isAuthenticated, login } = useAuth()
+  const { isAuthenticated, login, user } = useAuth()
   const { addNotification } = useNotifications()
   const router = useRouter()
+  const { paddle, loading: isPaddleLoading } = usePaddle()
   const [loginModalOpen, setLoginModalOpen] = useState(false)
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null)
   const [useSameAddress, setUseSameAddress] = useState(true)
   const [showQuoteSummary, setShowQuoteSummary] = useState(false)
+  const [isLoginLoading, setIsLoginLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
     email: "",
@@ -89,6 +93,64 @@ export default function CheckoutPage() {
     }
   }, [router])
 
+
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoginLoading(true);
+
+    try {
+      if (!loginData.email || !loginData.password) {
+        addNotification({
+          type: "error",
+          title: "Missing Information",
+          message: "Please enter both email and password",
+        });
+        setIsLoginLoading(false);
+        return;
+      }
+
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginData.email,
+          password: loginData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        addNotification({
+          type: "error",
+          title: "Authentication Failed",
+          message: data.error || "Invalid credentials.",
+        });
+      } else {
+
+        login({ user: data.user, token: data.token });
+        addNotification({
+          type: "success",
+          title: "Login Successful",
+          message: "Welcome back!",
+        });
+        setLoginModalOpen(false);
+      }
+    } catch (error) {
+      console.error("Login submission error:", error);
+      addNotification({
+        type: "error",
+        title: "Error",
+        message: "An error occurred. Please try again.",
+      });
+    } finally {
+      setIsLoginLoading(false);
+    }
+  };
+
+    
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -120,14 +182,16 @@ export default function CheckoutPage() {
   }
 
   const handleCompletePayment = async () => {
+    setIsSubmitting(true);
     // Basic validation only
     if (!isAuthenticated && !formData.email) {
       addNotification({
         type: "error",
         title: "Missing Information",
         message: "Please enter your email address.",
-      })
-      return
+      });
+      setIsSubmitting(false);
+      return;
     }
 
     if (!isAuthenticated && !formData.password) {
@@ -135,8 +199,9 @@ export default function CheckoutPage() {
         type: "error",
         title: "Missing Information",
         message: "Please enter a password to create your account.",
-      })
-      return
+      });
+      setIsSubmitting(false);
+      return;
     }
 
     if (!formData.termsAccepted || !formData.accuracyConfirmed) {
@@ -144,39 +209,46 @@ export default function CheckoutPage() {
         type: "error",
         title: "Missing Information",
         message: "Please accept the terms and confirm accuracy before proceeding.",
-      })
-      return
+      });
+      setIsSubmitting(false);
+      return;
     }
 
     addNotification({
       type: "info",
       title: "Redirecting",
       message: "Redirecting to payment processor...",
-    })
+    });
 
     // Get active payment processor from settings
-    const activeProcessor = await getActivePaymentProcessor()
+    const activeProcessor = await getActivePaymentProcessor();
+
+    console.log('activeProcessor: ', activeProcessor);
 
     // Capture IP address for audit
     const ipAddress = await fetch("/api/get-client-ip")
       .then((r) => r.json())
-      .then((d) => d.ip)
+      .then((d) => d.ip);
+
+    console.log('ipAddress is: ', ipAddress);
 
     // Redirect based on active processor
     switch (activeProcessor) {
       case "paddle":
-        redirectToPaddle()
-        break
+        await redirectToPaddle();
+        break;
       case "stripe":
-        redirectToStripe()
-        break
+        redirectToStripe();
+        break;
       case "mollie":
-        redirectToMollie()
-        break
+        redirectToMollie();
+        break;
       default:
-        router.push("/payment-confirmation")
+        // router.push("/payment-confirmation")
+        break;
     }
-  }
+    setIsSubmitting(false);
+  };
 
   const getActivePaymentProcessor = async () => {
     try {
@@ -188,11 +260,55 @@ export default function CheckoutPage() {
     }
   }
 
-  const redirectToPaddle = () => {
-    setTimeout(() => {
-      router.push("/payment-confirmation")
-    }, 1500)
-  }
+  const redirectToPaddle = async () => {
+    if (!paddle) {
+      addNotification({
+        type: "error",
+        title: "Payment Error",
+        message: "Paddle is not available. Please try again later.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quoteData, user }),
+      });
+
+      const data = await response.json();
+
+      if (data.priceId) {
+        paddle.Checkout.open({
+          items: [
+            {
+              priceId: data.priceId,
+              quantity: 1,
+            },
+          ],
+          customer: {
+            email: user.email,
+          },
+        });
+      } else {
+        addNotification({
+          type: "error",
+          title: "Payment Error",
+          message: data.error || "Could not initiate payment. Please try again.",
+        });
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      addNotification({
+        type: "error",
+        title: "Payment Error",
+        message: "An unexpected error occurred. Please try again.",
+      });
+      setIsSubmitting(false);
+    }
+  };
 
   const redirectToStripe = () => {
     setTimeout(() => {
@@ -308,7 +424,9 @@ export default function CheckoutPage() {
                     <div className="mb-4">
                       <p className="text-sm text-gray-600 mb-2">
                         You are currently logged in as:{" "}
-                        <span className="font-medium text-blue-600">John Doe (john.doe@example.com)</span>
+                        <span className="font-medium text-blue-600">
+                          {user?.firstName} {user?.lastName} ({user?.email})
+                        </span>
                       </p>
                     </div>
                   ) : (
@@ -537,9 +655,9 @@ export default function CheckoutPage() {
               <Button
                 onClick={handleCompletePayment}
                 className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 text-lg font-semibold h-14"
-                disabled={!formData.termsAccepted || !formData.accuracyConfirmed}
+                disabled={!formData.termsAccepted || !formData.accuracyConfirmed || isSubmitting || isPaddleLoading}
               >
-                Complete Payment
+                {isPaddleLoading ? 'Initializing Payment...' : (isSubmitting ? 'Processing...' : 'Complete Payment')}
               </Button>
             </div>
 
@@ -613,47 +731,11 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              <p className="text-sm text-gray-600 mb-6">Please enter your login details below.</p>
+              <p className="text-sm text-gray-600 mb-6">Please enter your login details below. dsa</p>
 
               <form
                 className="space-y-4"
-                onSubmit={(e) => {
-                  e.preventDefault()
-
-                  // Simulate login process
-                  if (loginData.email && loginData.password) {
-                    addNotification({
-                      type: "info",
-                      title: "Logging in",
-                      message: "Please wait...",
-                    })
-
-                    // Simulate API call
-                    setTimeout(() => {
-                      // For demo purposes, accept any email/password
-                      login() // This calls the login function from useAuth
-                      addNotification({
-                        type: "success",
-                        title: "Login Successful",
-                        message: "Welcome back!",
-                      })
-                      setLoginModalOpen(false)
-
-                      // Reset form
-                      setLoginData({
-                        email: "",
-                        password: "",
-                        rememberMe: false,
-                      })
-                    }, 1000)
-                  } else {
-                    addNotification({
-                      type: "error",
-                      title: "Missing Information",
-                      message: "Please enter both email and password",
-                    })
-                  }
-                }}
+                onSubmit={handleLoginSubmit}
               >
                 <div>
                   <Input

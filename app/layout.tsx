@@ -6,6 +6,7 @@ import { AdminAuthProvider } from "@/context/admin-auth"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
+import Script from "next/script"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,6 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head />
       <body className={inter.className}>
         <AuthProvider>
           <AdminAuthProvider>

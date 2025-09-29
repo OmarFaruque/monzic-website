@@ -91,6 +91,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         };
 
         setCookie("adminAuthToken", data.token, 7);
+        setCookie("isAdminAuthenticated", "true", 7);
 
         setAdminUser(adminUserData);
         setIsAdminAuthenticated(true);

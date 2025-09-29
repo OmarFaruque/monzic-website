@@ -22,7 +22,11 @@ export default function AdminLoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
+
+    
+
     if (!loading && isAdminAuthenticated) {
+      console.log('isAdminAuthenticated:', isAdminAuthenticated, 'loading inside:', loading);
       router.push("/administrator")
     }
   }, [isAdminAuthenticated, loading, router])

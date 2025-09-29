@@ -1,5 +1,6 @@
-import { pgTable, unique, serial, varchar, text, timestamp } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+import { pgTable, unique, serial, varchar, text, timestamp, boolean, json } from "drizzle-orm/pg-core"
+import { min, sql } from "drizzle-orm"
+import { PaymentStatus } from "@mollie/api-client";
 
 
 
@@ -39,4 +40,61 @@ export const users = pgTable("users", {
 export const settings = pgTable('settings', {
   param: text('param').primaryKey(), // e.g., 'mot_token'
   value: text('value'),             // Will store the JSON string with token and timestamp
+});
+
+export const quotes = pgTable("quotes", {
+	id: serial("id").primaryKey().notNull(),
+	policyNumber: varchar("policy_number", { length: 255 }).notNull(),
+	userId: varchar("user_id", { length: 255 }),
+	cpw: varchar("cpw", { length: 255 }),
+	updatePrice: boolean("update_price").default(false),
+	regNumber: varchar("reg_number", { length: 50 }),
+	vehicleMake: varchar("vehicle_make", { length: 100 }),
+	vehicleModel: varchar("vehicle_model", { length: 100 }),
+	engineCC: varchar("engine_cc", { length: 50 }),
+	startDate: timestamp("start_date", { mode: 'string' }),	
+	endDate: timestamp("end_date", { mode: 'string' }),
+	dateOfBirth: timestamp("date_of_birth", { mode: 'string' }),
+	firstName: varchar("first_name", { length: 100 }),
+	lastName: varchar("last_name", { length: 100 }),
+	phone: varchar("phone", { length: 50 }),
+	licenceType: varchar("licence_type", { length: 50 }),
+	licencePeriod: varchar("licence_period", { length: 50 }),
+	vehicleType: varchar("vehicle_type", { length: 100 }),
+	promoCode: varchar("promo_code", { length: 100 }),
+	PaymentStatus: varchar("payment_status", { length: 50 }), // e.g., 'pending', 'paid'
+	intentId: varchar("intent_id", { length: 255 }), // Payment intent ID from payment gateway
+	spaymentId: varchar("spayment_id", { length: 255 }), // Square payment ID
+	nameTitle: varchar("name_title", { length: 20 }),
+	postCode: varchar("post_code", { length: 20 }),
+	address: text("address"),
+	town: varchar("town", { length: 100 }),
+	occupation: varchar("occupation", { length: 100 }),
+	coverReason: varchar("cover_reason", { length: 255 }),
+	mail_sent: boolean("mail_sent").default(false),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),	
+	quoteData: text("quote_data"), // Storing as JSON string
+	status: varchar("status", { length: 50 }).default('pending').notNull(), // e.g., 'pending', 'completed'
+	paymentIntentId: varchar("payment_intent_id", { length: 255 }),
+	paymentMethod: varchar("payment_method", { length: 50 }), // e.g., 'stripe', 'square'
+	expiresAt: timestamp("expires_at", { mode: 'string' })	
+});
+
+
+export const coupons = pgTable("coupons", {
+	id: serial("id").primaryKey().notNull(),
+	promoCode: varchar("promo_code", { length: 100 }).notNull(),
+	discount: json("discount").notNull(), // { type: 'percentage' | 'fixed', value: number }
+	minSpent: varchar("min_spent", { length: 50 }), // e.g., '100' for $100
+	maxDiscount: varchar("max_discount", { length: 50 }), // e.g., '50' for $50
+	quotaAvailable: varchar("quota_available", { length: 50 }).notNull(),
+	usedQuota: varchar("used_quota", { length: 50 }).default('0').notNull(),
+	totalUsage: varchar("total_usage", { length: 50 }).default('0').notNull(),
+	expires: timestamp("expires", { mode: 'string' }),
+	isActive: boolean("is_active").default(true).notNull(),
+	restrictions: json("restrictions"), // JSON string for any additional restrictions
+	matches: json("matches"), // JSON string for matching criteria
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
 });

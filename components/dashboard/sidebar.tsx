@@ -3,18 +3,22 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Menu, X, FileText, User, LogOut, ChevronRight } from "lucide-react"
+import { useAuth } from "@/context/auth"
+import { useNotifications } from "@/hooks/use-notifications"
+import { LogoutDialog } from "@/components/dashboard/logout-dialog"
 
 export function DashboardSidebar({
   activeSection,
   setActiveSection,
-  onLogoutClick,
 }: {
   activeSection: "policies" | "account"
   setActiveSection: (section: "policies" | "account") => void
-  onLogoutClick: () => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+  const { logout } = useAuth()
+  const { showSuccess } = useNotifications()
 
   // Check if mobile on mount and window resize
   useEffect(() => {
@@ -43,6 +47,12 @@ export function DashboardSidebar({
   const handleSectionChange = (section: "policies" | "account") => {
     setActiveSection(section)
     closeSidebar()
+  }
+
+  const handleLogoutConfirm = () => {
+    logout()
+    showSuccess("Logged Out Successfully", "You have been logged out of your account.", 5000)
+    setShowLogoutDialog(false)
   }
 
   return (
@@ -111,7 +121,7 @@ export function DashboardSidebar({
           {/* Logout */}
           <div className="p-3 md:p-4 border-t border-gray-200">
             <button
-              onClick={onLogoutClick}
+              onClick={() => setShowLogoutDialog(true)}
               className="flex items-center w-full px-4 py-3 rounded-lg text-left text-red-600 hover:bg-red-50 transition-colors touch-manipulation"
             >
               <LogOut className="w-5 h-5 mr-3 flex-shrink-0" />
@@ -120,6 +130,7 @@ export function DashboardSidebar({
           </div>
         </div>
       </div>
+      <LogoutDialog isOpen={showLogoutDialog} onClose={() => setShowLogoutDialog(false)} onConfirm={handleLogoutConfirm} />
     </>
   )
 }

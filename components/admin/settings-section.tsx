@@ -127,14 +127,66 @@ Best regards,
 The Monzic Team`,
     },
   })
-
   const [activeTemplate, setActiveTemplate] = useState("policyConfirmation")
   const [showPreview, setShowPreview] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<{
     success?: boolean
     message?: string
     timestamp?: string
   } | null>(null)
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const response = await fetch("/api/admin/email-templates");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Object.keys(data.templates).length > 0) {
+          setTemplates(data.templates);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load email templates:", error);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/admin/email-templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ templates }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSaveStatus({
+          success: true,
+          message: "Email templates saved successfully",
+          timestamp: new Date().toLocaleTimeString(),
+        });
+      } else {
+        throw new Error(result.error || "Unknown error");
+      }
+    } catch (error) {
+      setSaveStatus({
+        success: false,
+        message: "Failed to save email templates",
+        timestamp: new Date().toLocaleTimeString(),
+      });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveStatus(null), 5000);
+    }
+  };
 
   // Sample data for preview
   const sampleData = {
@@ -166,24 +218,6 @@ The Monzic Team`,
     return text.replace(/\{\{(\w+)\}\}/g, (match, variable) => {
       return sampleData[variable as keyof typeof sampleData] || match
     })
-  }
-
-  const handleSave = async () => {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setSaveStatus({
-        success: true,
-        message: "Email templates saved successfully",
-        timestamp: new Date().toLocaleTimeString(),
-      })
-      setTimeout(() => setSaveStatus(null), 5000)
-    } catch (error) {
-      setSaveStatus({
-        success: false,
-        message: "Failed to save email templates",
-        timestamp: new Date().toLocaleTimeString(),
-      })
-    }
   }
 
   const insertVariable = (variable: string) => {
@@ -349,9 +383,18 @@ The Monzic Team`,
                   <Eye className="h-4 w-4 mr-2" />
                   {showPreview ? "Edit" : "Preview"}
                 </Button>
-                <Button size="sm" onClick={handleSave}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
+                <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -550,6 +593,7 @@ export function SettingsSection() {
   const [testResults, setTestResults] = useState<Record<string, any>>({})
   const [testing, setTesting] = useState<Record<string, boolean>>({})
   const [hasChanges, setHasChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false);
 
   const updateSetting = (section: string, field: string, value: any) => {
     setSettings((prev) => ({
@@ -613,6 +657,7 @@ export function SettingsSection() {
   }
 
   const saveSettings = async () => {
+    setIsSaving(true);
     try {
       const response = await fetch("/api/admin/settings", {
         method: "POST",
@@ -657,6 +702,8 @@ export function SettingsSection() {
           timestamp: new Date().toLocaleTimeString(),
         },
       }))
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -687,9 +734,18 @@ export function SettingsSection() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button onClick={saveSettings} disabled={!hasChanges} className="bg-teal-600 hover:bg-teal-700">
-            <Save className="h-4 w-4 mr-2" />
-            Save All Changes
+          <Button onClick={saveSettings} disabled={!hasChanges || isSaving} className="bg-teal-600 hover:bg-teal-700">
+            {isSaving ? (
+                <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Saving...
+                </>
+            ) : (
+                <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save All Changes
+                </>
+            )}
           </Button>
         </div>
       </div>
@@ -848,6 +904,22 @@ export function SettingsSection() {
                     placeholder="Enter your Paddle API Key"
                     value={showKeys.paddle ? settings.paddle.apiKey : maskApiKey(settings.paddle.apiKey)}
                     onChange={(e) => updateSetting("paddle", "apiKey", e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => toggleKeyVisibility("paddle")}>
+                    {showKeys.paddle ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="paddle-client-token">Client Token</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="paddle-client-token"
+                    type={showKeys.paddle ? "text" : "password"}
+                    placeholder="Enter your Paddle Client Token"
+                    value={showKeys.paddle ? settings.paddle.clientToken : maskApiKey(settings.paddle.clientToken)}
+                    onChange={(e) => updateSetting("paddle", "clientToken", e.target.value)}
                     className="flex-1"
                   />
                   <Button type="button" variant="outline" size="sm" onClick={() => toggleKeyVisibility("paddle")}>
@@ -1346,8 +1418,8 @@ export function SettingsSection() {
           <div className="flex items-center space-x-2">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             <span className="text-yellow-800 font-medium">You have unsaved changes</span>
-            <Button onClick={saveSettings} size="sm" className="ml-auto bg-yellow-600 hover:bg-yellow-700">
-              Save Now
+            <Button onClick={saveSettings} size="sm" className="ml-auto bg-yellow-600 hover:bg-yellow-700" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Now'}
             </Button>
           </div>
         </div>

@@ -101,9 +101,9 @@ export function AdminSidebar({ items, selectedItem, onSelectItem }: AdminSidebar
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-4 left-4 right-4">
+        {/* <div className="absolute bottom-4 left-4 right-4">
           <div className="text-xs text-gray-500 text-center">Admin Dashboard v1.0</div>
-        </div>
+        </div> */}
       </div>
     </>
   )

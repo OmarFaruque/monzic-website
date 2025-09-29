@@ -10,22 +10,20 @@ import { useRouter } from "next/navigation"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
 import { checkBlacklist } from "@/lib/blacklist"
+import { useAuth } from "@/context/auth"
 import Cookies from "js-cookie"; // Import js-cookie at the top
+import { Loader2 } from "lucide-react"
 
 export default function MonzicHomepage() {
   const [message, setMessage] = useState("")
   const [mainInput, setMainInput] = useState("")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // State for auth status
+  const { isAuthenticated } = useAuth()
+  const [loading, setLoading] = useState(false); // State for loading
   const router = useRouter()
   const { notifications, removeNotification, showError } = useNotifications()
 
-  useEffect(() => {
-    const token = Cookies.get("auth_token");
-    if (token) {
-      setIsAuthenticated(true);
-    }
-  }, []);
+
 
   const formatRegistration = useCallback((value: string) => {
     let formatted = value.toUpperCase()
@@ -38,8 +36,10 @@ export default function MonzicHomepage() {
   const handleMainFormSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
+      setLoading(true)
       if (!mainInput.trim()) {
         setMessage("Please enter a vehicle registration number.")
+        setLoading(false)
         return
       }
 
@@ -117,6 +117,19 @@ export default function MonzicHomepage() {
     ],
     [],
   )
+
+
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-gray-600">Loading...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
