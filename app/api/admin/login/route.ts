@@ -2,10 +2,6 @@ import { type NextRequest, NextResponse } from "next/server"
 import { validateAdminCredentials } from "@/lib/admin-auth"
 import { sign } from 'jsonwebtoken';
 
-export async function GET(request: NextRequest) {
-  return NextResponse.json({ message: "Hello from the admin login route!" });
-}
-
 export async function POST(request: NextRequest) {
   try {
     const { email, password, clientIP } = await request.json()

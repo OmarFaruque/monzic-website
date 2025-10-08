@@ -2,7 +2,7 @@ import { createRateLimiter } from "./validation"
 import { db } from '@/lib/db';
 import { admins } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
-import { compare } from 'bcrypt';
+import { compare } from 'bcryptjs';
 
 // Rate limiter for admin login attempts
 const adminLoginRateLimit = createRateLimiter(15 * 60 * 1000, 5) // 5 attempts per 15 minutes
