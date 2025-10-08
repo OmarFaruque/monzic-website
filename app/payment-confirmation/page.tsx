@@ -7,26 +7,30 @@ import { CheckCircle, FileText, ArrowLeft } from "lucide-react"
 import { Header } from "@/components/header"
 import { useRouter } from "next/navigation"
 
+
 export default function PaymentConfirmationPage() {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(true)
   const [policyNumber, setPolicyNumber] = useState("")
+  const [quotes, setQuotes] = useState<any[]>([])
 
   useEffect(() => {
     // Generate random policy number
-    const randomDigits = Math.floor(100000 + Math.random() * 900000).toString()
-    const generatedPolicyNumber = `POL-${randomDigits}`
-    setPolicyNumber(generatedPolicyNumber)
+    const quoteLocal = localStorage.getItem("quoteData")
+    if (quoteLocal) {
+        const quoteData = JSON.parse(quoteLocal)
+        setQuotes(quoteData)
+        setIsProcessing(false)
+    } else {
+        // If no quote data, redirect to home
+        router.push("/")
+    }
 
-    // Store policy number in localStorage for later use
-    localStorage.setItem("latestPolicyNumber", generatedPolicyNumber)
+    
 
-    // Simulate payment processing
-    const timer = setTimeout(() => {
-      setIsProcessing(false)
-    }, 3000)
+    
 
-    return () => clearTimeout(timer)
+    
   }, [])
 
   if (isProcessing) {
@@ -43,6 +47,9 @@ export default function PaymentConfirmationPage() {
       </div>
     )
   }
+
+
+  console.log('Quotes: ', quotes);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -65,21 +72,21 @@ export default function PaymentConfirmationPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Policy Number:</span>
-                  <span className="font-medium">{policyNumber}</span>
+                  <span className="font-medium">{quotes?.policyNumber}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Date:</span>
-                  <span className="font-medium">{new Date().toLocaleDateString("en-GB")}</span>
+                  <span className="font-medium">{new Date(quotes?.updatedAt).toLocaleDateString("en-GB")}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-medium">£10.18</span>
+                  <span className="font-medium">£{(quotes?.quoteData?.update_price ?? quotes?.cpw).toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href={`/policy/view?number=${policyNumber}`}>
+              <Link href={`/policy/view?number=${quotes?.policyNumber}`}>
                 <Button className="bg-teal-600 hover:bg-teal-700 text-white flex items-center space-x-2">
                   <FileText className="w-4 h-4" />
                   <span>View Documents</span>

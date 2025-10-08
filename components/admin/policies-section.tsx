@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,22 +30,9 @@ import {
   CheckCircle,
   RefreshCw,
 } from "lucide-react"
-import {
-  getAllPolicies,
-  getCustomerData,
-  REASON_OPTIONS,
-  LICENSE_TYPE_OPTIONS,
-  LICENSE_HELD_OPTIONS,
-  VEHICLE_VALUE_OPTIONS,
-  type PolicyData,
-  type CustomerData,
-} from "@/lib/policy-data"
-import { lookupVehicle, isValidUKRegistration, DEMO_REGISTRATIONS, type VehicleData } from "@/lib/vehicle-lookup"
 
-// Function to generate a random policy number
-const generatePolicyNumber = () => {
-  return "POL-" + Math.floor(100000 + Math.random() * 900000)
-}
+
+
 
 // Function to determine policy status based on dates and times
 const calculatePolicyStatus = (startDate: string, startTime: string, endDate: string, endTime: string) => {
@@ -62,11 +49,23 @@ const calculatePolicyStatus = (startDate: string, startTime: string, endDate: st
   }
 }
 
+
+
+const DEMO_REGISTRATIONS = [
+  "LX61 JYE - Volkswagen Golf 2017",
+  "FG34 HIJ - BMW 3 Series 2019",
+  "KL56 MNO - Audi A4 2020",
+  "CD78 EFG - Ford Focus 2018",
+  "MN90 PQR - Toyota Corolla 2021",
+  "ST12 UVW - Mercedes-Benz C-Class 2020",
+  "XY34 ZAB - Nissan Qashqai 2019",
+]
+
 export function PoliciesSection() {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("latest")
-  const [selectedPolicy, setSelectedPolicy] = useState<PolicyData | null>(null)
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerData | null>(null)
+  const [selectedPolicy, setSelectedPolicy] = useState<any | null>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -76,8 +75,8 @@ export function PoliciesSection() {
   // Add these state variables after the existing state declarations:
   const [customerSearch, setCustomerSearch] = useState("")
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
-  const [filteredCustomers, setFilteredCustomers] = useState<CustomerData[]>([])
-  const [selectedCustomerForPolicy, setSelectedCustomerForPolicy] = useState<CustomerData | null>(null)
+  const [filteredCustomers, setFilteredCustomers] = useState<any[]>([])
+  const [selectedCustomerForPolicy, setSelectedCustomerForPolicy] = useState<any | null>(null)
   const [customerDetailsLocked, setCustomerDetailsLocked] = useState(false)
 
   // Add occupation states
@@ -94,34 +93,9 @@ export function PoliciesSection() {
   const [editFoundVehicle, setEditFoundVehicle] = useState<VehicleData | null>(null)
 
   // Edit policy states
-  const [editPolicy, setEditPolicy] = useState<{
-    firstName: string
-    middleName: string
-    lastName: string
-    email: string
-    phoneNumber: string
-    dateOfBirthDay: string
-    dateOfBirthMonth: string
-    dateOfBirthYear: string
-    address: string
-    postcode: string
-    occupation: string
-    vehicleReg: string
-    vehicleMake: string
-    vehicleModel: string
-    vehicleYear: string
-    vehicleValue: string
-    reason: string
-    licenseType: string
-    licenseHeld: string
-    startDate: string
-    endDate: string
-    startTime: string
-    endTime: string
-    premium: number
-  } | null>(null)
+  const [editPolicy, setEditPolicy] = useState<any | null>(null)
 
-  const [newPolicy, setNewPolicy] = useState({
+  const [newPolicy, setNewPolicy] = useState<any>({
     customerId: "",
     firstName: "",
     middleName: "",
@@ -158,10 +132,30 @@ export function PoliciesSection() {
   const [editPostcodeError, setEditPostcodeError] = useState("")
 
   // Get data
-  const mockPolicies = getAllPolicies()
-  const mockCustomers = getCustomerData()
+  const [policies, setPolicies] = useState<any[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const sortedPolicies = [...mockPolicies].sort((a, b) => {
+  // Fetch policies from the API
+  useEffect(() => {
+    const fetchPolicies = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/admin/policies");
+        const data = await response.json();
+        setPolicies(data);
+      } catch (err) {
+        setError("Failed to fetch policies");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPolicies();
+  }, []);
+
+  const sortedPolicies = [...policies].sort((a, b) => {
     switch (sortBy) {
       case "latest":
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -186,18 +180,18 @@ export function PoliciesSection() {
 
   const filteredPolicies = sortedPolicies.filter(
     (policy) =>
-      `${policy.customerFirstName} ${policy.customerSurname}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${policy.firstName} ${policy.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       policy.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      policy.vehicleReg.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      policy.regNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const getStatusBadge = (policy: PolicyData) => {
-    if (!policy || !policy.startDate || !policy.startTime || !policy.endDate || !policy.endTime) {
+  const getStatusBadge = (policy: any) => {
+    if (!policy || !policy.startDate || !policy.endDate) {
       return <Badge variant="secondary">Unknown</Badge>
     }
 
-    const status = calculatePolicyStatus(policy.startDate, policy.startTime, policy.endDate, policy.endTime)
+    const status = calculatePolicyStatus(policy.startDate, '00:00', policy.endDate, '23:59')
 
     switch (status) {
       case "Upcoming":
@@ -215,16 +209,16 @@ export function PoliciesSection() {
     return `${date} ${time}`
   }
 
-  const handleViewPolicy = (policy: PolicyData) => {
+  const handleViewPolicy = (policy: any) => {
     // Open policy view page in new tab
     window.open(`/policy/view?number=${policy.policyNumber}`, "_blank")
   }
 
-  const handleViewCustomer = (policy: PolicyData) => {
-    const customer = mockCustomers.find(
+  const handleViewCustomer = (policy: any) => {
+    const customer = customers.find(
       (c) =>
-        c.firstName === policy.customerFirstName &&
-        c.lastName === policy.customerSurname &&
+        c.firstName === policy.firstName &&
+        c.lastName === policy.lastName &&
         c.dateOfBirth === policy.dateOfBirth,
     )
     if (customer) {
@@ -244,7 +238,7 @@ export function PoliciesSection() {
       return
     }
 
-    const filtered = mockCustomers.filter(
+    const filtered = customers.filter(
       (customer) =>
         customer.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -256,7 +250,7 @@ export function PoliciesSection() {
     setShowCustomerDropdown(true)
   }
 
-  const selectCustomerForPolicy = (customer: CustomerData) => {
+  const selectCustomerForPolicy = (customer: any) => {
     setSelectedCustomerForPolicy(customer)
     setCustomerSearch(`${customer.firstName} ${customer.lastName} (${customer.email})`)
     setShowCustomerDropdown(false)
@@ -265,12 +259,11 @@ export function PoliciesSection() {
     // Auto-populate customer fields
     setNewPolicy({
       ...newPolicy,
-      customerId: customer.customerId,
+      customerId: customer.id,
       firstName: customer.firstName,
-      middleName: customer.middleName || "",
       lastName: customer.lastName,
       email: customer.email,
-      phoneNumber: customer.phoneNumber,
+      phoneNumber: customer.phone,
       dateOfBirth: customer.dateOfBirth,
       address: customer.address,
       postcode: customer.postcode,
@@ -456,10 +449,108 @@ export function PoliciesSection() {
     setPostcodeError("")
   }
 
+  const handleCreatePolicy = async () => {
+    try {
+      const response = await fetch("/api/admin/policies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newPolicy),
+      });
+      const createdPolicy = await response.json();
+      setPolicies((prev) => [...prev, createdPolicy]);
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to create policy:", error);
+    }
+  };
+
+  const handleUpdatePolicy = async () => {
+    if (!editPolicy) return;
+    try {
+      const response = await fetch("/api/admin/policies", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ policyId: editPolicy.id, policyData: editPolicy }),
+      });
+      const updatedPolicy = await response.json();
+      setPolicies((prev) =>
+        prev.map((policy) => (policy.id === updatedPolicy.id ? updatedPolicy : policy))
+      );
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to update policy:", error);
+    }
+  };
+
+  const handleDeletePolicy = async () => {
+    if (!selectedPolicy) return;
+    try {
+      await fetch("/api/admin/policies", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ policyId: selectedPolicy.id }),
+      });
+      setPolicies((prev) => prev.filter((policy) => policy.id !== selectedPolicy.id));
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to delete policy:", error);
+    }
+  };
+
+
+  const handlePostcodeLookup = async () => {
+    
+    // Reset any previous errors
+    setPostcodeError("");
+
+    // Check if postcode is empty
+    if (!editPolicy.postCode.trim()) {
+      setPostcodeError("Please enter a postcode before searching");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/postcode-lookup?postcode=${encodeURIComponent(editPolicy.postCode)}`);
+
+      if (response.ok) {
+        const data = await response.json();
+
+        console.log('Postcode lookup data: ', data);
+
+        if (data.addresses && data.addresses.length > 0) {
+          setEditAddresses(data.addresses);
+          setShowEditAddresses(true);
+        } else {
+          setPostcodeError("No addresses found for this postcode.");
+          setEditAddresses([]);
+          setShowEditAddresses(false);
+        }
+      } else {
+        setPostcodeError("Failed to fetch addresses. Please try again.");
+        setShowEditAddresses(false);
+      }
+    } catch (error) {
+      console.error("An error occurred during postcode lookup", error);
+      setPostcodeError("An unexpected error occurred. Please try again.");
+      setShowEditAddresses(false);
+    }
+  }
+
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
+  console.log('policylist: ', addresses);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Document Policies</CardTitle>
+        <CardTitle>Policies</CardTitle>
         <CardDescription>Manage all document policies purchased through your platform</CardDescription>
       </CardHeader>
       <CardContent>
@@ -517,12 +608,12 @@ export function PoliciesSection() {
             </TableHeader>
             <TableBody>
               {filteredPolicies.map((policy) => (
-                <TableRow key={policy.policyNumber}>
+                <TableRow key={policy.id}>
                   <TableCell className="font-medium">{policy.policyNumber}</TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {policy.customerFirstName} {policy.customerSurname}
+                        {policy.firstName} {policy.lastName}
                       </div>
                       <div className="text-sm text-gray-500">{policy.email}</div>
                     </div>
@@ -530,13 +621,13 @@ export function PoliciesSection() {
                   <TableCell>
                     {policy.vehicleMake} {policy.vehicleModel}
                   </TableCell>
-                  <TableCell className="font-mono">{policy.vehicleReg}</TableCell>
-                  <TableCell>£{policy.premium.toFixed(2)}</TableCell>
+                  <TableCell className="font-mono">{policy.regNumber}</TableCell>
+                  <TableCell>£{Number(policy.cpw || 0).toFixed(2)}</TableCell>
                   <TableCell>{getStatusBadge(policy)}</TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      <div>{formatDateTime(policy.startDate, policy.startTime)}</div>
-                      <div className="text-gray-500">to {formatDateTime(policy.endDate, policy.endTime)}</div>
+                      <div>{formatDateTime(policy.startDate, '00:00')}</div>
+                      <div className="text-gray-500">to {formatDateTime(policy.endDate, '23:59')}</div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -548,32 +639,7 @@ export function PoliciesSection() {
                           setSelectedPolicy(policy)
                           setEditFoundVehicle(null)
                           setEditVehicleLookupError("")
-                          setEditPolicy({
-                            firstName: policy.customerFirstName,
-                            middleName: policy.customerMiddleName || "",
-                            lastName: policy.customerSurname,
-                            email: policy.email,
-                            phoneNumber: policy.phoneNumber,
-                            dateOfBirthDay: policy.dateOfBirth.split("-")[2] || "",
-                            dateOfBirthMonth: policy.dateOfBirth.split("-")[1] || "",
-                            dateOfBirthYear: policy.dateOfBirth.split("-")[0] || "",
-                            address: policy.address,
-                            postcode: policy.postcode,
-                            occupation: policy.occupation,
-                            vehicleReg: policy.vehicleReg,
-                            vehicleMake: policy.vehicleMake,
-                            vehicleModel: policy.vehicleModel,
-                            vehicleYear: policy.vehicleYear,
-                            vehicleValue: policy.vehicleValue,
-                            reason: policy.reason,
-                            licenseType: policy.licenseType,
-                            licenseHeld: policy.licenseHeld,
-                            startDate: policy.startDate,
-                            endDate: policy.endDate,
-                            startTime: policy.startTime,
-                            endTime: policy.endTime,
-                            premium: policy.premium,
-                          })
+                          setEditPolicy(policy)
                           setIsEditDialogOpen(true)
                         }}
                       >
@@ -648,8 +714,8 @@ export function PoliciesSection() {
                   <Label htmlFor="editPhone">Phone</Label>
                   <Input
                     id="editPhone"
-                    value={editPolicy.phoneNumber}
-                    onChange={(e) => setEditPolicy({ ...editPolicy, phoneNumber: e.target.value })}
+                    value={editPolicy.phone}
+                    onChange={(e) => setEditPolicy({ ...editPolicy, phone: e.target.value })}
                   />
                 </div>
                 <div>
@@ -658,10 +724,12 @@ export function PoliciesSection() {
                     <div>
                       <Input
                         type="text"
-                        value={editPolicy.dateOfBirthDay}
+                        value={editPolicy.dateOfBirth.split('-')[2] || ''}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, "").slice(0, 2)
-                          setEditPolicy({ ...editPolicy, dateOfBirthDay: value })
+                          const day = e.target.value.replace(/\D/g, "").slice(0, 2)
+                          const month = editPolicy.dateOfBirth.split('-')[1] || ''
+                          const year = editPolicy.dateOfBirth.split('-')[0] || ''
+                          setEditPolicy({ ...editPolicy, dateOfBirth: `${year}-${month}-${day}` })
                         }}
                         placeholder="DD"
                         maxLength={2}
@@ -670,10 +738,12 @@ export function PoliciesSection() {
                     <div>
                       <Input
                         type="text"
-                        value={editPolicy.dateOfBirthMonth}
+                        value={editPolicy.dateOfBirth.split('-')[1] || ''}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, "").slice(0, 2)
-                          setEditPolicy({ ...editPolicy, dateOfBirthMonth: value })
+                          const day = editPolicy.dateOfBirth.split('-')[2] || ''
+                          const month = e.target.value.replace(/\D/g, "").slice(0, 2)
+                          const year = editPolicy.dateOfBirth.split('-')[0] || ''
+                          setEditPolicy({ ...editPolicy, dateOfBirth: `${year}-${month}-${day}` })
                         }}
                         placeholder="MM"
                         maxLength={2}
@@ -682,10 +752,12 @@ export function PoliciesSection() {
                     <div>
                       <Input
                         type="text"
-                        value={editPolicy.dateOfBirthYear}
+                        value={editPolicy.dateOfBirth.split('-')[0] || ''}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, "").slice(0, 4)
-                          setEditPolicy({ ...editPolicy, dateOfBirthYear: value })
+                          const day = editPolicy.dateOfBirth.split('-')[2] || ''
+                          const month = editPolicy.dateOfBirth.split('-')[1] || ''
+                          const year = e.target.value.replace(/\D/g, "").slice(0, 4)
+                          setEditPolicy({ ...editPolicy, dateOfBirth: `${year}-${month}-${day}` })
                         }}
                         placeholder="YYYY"
                         maxLength={4}
@@ -698,29 +770,16 @@ export function PoliciesSection() {
                   <div className="flex space-x-2">
                     <Input
                       id="editPostcode"
-                      value={editPolicy.postcode}
+                      value={editPolicy.postCode}
                       onChange={(e) => {
-                        setEditPolicy({ ...editPolicy, postcode: e.target.value.toUpperCase() })
+                        setEditPolicy({ ...editPolicy, postCode: e.target.value.toUpperCase() })
                         setEditPostcodeError("")
                       }}
                       placeholder="Enter postcode"
                     />
                     <Button
                       type="button"
-                      onClick={() => {
-                        // Mock postcode lookup
-                        if (!editPolicy.postcode.trim()) {
-                          setEditPostcodeError("Please enter a postcode")
-                          return
-                        }
-                        setEditAddresses([
-                          `1 Example Street, ${editPolicy.postcode}`,
-                          `2 Example Street, ${editPolicy.postcode}`,
-                          `3 Example Street, ${editPolicy.postcode}`,
-                        ])
-                        setShowEditAddresses(true)
-                        setEditPostcodeError("")
-                      }}
+                      onClick={handlePostcodeLookup}
                       className="bg-teal-600 hover:bg-teal-700 text-white px-6"
                     >
                       <Search className="w-4 h-4 mr-2" />
@@ -740,11 +799,11 @@ export function PoliciesSection() {
                       className="w-full h-12 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     >
                       <option value="">Select an address...</option>
-                      {editAddresses.map((address, index) => (
-                        <option key={index} value={address}>
-                          {address}
-                        </option>
-                      ))}
+                      {editAddresses.map((address: any, index) => (
+                          <option key={index} value={address.address_selector}>
+                            {address.address_selector}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 )}
@@ -792,9 +851,9 @@ export function PoliciesSection() {
                     <div className="flex gap-2">
                       <Input
                         id="editRegistration"
-                        value={editPolicy.vehicleReg}
+                        value={editPolicy.regNumber}
                         onChange={(e) => {
-                          setEditPolicy({ ...editPolicy, vehicleReg: e.target.value.toUpperCase() })
+                          setEditPolicy({ ...editPolicy, regNumber: e.target.value.toUpperCase() })
                           setEditVehicleLookupError("")
                           setEditFoundVehicle(null)
                         }}
@@ -803,7 +862,7 @@ export function PoliciesSection() {
                       />
                       <Button
                         type="button"
-                        onClick={() => handleEditVehicleLookup(editPolicy.vehicleReg)}
+                        onClick={() => handleEditVehicleLookup(editPolicy.regNumber)}
                         disabled={editVehicleLookupLoading}
                         className="bg-teal-600 hover:bg-teal-700 text-white px-6 flex items-center space-x-2"
                       >
@@ -878,11 +937,13 @@ export function PoliciesSection() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {VEHICLE_VALUE_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="£1,000 - £5,000">£1,000 - £5,000</SelectItem>
+                        <SelectItem value="£5,000 - £10,000">£5,000 - £10,000</SelectItem>
+                        <SelectItem value="£10,000 - £20,000">£10,000 - £20,000</SelectItem>
+                        <SelectItem value="£20,000 - £30,000">£20,000 - £30,000</SelectItem>
+                        <SelectItem value="£30,000 - £50,000">£30,000 - £50,000</SelectItem>
+                        <SelectItem value="£50,000 - £80,000">£50,000 - £80,000</SelectItem>
+                        <SelectItem value="£80,000+">£80,000+</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -896,11 +957,11 @@ export function PoliciesSection() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {REASON_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Borrowing">Borrowing</SelectItem>
+                        <SelectItem value="Buying/Selling/Testing">Buying/Selling/Testing</SelectItem>
+                        <SelectItem value="Learning">Learning</SelectItem>
+                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -916,11 +977,10 @@ export function PoliciesSection() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {LICENSE_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Full UK License">Full UK License</SelectItem>
+                        <SelectItem value="Provisional License">Provisional License</SelectItem>
+                        <SelectItem value="International License">International License</SelectItem>
+                        <SelectItem value="EU License">EU License</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -934,11 +994,11 @@ export function PoliciesSection() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {LICENSE_HELD_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Under 1 Year">Under 1 Year</SelectItem>
+                        <SelectItem value="1-2 Years">1-2 Years</SelectItem>
+                        <SelectItem value="2-4 Years">2-4 Years</SelectItem>
+                        <SelectItem value="5-10 Years">5-10 Years</SelectItem>
+                        <SelectItem value="10+ Years">10+ Years</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1008,7 +1068,7 @@ export function PoliciesSection() {
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setIsEditDialogOpen(false)}>Save Changes</Button>
+              <Button onClick={handleUpdatePolicy}>Save Changes</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1029,7 +1089,7 @@ export function PoliciesSection() {
               <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(false)}>
+              <Button variant="destructive" onClick={handleDeletePolicy}>
                 Delete Policy
               </Button>
             </DialogFooter>
@@ -1067,7 +1127,7 @@ export function PoliciesSection() {
                     <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                       {filteredCustomers.map((customer) => (
                         <button
-                          key={customer.customerId}
+                          key={customer.id}
                           type="button"
                           onClick={() => selectCustomerForPolicy(customer)}
                           className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
@@ -1108,7 +1168,7 @@ export function PoliciesSection() {
                         <strong>Email:</strong> {selectedCustomerForPolicy.email}
                       </p>
                       <p>
-                        <strong>Phone:</strong> {selectedCustomerForPolicy.phoneNumber}
+                        <strong>Phone:</strong> {selectedCustomerForPolicy.phone}
                       </p>
                     </div>
                   </div>
@@ -1234,21 +1294,7 @@ export function PoliciesSection() {
                     />
                     <Button
                       type="button"
-                      onClick={() => {
-                        if (customerDetailsLocked) return
-                        // Mock postcode lookup
-                        if (!newPolicy.postcode.trim()) {
-                          setPostcodeError("Please enter a postcode")
-                          return
-                        }
-                        setAddresses([
-                          `1 Example Street, ${newPolicy.postcode}`,
-                          `2 Example Street, ${newPolicy.postcode}`,
-                          `3 Example Street, ${newPolicy.postcode}`,
-                        ])
-                        setShowAddresses(true)
-                        setPostcodeError("")
-                      }}
+                      onClick={handlePostcodeLookup}
                       className="bg-teal-600 hover:bg-teal-700 text-white px-6"
                       disabled={customerDetailsLocked}
                     >
@@ -1295,11 +1341,10 @@ export function PoliciesSection() {
                         <SelectValue placeholder="Select license type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {LICENSE_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Full UK License">Full UK License</SelectItem>
+                        <SelectItem value="Provisional License">Provisional License</SelectItem>
+                        <SelectItem value="International License">International License</SelectItem>
+                        <SelectItem value="EU License">EU License</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1314,11 +1359,11 @@ export function PoliciesSection() {
                         <SelectValue placeholder="Select duration" />
                       </SelectTrigger>
                       <SelectContent>
-                        {LICENSE_HELD_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Under 1 Year">Under 1 Year</SelectItem>
+                        <SelectItem value="1-2 Years">1-2 Years</SelectItem>
+                        <SelectItem value="2-4 Years">2-4 Years</SelectItem>
+                        <SelectItem value="5-10 Years">5-10 Years</SelectItem>
+                        <SelectItem value="10+ Years">10+ Years</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1445,17 +1490,19 @@ export function PoliciesSection() {
                   <Label htmlFor="newVehicleValue">Vehicle Value</Label>
                   <Select
                     value={newPolicy.vehicleValue}
-                    onChange={(value) => setNewPolicy({ ...newPolicy, vehicleValue: value })}
+                    onValueChange={(value) => setNewPolicy({ ...newPolicy, vehicleValue: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select value range" />
                     </SelectTrigger>
                     <SelectContent>
-                      {VEHICLE_VALUE_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="£1,000 - £5,000">£1,000 - £5,000</SelectItem>
+                      <SelectItem value="£5,000 - £10,000">£5,000 - £10,000</SelectItem>
+                      <SelectItem value="£10,000 - £20,000">£10,000 - £20,000</SelectItem>
+                      <SelectItem value="£20,000 - £30,000">£20,000 - £30,000</SelectItem>
+                      <SelectItem value="£30,000 - £50,000">£30,000 - £50,000</SelectItem>
+                      <SelectItem value="£50,000 - £80,000">£50,000 - £80,000</SelectItem>
+                      <SelectItem value="£80,000+">£80,000+</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1519,17 +1566,17 @@ export function PoliciesSection() {
                     <Label htmlFor="newReason">Reason</Label>
                     <Select
                       value={newPolicy.reason}
-                      onChange={(value) => setNewPolicy({ ...newPolicy, reason: value })}
+                      onValueChange={(value) => setNewPolicy({ ...newPolicy, reason: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select reason" />
                       </SelectTrigger>
                       <SelectContent>
-                        {REASON_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Borrowing">Borrowing</SelectItem>
+                        <SelectItem value="Buying/Selling/Testing">Buying/Selling/Testing</SelectItem>
+                        <SelectItem value="Learning">Learning</SelectItem>
+                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1546,12 +1593,7 @@ export function PoliciesSection() {
               >
                 Cancel
               </Button>
-              <Button
-                onClick={() => {
-                  setIsCreateDialogOpen(false)
-                  resetNewPolicyForm()
-                }}
-              >
+              <Button onClick={handleCreatePolicy}>
                 Create Policy
               </Button>
             </DialogFooter>
@@ -1586,7 +1628,7 @@ export function PoliciesSection() {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Phone:</span>
-                      <span>{selectedCustomer?.phoneNumber}</span>
+                      <span>{selectedCustomer?.phone}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Date of Birth:</span>
@@ -1598,7 +1640,7 @@ export function PoliciesSection() {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Postcode:</span>
-                      <span>{selectedCustomer?.postcode}</span>
+                      <span>{selectedCustomer?.postCode}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Occupation:</span>
@@ -1611,11 +1653,11 @@ export function PoliciesSection() {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="font-medium">Customer Since:</span>
-                      <span>{selectedCustomer?.joinDate}</span>
+                      <span>{selectedCustomer?.createdAt}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Total Policies:</span>
-                      <span>{selectedCustomer?.totalPolicies}</span>
+                      <span>{selectedCustomer?.quotes.length}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Total Spent:</span>
@@ -1650,20 +1692,20 @@ export function PoliciesSection() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedCustomer?.policies.map((policy) => (
-                        <TableRow key={policy.policyNumber}>
+                      {selectedCustomer?.quotes.map((policy:any) => (
+                        <TableRow key={policy.id}>
                           <TableCell className="font-medium">{policy.policyNumber}</TableCell>
                           <TableCell>
                             {policy.vehicleMake} {policy.vehicleModel}
                           </TableCell>
-                          <TableCell className="font-mono">{policy.vehicleReg}</TableCell>
+                          <TableCell className="font-mono">{policy.regNumber}</TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              <div>{formatDateTime(policy.startDate, policy.startTime)}</div>
-                              <div className="text-gray-500">to {formatDateTime(policy.endDate, policy.endTime)}</div>
+                              <div>{formatDateTime(policy.startDate, '00:00')}</div>
+                              <div className="text-gray-500">to {formatDateTime(policy.endDate, '23:59')}</div>
                             </div>
                           </TableCell>
-                          <TableCell>£{policy.premium.toFixed(2)}</TableCell>
+                          <TableCell>£{policy.cpw.toFixed(2)}</TableCell>
                           <TableCell>{getStatusBadge(policy)}</TableCell>
                           <TableCell>
                             <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>

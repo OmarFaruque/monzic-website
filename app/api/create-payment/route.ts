@@ -4,6 +4,10 @@ import { getPaddleApiKey, getPaddleEnvironment, getPaddleInstance, getPaddleProd
 export async function POST(req: NextRequest) {
   const { quoteData, user } = await req.json();
 
+
+  console.log('QuoteData: ', quoteData, 'user: ', user)
+
+
   if (!quoteData) {
     return NextResponse.json({ error: "Quote data is required." }, { status: 400 });
   }
@@ -15,33 +19,6 @@ export async function POST(req: NextRequest) {
     const paddleApiUrl = environment === 'production'
       ? 'https://api.paddle.com'
       : 'https://sandbox-api.paddle.com';
-
-    // Check if customer exists
-    let customer;
-    const customerResponse = await paddle.customers.list({ email: user.email });
-    for await (const c of customerResponse) {
-      customer = c;
-      break;
-    }
-    if (!customer) {
-      customer = await paddle.customers.create({
-        email: user.email,
-        name: `${user.firstName} ${user.lastName}`,
-      });
-    }
-
-    // Create an address for the customer
-    const addressParts = quoteData.customerData.address.split(',');
-    const first_line = addressParts[0] || '';
-    const city = addressParts[1] || '';
-    const postalCode = addressParts[2] || '';
-
-    await paddle.addresses.create(customer.id, {
-      first_line: first_line,
-      city: city,
-      postalCode: postalCode,
-      countryCode: "GB", // Assuming UK for now
-    });
 
     // Check if product exists
     let product;
@@ -93,6 +70,10 @@ export async function POST(req: NextRequest) {
           amount: Math.round(quoteData.total * 100).toString(),
           currency_code: "GBP",
         },
+        custom_data: {
+          quote_details: JSON.stringify(quoteData),
+          user_details: JSON.stringify(user),
+        }
       }),
     });
     const createPriceData = await createPriceResponse.json();
@@ -100,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     // Return the price ID
     if (price.id) {
-      return NextResponse.json({ priceId: price.id });
+      return NextResponse.json({ priceId: price.id, customer: user });
     } else {
       console.error("Paddle price ID not found in price:", price);
       return NextResponse.json({ error: "Failed to create Paddle price." }, { status: 500 });

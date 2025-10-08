@@ -1,4 +1,4 @@
-import { pgTable, unique, serial, varchar, text, timestamp, boolean, json } from "drizzle-orm/pg-core"
+import { pgTable, unique, serial, varchar, text, timestamp, boolean, json, integer, numeric } from "drizzle-orm/pg-core"
 import { min, sql } from "drizzle-orm"
 import { PaymentStatus } from "@mollie/api-client";
 
@@ -24,16 +24,15 @@ export const users = pgTable("users", {
 	email: varchar({ length: 255 }),
 	stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
 	squareCustomerId: varchar("square_customer_id", { length: 255 }),
-	emailVerifiedAt: timestamp("email_verified_at", { mode: 'string' }),
+	emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true, mode: 'string' }),
 	password: text(),
 	rememberToken: text("remember_token"),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	firstName: varchar("first_name", { length: 255 }),
 	lastName: varchar("last_name", { length: 255 }),
 	verificationCodeHash: text("verification_code_hash"),
-	verificationCodeExpiresAt: timestamp("verification_code_expires_at", { mode: 'string' }),
-}, (table) => [
+	verificationCodeExpiresAt: timestamp("verification_code_expires_at", { withTimezone: true, mode: 'string' }),}, (table) => [
 	unique("users_email_unique").on(table.email),
 ]);
 
@@ -47,7 +46,7 @@ export const quotes = pgTable("quotes", {
 	policyNumber: varchar("policy_number", { length: 255 }).notNull(),
 	userId: varchar("user_id", { length: 255 }),
 	cpw: varchar("cpw", { length: 255 }),
-	updatePrice: boolean("update_price").default(false),
+	updatePrice: varchar("update_price").default(false),
 	regNumber: varchar("reg_number", { length: 50 }),
 	vehicleMake: varchar("vehicle_make", { length: 100 }),
 	vehicleModel: varchar("vehicle_model", { length: 100 }),
@@ -95,6 +94,57 @@ export const coupons = pgTable("coupons", {
 	isActive: boolean("is_active").default(true).notNull(),
 	restrictions: json("restrictions"), // JSON string for any additional restrictions
 	matches: json("matches"), // JSON string for matching criteria
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+});
+
+export const tickets = pgTable("tickets", {
+	id: serial("id").primaryKey().notNull(),
+	userId: varchar("user_id", { length: 255 }),
+	firstName: varchar("first_name", { length: 255 }).notNull(),
+	lastName: varchar("last_name", { length: 255 }).notNull(),
+	email: varchar("email", { length: 255 }).notNull(),
+	token: varchar("token", { length: 100 }).notNull(),
+	policyNumber: varchar("policy_number", { length: 100 }),
+	unread: boolean("unread").default(true).notNull(),
+	isClosed: boolean("is_closed").default(false).notNull(),
+	subject: varchar("subject", { length: 255 }).notNull(),
+	status: varchar("status", { length: 50 }).default('open').notNull(), // e.g., 'open', 'closed', 'pending'
+	priority: varchar("priority", { length: 50 }).default('normal').notNull(), // e.g., 'low', 'normal', 'high'
+	assignedTo: varchar("assigned_to", { length: 255 }), // adminId of the assigned admin
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+});
+
+export const messages = pgTable("messages", {
+	id: serial("id").primaryKey().notNull(),
+	ticketId: integer("ticket_id").references(() => tickets.id).notNull(),
+	messageId: varchar("message_id", { length: 255 }).notNull(),
+	message: text("message").notNull(),
+	isAdmin: boolean("is_admin").default(false).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+});
+
+export const blacklist = pgTable("blacklist", {
+	id: serial("id").primaryKey().notNull(),
+	type: varchar("type", { length: 50 }).notNull(), // "email", "phone", "postcode", "ip", "name"
+	value: varchar("value", { length: 255 }).notNull(),
+	reason: text("reason"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+});
+
+export const aiDocuments = pgTable("ai_documents", {
+	id: serial("id").primaryKey().notNull(),
+	uuid: varchar("uuid", { length: 255 }).notNull(),
+	prompt: text("prompt"),
+	content: text("content"),
+	email: varchar("email", { length: 255 }),
+	userId: integer('user_id').notNull(),
+	status: varchar("status", { length: 50 }).default('pending'),
+	pdfPath: text('pdf_path'),
+	amount: numeric('amount'),
+	currency: varchar('currency').default('GBP'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
 });

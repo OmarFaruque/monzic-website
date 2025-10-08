@@ -13,7 +13,7 @@ interface User {
   lastName: string;
 }
 interface LoginArgs {
-  user: { id: string; email: string; role: string; firstName: string; lastName: string; };
+  user: { id: number|string; email: string; role: string; firstName: string; lastName: string; };
   token: string;
 }
 interface AuthContextType {
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userIsAdmin = apiUser.role === 'admin';
 
     const userToStore = {
-      id: apiUser.id,
+      id: String(apiUser.id),
       email: apiUser.email,
       isAdmin: userIsAdmin,
       firstName: apiUser.firstName,

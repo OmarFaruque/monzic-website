@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Header } from "@/components/header"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
-import { validatePolicyAccess, DEMO_POLICIES } from "@/lib/policy-data"
 import { Shield, AlertCircle, ArrowLeft } from "lucide-react"
 
 export default function PolicyViewPage() {
@@ -25,6 +24,12 @@ export default function PolicyViewPage() {
     dateOfBirthYear: "",
     postcode: "",
   })
+
+  const DEMO_POLICIES = [
+    "POL-001234 - John SMITH, DOB: 15/03/1985, Postcode: SW1A 1AA",
+    "POL-001235 - Sarah JOHNSON, DOB: 22/07/1990, Postcode: M1 1AA",
+    "POL-001236 - Michael WILLIAMS, DOB: 08/11/1978, Postcode: B1 1AA",
+  ]
 
   const [isVerifying, setIsVerifying] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -102,7 +107,7 @@ export default function PolicyViewPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validate form
@@ -118,47 +123,52 @@ export default function PolicyViewPage() {
     setIsVerifying(true)
 
     // Simulate a small delay for better UX
-    setTimeout(() => {
+    
       try {
-        // Format the date for validation (YYYY-MM-DD)
         const dateOfBirth = `${formData.dateOfBirthYear}-${formData.dateOfBirthMonth.padStart(2, "0")}-${formData.dateOfBirthDay.padStart(2, "0")}`
 
-        // Validate policy access
-        const result = validatePolicyAccess(policyNumber!, formData.surname, dateOfBirth, formData.postcode)
+        // Call the new API route
+        const response = await fetch('/api/policy/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            policyNumber: policyNumber!,
+            surname: formData.surname,
+            dateOfBirth,
+            postcode: formData.postcode,
+          }),
+        });
 
-        if (result.isValid) {
-          // Store verification status in session storage
+        const result = await response.json();
+
+        if (response.ok && result.isValid) {
           sessionStorage.setItem(`policy_verified_${policyNumber}`, "true")
-
           addNotification({
             type: "success",
             title: "Verification Successful",
             message: "Policy details verified successfully.",
           })
-
-          // Redirect to policy details page after a short delay
           setTimeout(() => {
-            router.push(`/policy/details?number=${policyNumber}`)
-          }, 1500)
-        } else {
-          // Generic error message - don't reveal specific details
-          addNotification({
-            type: "error",
-            title: "Verification Failed",
-            message: "The information provided does not match our records. Please check your details and try again.",
-          })
-        }
-      } catch (error) {
-        console.error("Verification error:", error)
+          router.push(`/policy/details?number=${policyNumber}`)
+        }, 1500)
+      } else {
         addNotification({
           type: "error",
-          title: "Verification Error",
-          message: "An error occurred during verification. Please try again.",
+          title: "Verification Failed",
+          message: "The information provided does not match our records. Please check your details and try again.",
         })
-      } finally {
-        setIsVerifying(false)
       }
-    }, 1000)
+    } catch (error) {
+      console.error("Verification error:", error)
+      addNotification({
+        type: "error",
+        title: "Verification Error",
+        message: "An error occurred during verification. Please try again.",
+      })
+    } finally {
+      setIsVerifying(false)
+    }
+    
   }
 
   // Auto-fill demo data function

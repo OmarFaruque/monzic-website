@@ -43,6 +43,13 @@
       "when": 1758991754612,
       "tag": "0005_faulty_the_santerians",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1759587047707,
+      "tag": "0006_strong_cargill",
+      "breakpoints": true
     }
   ]
 }

@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
-import { CreditCard, X, ChevronDown, ChevronUp } from "lucide-react"
+import { CreditCard, X, ChevronDown, ChevronUp, Shield, Clock, RefreshCw } from "lucide-react"
 import { useAuth } from "@/context/auth"
 import { useNotifications } from "@/hooks/use-notifications"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import usePaddle from "@/hooks/use-paddle"
+import { AuthDialog } from "@/components/auth/auth-dialog"
 
 interface QuoteData {
   total: number
@@ -44,6 +45,33 @@ interface QuoteData {
       engineCC: string
     }
   }
+  promoCode?: string;
+}
+
+interface Coupon {
+  id: number;
+  promoCode: string;
+  discount: { type: 'percentage' | 'fixed'; value: number };
+  minSpent: string | null;
+  maxDiscount: string | null;
+  quotaAvailable: string;
+  usedQuota: string;
+  totalUsage: string;
+  expires: string | null;
+  isActive: boolean;
+  restrictions: {
+    firstTimeOnly: boolean;
+    maxUsesPerUser: number;
+    validDays: string[];
+    validHours: { start: string; end: string };
+  } | null;
+  matches: {
+    lastName: string;
+    dateOfBirth: string;
+    registrations: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function CheckoutPage() {
@@ -51,12 +79,20 @@ export default function CheckoutPage() {
   const { addNotification } = useNotifications()
   const router = useRouter()
   const { paddle, loading: isPaddleLoading } = usePaddle()
-  const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null)
   const [useSameAddress, setUseSameAddress] = useState(true)
   const [showQuoteSummary, setShowQuoteSummary] = useState(false)
   const [isLoginLoading, setIsLoginLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [promo, setPromo] = useState<Coupon | null>(null)
+  const [discountedTotal, setDiscountedTotal] = useState<number | null>(null)
+
+  const [showVerification, setShowVerification] = useState(false)
+  const [verificationCode, setVerificationCode] = useState(Array(6).fill(""))
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [canResend, setCanResend] = useState(false)
+  const [userEmail, setUserEmail] = useState("")
 
   const [formData, setFormData] = useState({
     email: "",
@@ -86,68 +122,31 @@ export default function CheckoutPage() {
   useEffect(() => {
     const storedQuoteData = localStorage.getItem("quoteData")
     if (storedQuoteData) {
-      setQuoteData(JSON.parse(storedQuoteData))
+      const parsedData = JSON.parse(storedQuoteData)
+      setQuoteData(parsedData)
+      setDiscountedTotal(parsedData.total)
     } else {
       // Redirect back to quote page if no data found
       router.push("/get-quote")
     }
   }, [router])
 
-
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoginLoading(true);
-
-    try {
-      if (!loginData.email || !loginData.password) {
-        addNotification({
-          type: "error",
-          title: "Missing Information",
-          message: "Please enter both email and password",
-        });
-        setIsLoginLoading(false);
-        return;
-      }
-
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: loginData.email,
-          password: loginData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        addNotification({
-          type: "error",
-          title: "Authentication Failed",
-          message: data.error || "Invalid credentials.",
-        });
-      } else {
-
-        login({ user: data.user, token: data.token });
-        addNotification({
-          type: "success",
-          title: "Login Successful",
-          message: "Welcome back!",
-        });
-        setLoginModalOpen(false);
-      }
-    } catch (error) {
-      console.error("Login submission error:", error);
-      addNotification({
-        type: "error",
-        title: "Error",
-        message: "An error occurred. Please try again.",
-      });
-    } finally {
-      setIsLoginLoading(false);
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (showVerification && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((time) => {
+          if (time <= 1) {
+            setCanResend(true)
+            clearInterval(interval)
+            return 0
+          }
+          return time - 1
+        })
+      }, 1000)
     }
-  };
+    return () => clearInterval(interval)
+  }, [showVerification, timeLeft])
 
     
 
@@ -155,7 +154,30 @@ export default function CheckoutPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handlePromoCode = () => {
+  const calculateDiscountedTotal = (total: number, promo: Coupon | null) => {
+    if (!promo || !promo.discount) {
+      return total;
+    }
+  
+    let discountAmount = 0;
+    if (promo.discount.type === 'percentage') {
+      discountAmount = total * (promo.discount.value / 100);
+    } else if (promo.discount.type === 'fixed') {
+      discountAmount = promo.discount.value;
+    }
+  
+    if (promo.maxDiscount) {
+      const maxDiscount = parseFloat(promo.maxDiscount);
+      if (discountAmount > maxDiscount) {
+        discountAmount = maxDiscount;
+      }
+    }
+  
+    const newTotal = total - discountAmount;
+    return newTotal > 0 ? newTotal : 0;
+  }
+
+  const handlePromoCode = async () => {
     if (!formData.promoCode) {
       addNotification({
         type: "error",
@@ -171,36 +193,213 @@ export default function CheckoutPage() {
       message: "Checking promo code...",
     })
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          promoCode: formData.promoCode,
+          total: quoteData?.total,
+        }),
+      })
+
+      const data = await response.json()
+
+      console.log('dataiscoupon: ', data)
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to validate promo code")
+      }
+
+      const coupon: Coupon = data;
+      if (typeof coupon.discount === 'string') {
+        coupon.discount = JSON.parse(coupon.discount);
+      }
+
+      setPromo(coupon)
+
+      if (quoteData) {
+        const newTotal = calculateDiscountedTotal(quoteData.total, coupon)
+        setDiscountedTotal(newTotal)
+
+        const newQuoteData = { ...quoteData, promoCode: coupon.promoCode };
+        setQuoteData(newQuoteData);
+        localStorage.setItem('quoteData', JSON.stringify(newQuoteData));
+      }
+
+      addNotification({
+        type: "success",
+        title: "Promo Code Applied",
+        message: `Successfully applied promo code ${data.promoCode}`,
+      })
+    } catch (error: any) {
+      setPromo(null)
+      if (quoteData) {
+        setDiscountedTotal(quoteData.total)
+        const newQuoteData = { ...quoteData, promoCode: undefined };
+        setQuoteData(newQuoteData);
+        localStorage.setItem('quoteData', JSON.stringify(newQuoteData));
+      }
       addNotification({
         type: "error",
         title: "Invalid Code",
-        message: "The promo code you entered is invalid or expired",
+        message: error.message || "The promo code you entered is invalid or expired",
       })
-    }, 1500)
+    }
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const handleVerificationCodeChange = (index: number, value: string) => {
+    if (value.length > 1) return
+
+    const newCode = [...verificationCode]
+    newCode[index] = value
+    setVerificationCode(newCode)
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`code-${index + 1}`)
+      nextInput?.focus()
+    }
+  }
+
+  const handleVerificationKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
+      const prevInput = document.getElementById(`code-${index - 1}`)
+      prevInput?.focus()
+    }
+  }
+
+  const handleResendCode = async () => {
+    if (!userEmail) return;
+    try {
+      await fetch("/api/auth/resend-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail }),
+      });
+      setTimeLeft(300); // Reset timer to 5 minutes
+      setCanResend(false);
+      setVerificationCode(Array(6).fill(""));
+      addNotification({type: "info", title: "Verification Code Resent", message: "A new verification code has been sent to your email."});
+    } catch (error) {
+      addNotification({type: "error", title: "Error", message: "Failed to resend code. Please try again."});
+    }
+  }
+
+  const handleVerificationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const code = verificationCode.join("");
+
+    if (code.length !== 6) {
+      addNotification({type: "warning", title: "Incomplete Code", message: "Please enter the complete 6-digit verification code."});
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, code }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        addNotification({type: "error", title: "Verification Failed", message: data.error || "An unknown error occurred."});
+        setVerificationCode(Array(6).fill(""));
+        document.getElementById("code-0")?.focus();
+      } else {
+        login({ user: data.user, token: data.token });
+        addNotification({type: "success", title: "Email Verified!", message: "Your account is now active. Proceeding to payment..."});
+        setShowVerification(false);
+        
+        await proceedToPayment(data.user);
+      }
+    } catch (error) {
+      addNotification({type: "error", title: "Error", message: "An error occurred during verification."});
+    }
+  }
+
+  const proceedToPayment = async (currentUser: any) => {
+    addNotification({
+      type: "info",
+      title: "Redirecting",
+      message: "Redirecting to payment processor...",
+    });
+
+    const activeProcessor = await getActivePaymentProcessor();
+    
+    switch (activeProcessor) {
+      case "paddle":
+        await redirectToPaddle(currentUser);
+        break;
+      case "stripe":
+        redirectToStripe();
+        break;
+      case "mollie":
+        redirectToMollie();
+        break;
+      default:
+        break;
+    }
+    setIsSubmitting(false);
   }
 
   const handleCompletePayment = async () => {
     setIsSubmitting(true);
-    // Basic validation only
-    if (!isAuthenticated && !formData.email) {
-      addNotification({
-        type: "error",
-        title: "Missing Information",
-        message: "Please enter your email address.",
-      });
-      setIsSubmitting(false);
-      return;
-    }
 
-    if (!isAuthenticated && !formData.password) {
-      addNotification({
-        type: "error",
-        title: "Missing Information",
-        message: "Please enter a password to create your account.",
-      });
-      setIsSubmitting(false);
+    if (!isAuthenticated) {
+      if (!formData.email || !formData.password) {
+        addNotification({
+          type: "error",
+          title: "Missing Information",
+          message: "Please enter your email and password to create an account.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        const regResponse = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: quoteData?.customerData.firstName,
+            lastName: quoteData?.customerData.lastName,
+            email: formData.email,
+            password: formData.password,
+          }),
+        });
+
+        const regData = await regResponse.json();
+
+        if (!regResponse.ok) {
+          throw new Error(regData.error || "Registration failed");
+        }
+        
+        addNotification({type: "info", title: "Verification Required", message: "Please check your email for a 6-digit verification code."});
+        setUserEmail(formData.email);
+        setShowVerification(true);
+        setTimeLeft(300);
+        setCanResend(false);
+        setIsSubmitting(false);
+
+      } catch (error: any) {
+        addNotification({
+          type: "error",
+          title: "Registration Error",
+          message: error.message,
+        });
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -214,40 +413,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    addNotification({
-      type: "info",
-      title: "Redirecting",
-      message: "Redirecting to payment processor...",
-    });
-
-    // Get active payment processor from settings
-    const activeProcessor = await getActivePaymentProcessor();
-
-    console.log('activeProcessor: ', activeProcessor);
-
-    // Capture IP address for audit
-    const ipAddress = await fetch("/api/get-client-ip")
-      .then((r) => r.json())
-      .then((d) => d.ip);
-
-    console.log('ipAddress is: ', ipAddress);
-
-    // Redirect based on active processor
-    switch (activeProcessor) {
-      case "paddle":
-        await redirectToPaddle();
-        break;
-      case "stripe":
-        redirectToStripe();
-        break;
-      case "mollie":
-        redirectToMollie();
-        break;
-      default:
-        // router.push("/payment-confirmation")
-        break;
-    }
-    setIsSubmitting(false);
+    await proceedToPayment(user);
   };
 
   const getActivePaymentProcessor = async () => {
@@ -260,7 +426,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const redirectToPaddle = async () => {
+  const redirectToPaddle = async (currentUser: any) => {
     if (!paddle) {
       addNotification({
         type: "error",
@@ -275,7 +441,13 @@ export default function CheckoutPage() {
       const response = await fetch("/api/create-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quoteData, user }),
+        body: JSON.stringify({
+          quoteData: {
+            ...quoteData,
+            total: discountedTotal,
+          },
+          user: currentUser,
+        }),
       });
 
       const data = await response.json();
@@ -289,7 +461,7 @@ export default function CheckoutPage() {
             },
           ],
           customer: {
-            email: user.email,
+            email: currentUser.email,
           },
         });
       } else {
@@ -371,7 +543,7 @@ export default function CheckoutPage() {
             >
               <div className="text-left">
                 <div className="font-medium text-gray-900">Order Summary</div>
-                <div className="text-sm text-gray-500">Total: £{quoteData.total.toFixed(2)}</div>
+                <div className="text-sm text-gray-500">Total: £{discountedTotal !== null ? discountedTotal.toFixed(2) : quoteData.total.toFixed(2)}</div>
               </div>
               {showQuoteSummary ? (
                 <ChevronUp className="w-5 h-5 text-gray-400" />
@@ -404,9 +576,21 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <div className="border-t border-gray-300 mt-4 pt-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium">Subtotal</span>
+                    <span className="font-medium">£{quoteData.total.toFixed(2)}</span>
+                  </div>
+                  {promo && discountedTotal !== null && (
+                    <div className="flex justify-between items-center mb-2 text-sm">
+                      <span className="text-gray-600">Discount ({promo.promoCode})</span>
+                      <span className="text-gray-600">-£{(quoteData.total - discountedTotal).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-lg font-bold">
                     <span>Total</span>
-                    <span>£{quoteData.total.toFixed(2)}</span>
+                    <span>
+                      £{discountedTotal !== null ? discountedTotal.toFixed(2) : quoteData.total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -434,7 +618,7 @@ export default function CheckoutPage() {
                       <p className="text-sm text-gray-600 mb-2">
                         Already have an account with us?{" "}
                         <button
-                          onClick={() => setLoginModalOpen(true)}
+                          onClick={() => setIsAuthDialogOpen(true)}
                           className="text-blue-600 hover:text-blue-700 font-medium"
                         >
                           Login
@@ -465,13 +649,15 @@ export default function CheckoutPage() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-medium">Amount:</span>
-                    <span className="text-xl font-bold">£{quoteData.total.toFixed(2)}</span>
+                    <span className="text-xl font-bold">
+                      £{discountedTotal !== null ? discountedTotal.toFixed(2) : quoteData.total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
 
                 {/* Promo Code */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Have promo code?</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Have promo code? </label>
                   <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <Input
                       type="text"
@@ -655,9 +841,21 @@ export default function CheckoutPage() {
               <Button
                 onClick={handleCompletePayment}
                 className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 text-lg font-semibold h-14"
-                disabled={!formData.termsAccepted || !formData.accuracyConfirmed || isSubmitting || isPaddleLoading}
+                disabled={
+                  !formData.termsAccepted || 
+                  !formData.accuracyConfirmed || 
+                  isSubmitting || 
+                  isPaddleLoading || 
+                  (!isAuthenticated && (!formData.email || !formData.password))
+                }
               >
-                {isPaddleLoading ? 'Initializing Payment...' : (isSubmitting ? 'Processing...' : 'Complete Payment')}
+                {isPaddleLoading
+                  ? 'Initializing Payment...'
+                  : isSubmitting
+                  ? 'Processing...'
+                  : !isAuthenticated
+                  ? 'Create Account & Pay'
+                  : 'Complete Payment'}
               </Button>
             </div>
 
@@ -708,9 +906,17 @@ export default function CheckoutPage() {
                     <span className="font-medium">Subtotal</span>
                     <span className="font-medium">£{quoteData.total.toFixed(2)}</span>
                   </div>
+                  {promo && discountedTotal !== null && (
+                    <div className="flex justify-between items-center mb-2 text-sm">
+                      <span className="text-gray-600">Discount ({promo.promoCode})</span>
+                      <span className="text-gray-600">-£{(quoteData.total - discountedTotal).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-lg font-bold">
                     <span>Total</span>
-                    <span>£{quoteData.total.toFixed(2)}</span>
+                    <span>
+                      £{discountedTotal !== null ? discountedTotal.toFixed(2) : quoteData.total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -719,82 +925,102 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      {/* Login Modal */}
-      {loginModalOpen && (
+      {/* Email Verification Popup */}
+      {showVerification && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900">WELCOME BACK</h2>
-                <button onClick={() => setLoginModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                  <X className="w-5 h-5" />
-                </button>
+          <div className="bg-white rounded-2xl p-6 max-w-sm sm:max-w-md w-full shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-teal-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Email</h3>
+              <p className="text-gray-600 text-sm">We've sent a 6-digit verification code to:</p>
+              <p className="font-semibold text-teal-600 mt-1 break-all">{userEmail}</p>
+            </div>
+
+            <form onSubmit={handleVerificationSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
+                  Enter Verification Code
+                </label>
+                <div className="flex justify-center space-x-2 flex-wrap">
+                  {verificationCode.map((digit, index) => (
+                    <Input
+                      key={index}
+                      id={`code-${index}`}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleVerificationCodeChange(index, e.target.value)}
+                      onKeyDown={(e) => handleVerificationKeyDown(index, e)}
+                      className="w-10 h-12 text-center text-xl font-bold border-2 border-gray-200 focus:border-teal-500 rounded-lg"
+                      autoComplete="off"
+                    />
+                  ))}
+                </div>
               </div>
 
-              <p className="text-sm text-gray-600 mb-6">Please enter your login details below. dsa</p>
-
-              <form
-                className="space-y-4"
-                onSubmit={handleLoginSubmit}
-              >
-                <div>
-                  <Input
-                    type="email"
-                    placeholder="Email Address"
-                    className="w-full h-12 text-base"
-                    value={loginData.email}
-                    onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Input
-                    type="password"
-                    placeholder="Password"
-                    className="w-full h-12 text-base"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData((prev) => ({ ...prev, password: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="remember-me"
-                      checked={loginData.rememberMe}
-                      onCheckedChange={(checked) =>
-                        setLoginData((prev) => ({ ...prev, rememberMe: checked as boolean }))
-                      }
-                    />
-                    <label htmlFor="remember-me" className="text-sm text-gray-700">
-                      Remember Me
-                    </label>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Clock className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium mb-1">Testing Mode</p>
+                    <p>
+                      For testing purposes, use code: <strong>000000</strong>
+                    </p>
                   </div>
-
-                  <button type="button" className="text-sm text-blue-600 hover:text-blue-700 text-left sm:text-right">
-                    Forgot Password?
-                  </button>
                 </div>
+              </div>
 
-                <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white h-12 text-base">
-                  Login
-                </Button>
+              <div className="text-center">
+                {canResend ? (
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    className="text-teal-600 hover:text-teal-700 font-semibold underline flex items-center justify-center space-x-2 mx-auto text-sm"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Resend Code</span>
+                  </button>
+                ) : (
+                  <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
+                    <Clock className="w-4 h-4" />
+                    <span>Resend available in {formatTime(timeLeft)}</span>
+                  </p>
+                )}
+              </div>
 
-                <Button
-                  type="button"
-                  onClick={() => setLoginModalOpen(false)}
-                  variant="outline"
-                  className="w-full h-12"
-                >
-                  Close
-                </Button>
-              </form>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white h-12 font-semibold"
+              >
+                Verify Email
+              </Button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowVerification(false)}
+                className="text-gray-500 hover:text-gray-700 text-sm underline"
+              >
+                Cancel and go back
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <AuthDialog
+        isOpen={isAuthDialogOpen}
+        onClose={() => setIsAuthDialogOpen(false)}
+        title="Welcome Back"
+        description="Please enter your login details below."
+        onSuccess={() => {
+          setIsAuthDialogOpen(false);
+        }}
+      />
     </div>
   )
 }

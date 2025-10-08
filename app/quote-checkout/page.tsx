@@ -1,3 +1,4 @@
+
 "use client"
 
 import type React from "react"
@@ -9,10 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 import { Shield, ChevronDown, ChevronUp, Lock, X, ArrowLeft, Info, RefreshCw, Clock } from "lucide-react"
-import { useAuth } from "../auth-provider"
-import { useNotifications } from "@/hooks/use-notifications"
+import { useAuth } from "@/context/auth"
+import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation"
 import { VerificationCodeInput } from "@/components/verification-code-input"
+import usePaddle from "@/hooks/use-paddle"
+import { loadStripe, Stripe } from "@stripe/stripe-js";
+import { Elements, useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 
 interface QuoteData {
   total: number
@@ -42,25 +46,71 @@ interface QuoteData {
       year: string
     }
   }
+  promoCode?: string;
 }
 
-export default function QuoteCheckoutPage() {
+interface Coupon {
+  id: number;
+  promoCode: string;
+  discount: { type: 'percentage' | 'fixed'; value: number };
+  minSpent: string | null;
+  maxDiscount: string | null;
+  quotaAvailable: string;
+  usedQuota: string;
+  totalUsage: string;
+  expires: string | null;
+  isActive: boolean;
+  restrictions: any | null;
+  matches: any | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function QuoteCheckoutPage() {
   const { isAuthenticated, login, user } = useAuth()
-  const { addNotification } = useNotifications()
+  const { toast } = useToast()
   const router = useRouter()
   const [showSummary, setShowSummary] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [sameAsPersonal, setSameAsPersonal] = useState(true)
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null)
+  const [quote, setQuote] = useState({})
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-
+  const [promo, setPromo] = useState<Coupon | null>(null)
+  const { paddle, loading: isPaddleLoading } = usePaddle()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPromoLoading, setIsPromoLoading] = useState(false)
+  const [discountedTotal, setDiscountedTotal] = useState<number | null>(null)
+  const [paymentProvider, setPaymentProvider] = useState<string | null>(null);
+  const stripe = useStripe();
+  const elements = useElements();
   // Verification state
   const [showVerification, setShowVerification] = useState(false)
   const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""])
   const [timeLeft, setTimeLeft] = useState(60)
   const [canResend, setCanResend] = useState(false)
   const [userEmail, setUserEmail] = useState("")
+  const [isLoginCompleted, setIsLoginCompleted] = useState(false)
+
+  useEffect(() => {
+    const fetchPaymentProvider = async () => {
+      try {
+        const response = await fetch("/api/settings/payment");
+        const data = await response.json();
+        if (response.ok) {
+          setPaymentProvider(data.paymentProvider);
+        } else {
+          console.error("Failed to fetch payment provider");
+        }
+      } catch (error) {
+        console.error("Error fetching payment provider:", error);
+      }
+    };
+
+    fetchPaymentProvider();
+  }, []);
+
 
   const [formData, setFormData] = useState({
     promoCode: "",
@@ -85,6 +135,13 @@ export default function QuoteCheckoutPage() {
     rememberMe: false,
   })
 
+  useEffect(() => {
+    if (isAuthenticated && isLoginCompleted) {
+      handleCompletePayment();
+      setIsLoginCompleted(false); // Reset the flag
+    }
+  }, [isAuthenticated, isLoginCompleted]);
+
   // Timer for verification resend
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -105,13 +162,23 @@ export default function QuoteCheckoutPage() {
   // Load quote data from localStorage on component mount
   useEffect(() => {
     const storedQuoteData = localStorage.getItem("quoteData")
+
+    
     if (storedQuoteData) {
-      setQuoteData(JSON.parse(storedQuoteData))
+      const parsed = JSON.parse(storedQuoteData);
+      if (typeof parsed.quoteData === 'string') {
+        setQuoteData(JSON.parse(parsed.quoteData));
+      } else {
+        setQuoteData(parsed.quoteData);
+      }
+      setQuote(parsed)
     } else {
       // Redirect back to quote page if no data found
       router.push("/get-quote")
     }
   }, [router])
+
+
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -121,92 +188,261 @@ export default function QuoteCheckoutPage() {
     setAuthData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handlePromoCode = () => {
+  const calculateDiscountedTotal = (total: number, promo: Coupon) => {
+    if (!promo || !promo.discount) {
+      return total;
+    }
+  
+    let discountAmount = 0;
+    if (promo.discount.type === 'percentage') {
+      discountAmount = total * (promo.discount.value / 100);
+    } else if (promo.discount.type === 'fixed') {
+      discountAmount = promo.discount.value;
+    }
+  
+    if (promo.maxDiscount) {
+      const maxDiscount = parseFloat(promo.maxDiscount);
+      if (discountAmount > maxDiscount) {
+        discountAmount = maxDiscount;
+      }
+    }
+  
+    const newTotal = total - discountAmount;
+    return newTotal > 0 ? newTotal : 0;
+  };
+
+  const handlePromoCode = async () => {
     if (!formData.promoCode) {
-      addNotification({
-        type: "error",
+      toast({
+        variant: "destructive",
         title: "Error",
-        message: "Please enter a promo code",
+        description: "Please enter a promo code",
       })
       return
     }
 
-    addNotification({
-      type: "info",
+    setIsPromoLoading(true);
+    toast({
       title: "Processing",
-      message: "Checking promo code...",
+      description: "Checking promo code...",
     })
 
-    // Simulate API call
-    setTimeout(() => {
-      addNotification({
-        type: "error",
-        title: "Invalid Code",
-        message: "The promo code you entered is invalid or expired",
-      })
-    }, 1500)
-  }
-
-  const handleCompletePayment = async () => {
-    // Check if user is authenticated first
-    if (!isAuthenticated) {
-      setLoginModalOpen(true)
-      return
-    }
-
-    if (!formData.termsAccepted || !formData.accuracyConfirmed) {
-      addNotification({
-        type: "error",
-        title: "Missing Information",
-        message: "Please accept the terms and confirm accuracy before proceeding.",
-      })
-      return
-    }
-
-    setIsProcessingPayment(true)
-    addNotification({
-      type: "info",
-      title: "Processing",
-      message: "Preparing your payment...",
-    })
-
+    
     try {
-      // Create payment with Mollie
-      const response = await fetch("/api/create-payment", {
+      const response = await fetch("/api/coupons/validate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: quoteData?.total || 0,
-          description: `Insurance for ${quoteData?.customerData.registration || "vehicle"}`,
-          redirectUrl: `${window.location.origin}/payment-confirmation`,
-          webhookUrl: `${window.location.origin}/api/mollie-webhook`,
-          metadata: {
-            registration: quoteData?.customerData.registration,
-            customerEmail: user?.email || authData.email,
-          },
+          promoCode: formData.promoCode,
+          total: quoteData?.total,
         }),
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to create payment")
-      }
-
       const data = await response.json()
 
-      // Redirect to Mollie checkout
-      window.location.href = data.checkoutUrl
-    } catch (error) {
-      console.error("Payment error:", error)
-      addNotification({
-        type: "error",
-        title: "Payment Error",
-        message: "There was a problem processing your payment. Please try again.",
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to validate promo code")
+      }
+
+      const coupon: Coupon = data;
+      if (typeof coupon.discount === 'string') {
+        coupon.discount = JSON.parse(coupon.discount);
+      }
+
+      setPromo(coupon)
+
+      if (quoteData) {
+        const newTotal = calculateDiscountedTotal(quoteData.total, coupon)
+        setDiscountedTotal(newTotal)
+
+        const newQuoteData = { ...quoteData, promoCode: coupon.promoCode, update_price: newTotal };
+        const updateQuote = {...quote, quoteData: newQuoteData}
+        
+        localStorage.setItem('quoteData', JSON.stringify(updateQuote));
+        setQuoteData(updateQuote.quoteData);
+        
+      }
+
+      toast({
+        title: "Promo Code Applied",
+        description: `Successfully applied promo code ${data.promoCode}`,
       })
-      setIsProcessingPayment(false)
+    } catch (error: any) {
+      setPromo(null)
+      if (quoteData) {
+        setDiscountedTotal(quoteData.total)
+        const newQuoteData = { ...quoteData, promoCode: undefined };
+        setQuoteData(newQuoteData);
+        localStorage.setItem('quoteData', JSON.stringify(newQuoteData));
+      }
+      toast({
+        variant: "destructive",
+        title: "Invalid Code",
+        description: error.message || "The promo code you entered is invalid or expired",
+      })
+    } finally {
+      setIsPromoLoading(false);
     }
   }
+
+  const handleCompletePayment = async () => {
+    if (!isAuthenticated) {
+      setAuthMode("signup");
+      setLoginModalOpen(true);
+      return;
+    }
+
+    if (!formData.termsAccepted || !formData.accuracyConfirmed) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please accept the terms and confirm accuracy before proceeding.",
+      });
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    if (paymentProvider === 'paddle') {
+      toast({
+        title: "Processing",
+        description: "Preparing your payment...",
+      });
+
+      if (!paddle) {
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "Paddle is not available. Please try again later.",
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quoteData: {
+              ...quoteData,
+              total: discountedTotal ?? quoteData?.total,
+            },
+            user: user,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create payment");
+        }
+
+        const data = await response.json();
+
+        if (data.priceId) {
+          paddle.Checkout.open({
+            items: [
+              {
+                priceId: data.priceId,
+                quantity: 1,
+              },
+            ]
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: data.error || "Could not initiate payment. Please try again.",
+          });
+          setIsSubmitting(false);
+        }
+      } catch (error) {
+        console.error("Payment error:", error);
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "There was a problem processing your payment. Please try again.",
+        });
+        setIsProcessingPayment(false);
+      }
+    } else if (paymentProvider === 'stripe') {
+      if (!stripe || !elements) {
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "Stripe is not available. Please try again later.",
+        });
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/quote-checkout/create-stripe-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quoteData: {
+              ...quoteData,
+              total: discountedTotal ?? quoteData?.total,
+            },
+            user: user,
+          }),
+        });
+
+        const { clientSecret, error: clientSecretError } = await response.json();
+
+        if (clientSecretError) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: clientSecretError.message || "Could not initiate payment. Please try again.",
+          });
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        const cardElement = elements.getElement(CardElement);
+
+        if (!cardElement) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: "Card element not found. Please try again later.",
+          });
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+          },
+        });
+
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: error.message || "An unexpected error occurred. Please try again.",
+          });
+        } else if (paymentIntent.status === 'succeeded') {
+          toast({
+            title: "Payment Successful",
+            description: "Your payment has been processed successfully.",
+          });
+          window.location.href = "/payment-confirmation";
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "An unexpected error occurred. Please try again.",
+        });
+      } finally {
+        setIsProcessingPayment(false);
+      }
+    }
+  };
 
   const formatCardNumber = (value: string) => {
     const digits = value.replace(/\D/g, "")
@@ -219,66 +455,68 @@ export default function QuoteCheckoutPage() {
     handleInputChange("cardNumber", formatted)
   }
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!authData.email || !authData.password) {
-      addNotification({
-        type: "error",
-        title: "Missing Information",
-        message: "Please enter both email and password.",
-      })
-      return
+      toast({ variant: "destructive", title: "Missing Information", description: "Please enter both email and password." });
+      return;
     }
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authData.email, password: authData.password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        if (data.message === 'Please verify your email before logging in.') {
+            setUserEmail(authData.email);
+            setShowVerification(true);
+            setLoginModalOpen(false);
+        }
+        throw new Error(data.error || "Login failed");
+      }
 
-    addNotification({
-      type: "info",
-      title: "Verifying",
-      message: "Please check your email for a verification code.",
-    })
+      login({ user: data.user, token: data.token });
+      setLoginModalOpen(false);
+      setIsLoginCompleted(true); // Set login completed flag
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Login Failed", description: error.message });
+    }
+  };
 
-    // Store email and show verification
-    setUserEmail(authData.email)
-    setShowVerification(true)
-    setTimeLeft(60)
-    setCanResend(false)
-    setVerificationCode(["", "", "", "", "", ""])
-  }
-
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!authData.email || !authData.password || !authData.confirmPassword) {
-      addNotification({
-        type: "error",
-        title: "Missing Information",
-        message: "Please fill in all required fields.",
-      })
-      return
+      toast({ variant: "destructive", title: "Missing Information", description: "Please fill in all required fields." });
+      return;
     }
-
     if (authData.password !== authData.confirmPassword) {
-      addNotification({
-        type: "error",
-        title: "Password Mismatch",
-        message: "Passwords do not match. Please try again.",
-      })
-      return
+      toast({ variant: "destructive", title: "Password Mismatch", description: "Passwords do not match." });
+      return;
     }
-
-    addNotification({
-      type: "info",
-      title: "Verifying",
-      message: "Please check your email for a verification code.",
-    })
-
-    // Store email and show verification
-    setUserEmail(authData.email)
-    setShowVerification(true)
-    setTimeLeft(60)
-    setCanResend(false)
-    setVerificationCode(["", "", "", "", "", ""])
-  }
+    try {
+      const regResponse = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: quoteData?.customerData.firstName,
+          lastName: quoteData?.customerData.lastName,
+          email: authData.email,
+          password: authData.password,
+        }),
+      });
+      const regData = await regResponse.json();
+      if (!regResponse.ok) {
+        throw new Error(regData.error || "Registration failed");
+      }
+      setUserEmail(authData.email);
+      setShowVerification(true);
+      setLoginModalOpen(false);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Registration Failed", description: error.message });
+    }
+  };
 
   const handleVerificationCodeChange = (index: number, value: string) => {
     if (value.length > 1) return // Only allow single digit
@@ -303,55 +541,44 @@ export default function QuoteCheckoutPage() {
     }
   }
 
-  const handleVerificationSubmit = (e: React.FormEvent) => {
+  const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const code = verificationCode.join("")
+    const code = verificationCode.join("");
 
-    // Check if code is complete
     if (code.length !== 6) {
-      addNotification({
-        type: "error",
-        title: "Incomplete Code",
-        message: "Please enter the complete 6-digit verification code.",
-      })
-      return
+      toast({variant: "destructive", title: "Incomplete Code", description: "Please enter the complete 6-digit verification code."});
+      return;
     }
 
-    // For testing purposes, accept 000000
-    if (code === "000000") {
-      // Set authentication with remember me preference
-      if (authData.rememberMe) {
-        // Remember permanently
-        localStorage.setItem("userLoggedIn", "true")
-        localStorage.setItem("rememberMe", "true")
-        localStorage.setItem("userEmail", authData.email)
-      } else {
-        // Session only (until browser closes)
-        sessionStorage.setItem("userLoggedIn", "true")
-        localStorage.removeItem("rememberMe")
+    try {
+      const response = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, code }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Verification failed");
       }
 
-      login()
-      setShowVerification(false)
-      setLoginModalOpen(false)
+      await login({
+        user: {
+          ...data.user,
+          id: String(data.user.id), // convert number → string
+        },
+        token: data.token,
+      });
 
-      addNotification({
-        type: "success",
-        title: authMode === "login" ? "Login Successful!" : "Account Created!",
-        message:
-          authMode === "login"
-            ? "Welcome back! You have successfully logged in."
-            : "Your account has been created successfully. Welcome to MONZIC!",
-      })
-    } else {
-      addNotification({
-        type: "error",
-        title: "Invalid Code",
-        message: "The verification code you entered is incorrect. Please try again or request a new code.",
-      })
-      setVerificationCode(["", "", "", "", "", ""])
-      const firstInput = document.getElementById("checkout-code-0")
-      firstInput?.focus()
+      setShowVerification(false);
+      setLoginModalOpen(false);
+      setIsLoginCompleted(true); // Set login completed flag
+
+    } catch (error: any) {
+      toast({variant: "destructive", title: "Verification Failed", description: error.message});
+      setVerificationCode(Array(6).fill(""));
+      document.getElementById("checkout-code-0")?.focus();
     }
   }
 
@@ -360,10 +587,9 @@ export default function QuoteCheckoutPage() {
     setCanResend(false)
     setVerificationCode(["", "", "", "", "", ""])
 
-    addNotification({
-      type: "info",
+    toast({
       title: "Verification Code Resent",
-      message: "A new verification code has been sent to your email. Please check your inbox.",
+      description: "A new verification code has been sent to your email. Please check your inbox.",
     })
   }
 
@@ -515,11 +741,11 @@ export default function QuoteCheckoutPage() {
                 <h2 className="text-lg font-bold text-gray-900 mb-4">PAYMENT</h2>
 
                 {/* Price */}
-                <div className="text-2xl font-bold text-gray-900 mb-6">£{quoteData.total.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-gray-900 mb-6">£{(discountedTotal ?? quoteData?.total ?? 0).toFixed(2)}</div>
 
                 {/* Promo Code */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Have promo code?</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Have promo code? d</label>
                   <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <Input
                       type="text"
@@ -528,11 +754,35 @@ export default function QuoteCheckoutPage() {
                       placeholder="Promo code"
                       className="flex-1"
                     />
-                    <Button onClick={handlePromoCode} variant="outline" className="px-6">
-                      Apply
+                    <Button onClick={handlePromoCode} variant="outline" className="px-6" disabled={isPromoLoading}>
+                      {isPromoLoading ? "Applying..." : "Apply"}
                     </Button>
                   </div>
+                  {promo && discountedTotal !== null && (
+                    <div className="mt-2 text-sm text-green-600">
+                      Discount applied: -£{((quoteData?.total ?? 0) - discountedTotal).toFixed(2)}
+                    </div>
+                  )}
                 </div>
+
+                {paymentProvider === 'stripe' && (
+                  <div className="border border-gray-200 rounded-lg p-4 mb-6">
+                    <CardElement options={{
+                      style: {
+                        base: {
+                          fontSize: '16px',
+                          color: '#424770',
+                          '::placeholder': {
+                            color: '#aab7c4',
+                          },
+                        },
+                        invalid: {
+                          color: '#9e2146',
+                        },
+                      },
+                    }} />
+                  </div>
+                )}
 
                 {/* Important Notice */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
@@ -670,15 +920,22 @@ export default function QuoteCheckoutPage() {
                 <Button
                   onClick={handleCompletePayment}
                   className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 text-lg font-semibold mt-6"
-                  disabled={!formData.termsAccepted || !formData.accuracyConfirmed || isProcessingPayment}
+                  disabled={
+                    !formData.termsAccepted ||
+                    !formData.accuracyConfirmed ||
+                    isProcessingPayment ||
+                    (!isAuthenticated && (!authData.email || !authData.password))
+                  }
                 >
                   {isProcessingPayment ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       <span>Processing...</span>
                     </div>
+                  ) : !isAuthenticated ? (
+                    'Create Account & Pay'
                   ) : (
-                    `Complete Payment - £${quoteData.total.toFixed(2)}`
+                    `Complete Payment - £${(discountedTotal ?? quoteData?.total ?? 0).toFixed(2)}`
                   )}
                 </Button>
 
@@ -709,15 +966,15 @@ export default function QuoteCheckoutPage() {
                 <div className="bg-white rounded-lg p-6 shadow-sm sticky top-6">
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-base font-medium text-gray-900">Total:</span>
-                    <span className="text-xl font-bold text-teal-600">£{quoteData.total.toFixed(2)}</span>
+                    <span className="text-xl font-bold text-teal-600">£{(discountedTotal ?? quoteData?.total ?? 0).toFixed(2)}</span>
                   </div>
 
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Vehicle:</span>
                       <span className="font-medium">
-                        {quoteData.customerData.vehicle.year} {quoteData.customerData.vehicle.make}{" "}
-                        {quoteData.customerData.vehicle.model}
+                        {quoteData?.customerData?.vehicle?.year} {quoteData?.customerData?.vehicle?.make}{" "}
+                        {quoteData?.customerData?.vehicle?.model}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -1015,4 +1272,30 @@ export default function QuoteCheckoutPage() {
       )}
     </div>
   )
+}
+
+export default function QuoteCheckoutPageWrapper() {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+
+  useEffect(() => {
+    const fetchStripeKey = async () => {
+      try {
+        const stripeKeyResponse = await fetch("/api/settings/stripe");
+        const stripeKeyData = await stripeKeyResponse.json();
+        if (stripeKeyResponse.ok) {
+          setStripePromise(loadStripe(stripeKeyData.publishableKey));
+        }
+      } catch (error) {
+        console.error("Error fetching stripe key:", error);
+      }
+    };
+
+    fetchStripeKey();
+  }, []);
+
+  return (
+    <Elements stripe={stripePromise}>
+      <QuoteCheckoutPage />
+    </Elements>
+  );
 }

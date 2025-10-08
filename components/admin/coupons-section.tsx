@@ -86,8 +86,6 @@ export function CouponsSection() {
       expires: newCoupon.expires ? format(newCoupon.expires, "yyyy-MM-dd HH:mm:ss") : "",
     };
 
-    console.log('new coupon:', formattedNewCoupon)
-
     try {
       await fetch("/api/coupons", {
         method: "POST",

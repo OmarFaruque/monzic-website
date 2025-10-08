@@ -510,7 +510,7 @@ export function SettingsSection() {
     openai: {
       apiKey: "",
       model: "gpt-4",
-      maxTokens: 2048,
+      price: 2048,
       temperature: 0.7,
     },
     resend: {
@@ -1176,13 +1176,13 @@ export function SettingsSection() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="openai-max-tokens">Max Tokens</Label>
+                  <Label htmlFor="openai-max-tokens">Price</Label>
                   <Input
                     id="openai-max-tokens"
                     type="number"
                     placeholder="2048"
-                    value={settings.openai.maxTokens}
-                    onChange={(e) => updateSetting("openai", "maxTokens", Number.parseInt(e.target.value))}
+                    value={settings.openai.price}
+                    onChange={(e) => updateSetting("openai", "price", Number.parseInt(e.target.value))}
                   />
                 </div>
               </div>

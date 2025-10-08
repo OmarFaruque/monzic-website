@@ -20,7 +20,7 @@ const mockAIConfig = {
     available: ["gpt-4", "gpt-3.5-turbo", "claude-3", "gemini-pro"],
   },
   parameters: {
-    maxTokens: 2048,
+    price: 2048,
     temperature: 0.7,
     topP: 0.9,
     frequencyPenalty: 0.0,

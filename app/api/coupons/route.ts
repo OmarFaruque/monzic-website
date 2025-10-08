@@ -8,9 +8,9 @@ export async function GET() {
     const allCoupons = await db.select().from(coupons);
     const parsedCoupons = allCoupons.map(coupon => ({
       ...coupon,
-      discount: JSON.parse(coupon.discount as string),
-      restrictions: JSON.parse(coupon.restrictions as string),
-      matches: JSON.parse(coupon.matches as string),
+      discount: coupon.discount,
+      restrictions: coupon.restrictions,
+      matches: coupon.matches,
     }))
     return NextResponse.json(parsedCoupons);
   } catch (error) {

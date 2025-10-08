@@ -17,25 +17,43 @@ export async function POST(request: Request) {
     // Generate a 6-digit verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedVerificationCode = await bcrypt.hash(verificationCode, 10);
-    const verificationCodeExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+    const verificationCodeExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
     // (Simulation only) Log the code for testing purposes
     console.log(`Verification code for ${email}: ${verificationCode}`);
+    console.log(`Verification code for ${email} expires at: ${verificationCodeExpiresAt.toISOString()}`);
 
     // Add actual email sending logic here
     await sendVerificationEmail(email, verificationCode); 
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert the new user with the verification code details
-    await db.insert(users).values({
-      first_name: firstName,
-      last_name: lastName,
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      verificationCodeHash: hashedVerificationCode,
-      verificationCodeExpiresAt,
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.email, email.toLowerCase()),
     });
+
+    if (existingUser) {
+      if (existingUser.emailVerifiedAt) {
+        return NextResponse.json({ success: false, error: "An account with this email already exists." }, { status: 409 });
+      } else {
+        // User exists but is not verified, update their verification code
+        await db.update(users).set({
+          password: hashedPassword,
+          verificationCodeHash: hashedVerificationCode,
+          verificationCodeExpiresAt: verificationCodeExpiresAt.toISOString(),
+        }).where(eq(users.userId, existingUser.userId));
+      }
+    } else {
+      // Insert the new user with the verification code details
+      await db.insert(users).values({
+        first_name: firstName,
+        last_name: lastName,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        verificationCodeHash: hashedVerificationCode,
+        verificationCodeExpiresAt: verificationCodeExpiresAt.toISOString(),
+      });
+    }
 
     // Do NOT return a JWT. User must verify first.
     return NextResponse.json({
@@ -43,9 +61,6 @@ export async function POST(request: Request) {
       message: "Registration successful. Please check your email for a verification code.",
     });
   } catch (error: any) {
-    if (error.code === "23505") { // Handle unique constraint violation for email
-      return NextResponse.json({ success: false, error: "An account with this email already exists." }, { status: 409 });
-    }
     console.error("Registration error:", error);
     return NextResponse.json({ success: false, error: "Internal server error." }, { status: 500 });
   }

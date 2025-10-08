@@ -16,6 +16,14 @@ export default function ContactPage() {
   const [currentQuestion, setCurrentQuestion] = useState({ question: "", answer: "" })
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isAuthenticated, loading } = useAuth()
+  const [firstName, setFirstName] = useState("")
+    const [lastName, setLastName] = useState("")
+    const [email, setEmail] = useState("")
+    const [subject, setSubject] = useState("")
+    const [message, setMessage] = useState("")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(null)
+
 
   // Pool of verification questions
   const verificationQuestions = [
@@ -47,15 +55,48 @@ export default function ContactPage() {
     setIsVerified(answer === currentQuestion.answer)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isVerified) {
       alert("Please complete the robot verification before submitting.")
       return
     }
-    // Handle form submission here
-    alert("Message sent successfully!")
-  }
+    setIsSubmitting(true)
+    setSubmitStatus(null)
+
+    try {
+        const response = await fetch('/api/contact', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                firstName,
+                lastName,
+                email,
+                subject,
+                message,
+            }),
+        });
+
+        if (response.ok) {
+            setSubmitStatus('success');
+            setFirstName('');
+            setLastName('');
+            setEmail('');
+            setSubject('');
+            setMessage('');
+            setVerificationAnswer('');
+            setIsVerified(false);
+        } else {
+            setSubmitStatus('error');
+        }
+    } catch (error) {
+        setSubmitStatus('error');
+    } finally {
+        setIsSubmitting(false);
+    }
+}
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -154,6 +195,8 @@ export default function ContactPage() {
                       required
                       className="w-full h-10 sm:h-12 text-sm sm:text-base"
                       placeholder="Enter your first name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
                     />
                   </div>
                   <div>
@@ -163,6 +206,8 @@ export default function ContactPage() {
                       required
                       className="w-full h-10 sm:h-12 text-sm sm:text-base"
                       placeholder="Enter your last name"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
                     />
                   </div>
                 </div>
@@ -174,6 +219,8 @@ export default function ContactPage() {
                     required
                     className="w-full h-10 sm:h-12 text-sm sm:text-base"
                     placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
 
@@ -184,6 +231,8 @@ export default function ContactPage() {
                     required
                     className="w-full h-10 sm:h-12 text-sm sm:text-base"
                     placeholder="What is this regarding?"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
                   />
                 </div>
 
@@ -193,6 +242,8 @@ export default function ContactPage() {
                     required
                     className="w-full min-h-24 sm:min-h-32 resize-none text-sm sm:text-base"
                     placeholder="Please provide details about your inquiry..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                   />
                 </div>
 
@@ -251,15 +302,21 @@ export default function ContactPage() {
 
                 <Button
                   type="submit"
-                  disabled={!isVerified}
+                  disabled={!isVerified || isSubmitting}
                   className={`w-full py-3 sm:py-4 rounded-md font-medium text-base sm:text-lg transition-colors h-12 sm:h-14 ${
                     isVerified
                       ? "bg-teal-600 hover:bg-teal-700 text-white"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
                 >
-                  {isVerified ? "Send Message" : "Complete Verification to Send"}
+                  {isSubmitting ? 'Sending...' : (isVerified ? "Send Message" : "Complete Verification to Send")}
                 </Button>
+                {submitStatus === 'success' && (
+                    <p className="text-green-600">Message sent successfully!</p>
+                )}
+                {submitStatus === 'error' && (
+                    <p className="text-red-600">Failed to send message. Please try again.</p>
+                )}
               </form>
             </div>
 

@@ -1,23 +1,68 @@
 import { Resend } from "resend"
-
-const resend = new Resend(process.env.RESEND_API_KEY)
+import nodemailer from "nodemailer"
 
 export interface EmailTemplate {
   to: string
   subject: string
-  html: string
+  html: string, 
+  attachments?:any
 }
 
-export async function sendEmail({ to, subject, html }: EmailTemplate) {
-  try {
-    const data = await resend.emails.send({
-      from: "Monzic <noreply@monzic.co.uk>",
-      to: [to],
-      subject,
-      html,
-    })
+// Initialize Resend (only if API key is present)
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null
 
-    return { success: true, data }
+// export async function sendEmail({ to, subject, html }: EmailTemplate) {
+//   try {
+//     const data = await resend.emails.send({
+//       from: "Monzic <noreply@monzic.co.uk>",
+//       to: [to],
+//       subject,
+//       html,
+//     })
+
+//     return { success: true, data }
+//   } catch (error) {
+//     console.error("Email sending failed:", error)
+//     return { success: false, error }
+//   }
+// }
+
+
+// Reusable function
+export async function sendEmail({ to, subject, html, attachments = [] }: EmailTemplate) {
+  try {
+    if (process.env.MAIL_DRIVER === "resend" && resend) {
+      // 👉 Production (Resend)
+      const data = await resend.emails.send({
+        from: "Monzic <noreply@monzic.co.uk>",
+        to: [to],
+        subject,
+        html,
+        attachments,
+      })
+
+      return { success: true, data }
+    } else {
+      // 👉 Local dev (MailHog via SMTP)
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || "localhost",
+        port: parseInt(process.env.SMTP_PORT || "1025"),
+        secure: false,
+        auth: false, // MailHog doesn’t need auth
+      })
+
+      const info = await transporter.sendMail({
+        from: "Monzic <noreply@local.dev>",
+        to,
+        subject,
+        html,
+        attachments,
+      })
+
+      return { success: true, data: info }
+    }
   } catch (error) {
     console.error("Email sending failed:", error)
     return { success: false, error }
@@ -185,6 +230,8 @@ export function createInsurancePolicyEmail(
   `
 }
 
+
+
 // Admin Notification Email Template
 export function createAdminNotificationEmail(
   type: "ai_document" | "insurance_policy",
@@ -237,3 +284,140 @@ export function createAdminNotificationEmail(
     </html>
   `
 }
+
+export async function sendTicketConfirmationEmail({
+    to,
+    subject,
+    name,
+    ticketId,
+    }: {
+    to: string
+    subject: string
+    name: string
+    ticketId: string
+    }) {
+    const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Support Ticket Confirmation</title>
+            <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #0d9488, #14b8a6); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .ticket-info { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0d9488; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
+            .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+            <div class="header">
+                <div class="logo">Monzic</div>
+                <h1>Support Ticket Received</h1>
+            </div>
+            <div class="content">
+                <h2>Hello ${name},</h2>
+                <p>Thank you for contacting us. We have successfully received your support request and a ticket has been created for you.</p>
+                
+                <div class="ticket-info">
+                <h3>Your Ticket Details:</h3>
+                <ul>
+                    <li><strong>Ticket ID:</strong> ${ticketId}</li>
+                    <li><strong>Status:</strong> Open</li>
+                    <li><strong>Next Step:</strong> Our team will review your request and get back to you shortly.</li>
+                </ul>
+                </div>
+
+                <p>You can reference this ticket ID in any future communication with us regarding this matter. We aim to respond to all inquiries within 24 hours.</p>
+                
+                <p>Best regards,<br>The Monzic Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 Monzic Solutions Ltd. All rights reserved.</p>
+                <p>You are receiving this email because you submitted a contact form on our website.</p>
+            </div>
+            </div>
+        </body>
+        </html>
+    `
+
+    return sendEmail({
+        to,
+        subject,
+        html: emailHtml,
+        attachments: [],
+    })
+}
+
+export async function sendTicketReplyEmail({
+    to,
+    subject,
+    name,
+    ticketId,
+    message,
+    attachments = []
+    }: {
+    to: string
+    subject: string
+    name: string
+    ticketId: string
+    message: string
+    attachments?: any[]
+    }) {
+    const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>New Reply to Your Support Ticket</title>
+            <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #0d9488, #14b8a6); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .message-box { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0d9488; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
+            .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+            <div class="header">
+                <div class="logo">Monzic</div>
+                <h1>New Reply to Your Ticket</h1>
+            </div>
+            <div class="content">
+                <h2>Hello ${name},</h2>
+                <p>A support agent has replied to your ticket with the ID: <strong>${ticketId}</strong>.</p>
+                
+                <div class="message-box">
+                <h3>Reply:</h3>
+                <p>${message}</p>
+                </div>
+
+                <p>Please contact us if you have further questions. We appreciate your patience.</p>
+                
+                <p>Best regards,<br>The Monzic Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 Monzic Solutions Ltd. All rights reserved.</p>
+                <p>You are receiving this email because you have an active support ticket with us.</p>
+            </div>
+            </div>
+        </body>
+        </html>
+    `
+
+    return sendEmail({
+        to,
+        subject,
+        html: emailHtml,
+        attachments
+    })
+}
+

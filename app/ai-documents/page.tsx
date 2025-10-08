@@ -1,11 +1,15 @@
+
 "use client"
 
 import type React from "react"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
+import { AuthDialog } from "@/components/auth/auth-dialog";
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/context/auth"
+import Cookies from "js-cookie";
 import Link from "next/link"
 import {
   Download,
@@ -31,66 +35,53 @@ import {
   Info,
 } from "lucide-react"
 
-// Test accounts for validation
-const TEST_ACCOUNTS = [
-  { email: "test@monzic.com", password: "test123", isAdmin: false },
-  { email: "admin@monzic.com", password: "admin123", isAdmin: true },
-  { email: "user@monzic.com", password: "user123", isAdmin: false },
-]
+import { useToast } from "@/hooks/use-toast";
+import usePaddle from "@/hooks/use-paddle";
+import { loadStripe, Stripe } from "@stripe/stripe-js";
+import { Elements, useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 
-export default function AIDocumentsPage() {
+function AIDocumentsPage() {
   const [documentRequest, setDocumentRequest] = useState("")
   const [generatedText, setGeneratedText] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [showOutput, setShowOutput] = useState(false)
   const [showPaymentPopup, setShowPaymentPopup] = useState(false)
-  const [showSignInPopup, setShowSignInPopup] = useState(false)
   const [tipAmount, setTipAmount] = useState(0)
   const [discountCode, setDiscountCode] = useState("")
   const [appliedDiscount, setAppliedDiscount] = useState(null)
   const [expandedSection, setExpandedSection] = useState("")
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { isAuthenticated, user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
 
-  // Sign in form state
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
-  const [isSigningIn, setIsSigningIn] = useState(false)
-  const [signInError, setSignInError] = useState("")
-  const [showSignUp, setShowSignUp] = useState(false)
-  const [signUpEmail, setSignUpEmail] = useState("")
-  const [signUpPassword, setSignUpPassword] = useState("")
-  const [signUpConfirmPassword, setSignUpConfirmPassword] = useState("")
-  const [showSignUpPassword, setShowSignUpPassword] = useState(false)
-  const [isSigningUp, setIsSigningUp] = useState(false)
-  const [signUpError, setSignUpError] = useState("")
-  const [showVerification, setShowVerification] = useState(false)
-  const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""])
-  const [isVerifying, setIsVerifying] = useState(false)
-  const [verificationError, setVerificationError] = useState("")
+  const { toast } = useToast();
+  const { paddle, loading: isPaddleLoading } = usePaddle();
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentProvider, setPaymentProvider] = useState<string | null>(null);
 
-  // Card details
-  const [cardNumber, setCardNumber] = useState("")
-  const [cardExpiry, setCardExpiry] = useState("")
-  const [cardCvc, setCardCvc] = useState("")
-  const [postalCode, setPostalCode] = useState("")
+  useEffect(() => {
+    const fetchPaymentProvider = async () => {
+      try {
+        const response = await fetch("/api/settings/payment");
+        const data = await response.json();
+        if (response.ok) {
+          let paymentProvider = JSON.parse(data.paymentProvider);
+          setPaymentProvider(paymentProvider.activeProcessor);
+        } else {
+          console.error("Failed to fetch payment provider");
+        }
+      } catch (error) {
+        console.error("Error fetching payment provider:", error);
+      }
+    };
+
+    fetchPaymentProvider();
+  }, []);
 
   const documentPrice = 10
 
-  // Memoize discount codes to prevent re-creation
-  const discountCodes = useMemo(
-    () => ({
-      WELCOME10: { type: "percentage", value: 10, description: "10% off" },
-      SAVE5: { type: "fixed", value: 5, description: "£5 off" },
-      STUDENT: { type: "percentage", value: 20, description: "20% student discount" },
-      FIRST: { type: "percentage", value: 15, description: "15% first-time user" },
-    }),
-    [],
-  )
-
-  // Memoize quick templates
   const quickTemplates = useMemo(
     () => [
       "Write a comprehensive marketing strategy for a new mobile app",
@@ -101,93 +92,65 @@ export default function AIDocumentsPage() {
     [],
   )
 
-  // Check authentication on mount
-  useEffect(() => {
-    const checkAuth = () => {
-      const isLoggedIn = localStorage.getItem("userLoggedIn") === "true"
-      setIsAuthenticated(isLoggedIn)
-    }
-
-    checkAuth()
-
-    const handleStorageChange = () => {
-      checkAuth()
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    return () => {
-      window.removeEventListener("storage", handleStorageChange)
-    }
-  }, [])
-
   const handleTemplateClick = useCallback((template: string) => {
     setDocumentRequest(template)
   }, [])
 
-  // Separate function for the actual document generation logic
   const generateDocument = useCallback(async () => {
-    if (!documentRequest.trim()) return
+    if (!documentRequest.trim()) return;
 
-    setIsGenerating(true)
+    setIsGenerating(true);
 
-    // Simulate AI generation with optimized content
-    setTimeout(() => {
-      setGeneratedText(
-        `# Marketing Strategy: Mobile App Launch
+    try {
+      const token = Cookies.get("auth_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
 
-## Executive Overview
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
 
-This comprehensive marketing strategy outlines the approach for successfully launching our new mobile application in the competitive digital marketplace. The plan addresses target audience identification, competitive positioning, marketing channels, budget allocation, and success metrics to ensure maximum market penetration and user acquisition.
+      const response = await fetch("/api/ai-documents", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          prompt: documentRequest,
+        }),
+      });
 
-## Target Audience Analysis
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
+      }
 
-Our primary audience consists of tech-savvy professionals aged 25-45 who value efficiency and digital solutions in their daily workflows. These individuals typically work in corporate environments, manage multiple projects simultaneously, and seek tools that enhance productivity while maintaining work-life balance.
+      const data = await response.json();
+      
+      if (data.content) {
+        setGeneratedText(data.content);
+        setShowOutput(true);
+      } else {
+        throw new Error("No content received from the server.");
+      }
 
-## Market Positioning
-
-The application will be positioned as an intuitive, feature-rich solution that addresses specific pain points not currently solved by existing offerings in the marketplace. Our unique value proposition centers on seamless integration capabilities with existing business tools and enhanced security features.
-
-## Marketing Channels & Tactics
-
-### Digital Marketing Strategy
-
-Our comprehensive digital approach will leverage multiple touchpoints including search engine optimization focusing on solution-based keywords, targeted pay-per-click campaigns, and strategic content marketing through industry publications.
-
-### Social Media Strategy
-
-Platform-specific approaches will include LinkedIn for thought leadership content, Twitter for real-time product updates, and Instagram for visual demonstrations that showcase the application's benefits.
-
-## Launch Timeline and Implementation
-
-The marketing rollout will follow a carefully planned phased approach designed to maximize impact and user adoption:
-
-- **Pre-launch phase (4 weeks):** Comprehensive teaser campaign and early access registration
-- **Launch week:** Coordinated press releases and strategic influencer partnerships
-- **Post-launch phase (8 weeks):** Sustained engagement campaigns and user feedback collection
-
-## Budget Allocation and Resource Distribution
-
-The initial marketing budget of $75,000 will be strategically distributed across multiple channels: digital advertising campaigns (40%), professional content creation (25%), public relations (20%), analytics tools (10%), and contingency fund (5%).
-
-## Success Metrics and Key Performance Indicators
-
-Critical performance indicators will include specific download targets of 10,000 users in the first month, user retention rates of 40% after 30 days, conversion rates of 5% from free to premium subscriptions, and maintaining customer acquisition costs below $2.50 per user.`,
-      )
-      setIsGenerating(false)
-      setShowOutput(true)
-    }, 2000)
-  }, [documentRequest])
+    } catch (error) {
+      console.error("Error generating document:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [documentRequest]);
 
   const handleGenerateDocument = useCallback(async () => {
-    if (!documentRequest.trim()) return
+    if (!documentRequest.trim()) return;
 
     if (!isAuthenticated) {
-      setShowSignInPopup(true)
-      return
+      setIsAuthDialogOpen(true);
+      return;
     }
 
-    await generateDocument()
-  }, [documentRequest, isAuthenticated, generateDocument])
+    await generateDocument();
+  }, [documentRequest, isAuthenticated, generateDocument]);
 
   const handleEditRequest = useCallback(() => {
     setShowOutput(false)
@@ -197,204 +160,266 @@ Critical performance indicators will include specific download targets of 10,000
     setShowPaymentPopup(true)
   }, [])
 
-  const handlePayment = useCallback(() => {
-    // Store document content and type for the confirmation page
-    localStorage.setItem("aiDocumentContent", generatedText)
-    localStorage.setItem("aiDocumentType", documentRequest.substring(0, 100) + "...")
-
-    setShowPaymentPopup(false)
-
-    // Redirect to AI payment confirmation page
-    window.location.href = "/ai-payment-confirmation"
-  }, [generatedText, documentRequest])
-
-  const generatePDFForDownload = useCallback(async () => {
-    try {
-      const { jsPDF } = await import("jspdf")
-      const doc = new jsPDF()
-
-      doc.setProperties({
-        title: "Monzic Generated Document",
-        subject: "AI Generated Document",
-        author: "Monzic AI Documents",
-        creator: "Monzic Solutions Ltd",
-      })
-
-      // Add header
-      doc.setFontSize(20)
-      doc.setFont("helvetica", "bold")
-      doc.text("Monzic - Generated Document", 20, 20)
-
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30)
-
-      doc.line(20, 35, 190, 35)
-
-      let yPosition = 45
-      const pageHeight = doc.internal.pageSize.height
-      const margin = 20
-      const lineHeight = 6
-      const maxWidth = 170
-
-      const lines = generatedText.split("\n")
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim()
-
-        if (line === "") {
-          yPosition += lineHeight / 2
-          continue
-        }
-
-        if (yPosition > pageHeight - 30) {
-          doc.addPage()
-          yPosition = 20
-        }
-
-        if (line.startsWith("# ")) {
-          doc.setFontSize(16)
-          doc.setFont("helvetica", "bold")
-          doc.setTextColor(15, 116, 108)
-          const text = line.substring(2)
-          const splitText = doc.splitTextToSize(text, maxWidth)
-          doc.text(splitText, margin, yPosition)
-          yPosition += splitText.length * lineHeight + 5
-        } else if (line.startsWith("## ")) {
-          doc.setFontSize(14)
-          doc.setFont("helvetica", "bold")
-          doc.setTextColor(13, 148, 136)
-          const text = line.substring(3)
-          const splitText = doc.splitTextToSize(text, maxWidth)
-          doc.text(splitText, margin, yPosition)
-          yPosition += splitText.length * lineHeight + 3
-        } else if (line.startsWith("### ")) {
-          doc.setFontSize(12)
-          doc.setFont("helvetica", "bold")
-          doc.setTextColor(13, 148, 136)
-          const text = line.substring(4)
-          const splitText = doc.splitTextToSize(text, maxWidth)
-          doc.text(splitText, margin, yPosition)
-          yPosition += splitText.length * lineHeight + 2
-        } else if (line.startsWith("- ")) {
-          doc.setFontSize(10)
-          doc.setFont("helvetica", "normal")
-          doc.setTextColor(55, 65, 81)
-          const text = `• ${line.substring(2)}`
-          const splitText = doc.splitTextToSize(text, maxWidth - 5)
-          doc.text(splitText, margin + 5, yPosition)
-          yPosition += splitText.length * lineHeight
-        } else {
-          doc.setFontSize(10)
-          doc.setFont("helvetica", "normal")
-          doc.setTextColor(55, 65, 81)
-
-          if (line.includes("**")) {
-            const parts = line.split("**")
-            let currentX = margin
-
-            for (let j = 0; j < parts.length; j++) {
-              if (j % 2 === 1) {
-                doc.setFont("helvetica", "bold")
-                doc.setTextColor(17, 24, 39)
-              } else {
-                doc.setFont("helvetica", "normal")
-                doc.setTextColor(55, 65, 81)
-              }
-
-              const textWidth = doc.getTextWidth(parts[j])
-              if (currentX + textWidth > margin + maxWidth) {
-                yPosition += lineHeight
-                currentX = margin
-              }
-
-              doc.text(parts[j], currentX, yPosition)
-              currentX += textWidth
-            }
-            yPosition += lineHeight + 2
-          } else {
-            const splitText = doc.splitTextToSize(line, maxWidth)
-            doc.text(splitText, margin, yPosition)
-            yPosition += splitText.length * lineHeight + 2
-          }
-        }
-      }
-
-      const totalPages = doc.internal.getNumberOfPages()
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i)
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "normal")
-        doc.text("Generated by Monzic AI Documents", margin, pageHeight - 15)
-        doc.text("© 2025 Monzic Solutions Ltd", margin, pageHeight - 10)
-        doc.text(`Page ${i} of ${totalPages}`, 190 - 30, pageHeight - 10)
-      }
-
-      doc.save("monzic-generated-document.pdf")
-    } catch (error) {
-      console.error("Error generating PDF:", error)
-
-      const textContent = `Monzic - Generated Document
-Generated on: ${new Date().toLocaleDateString()}
-
-${generatedText.replace(/[#*]/g, "")}
-
----
-Generated by Monzic AI Documents
-© 2025 Monzic Solutions Ltd`
-
-      const blob = new Blob([textContent], { type: "text/plain" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = "monzic-generated-document.txt"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-    }
-  }, [generatedText])
-
-  const applyDiscountCode = useCallback(() => {
-    const code = discountCode.toUpperCase()
-    if (discountCodes[code]) {
-      setAppliedDiscount(discountCodes[code])
+  const getDiscountAmount = useCallback(() => {
+    if (!appliedDiscount || appliedDiscount.error) return 0;
+    if (appliedDiscount.discount.type === "percentage") {
+      return (documentPrice * appliedDiscount.discount.value) / 100;
     } else {
-      setAppliedDiscount({ error: "Invalid discount code" })
+      return Math.min(documentPrice, appliedDiscount.discount.value);
     }
-  }, [discountCode, discountCodes])
+  }, [appliedDiscount, documentPrice]);
+
+  const finalPrice = documentPrice - getDiscountAmount();
+  const totalWithTip = finalPrice + tipAmount;
+
+  const handlePayment = useCallback(async () => {
+
+    console.log('payment provider', paymentProvider)
+    if (paymentProvider === 'paddle') {
+      if (!paddle) {
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "Paddle is not available. Please try again later.",
+        });
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        const response = await fetch("/api/ai-documents/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            docData: {
+              prompt: documentRequest,
+              content: generatedText,
+              price: documentPrice,
+            },
+            user: user,
+            tip: tipAmount,
+            discount: appliedDiscount ? getDiscountAmount() : 0,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.priceId) {
+          paddle.Checkout.open({
+            items: [
+              {
+                priceId: data.priceId,
+                quantity: 1,
+              },
+            ],
+            customer: {
+              email: user.email,
+            },
+            customData: {
+              document_details: JSON.stringify({
+                prompt: documentRequest,
+                content: generatedText,
+                price: documentPrice,
+              }),
+              user_details: JSON.stringify(user),
+            },
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: data.error || "Could not initiate payment. Please try again.",
+          });
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "An unexpected error occurred. Please try again.",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else if (paymentProvider === 'stripe') {
+
+      console.log('inside stripe payment')
+      if (!stripe || !elements) {
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "Stripe is not available. Please try again later.",
+        });
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        const response = await fetch("/api/ai-documents/create-stripe-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            docData: {
+              prompt: documentRequest,
+              content: generatedText,
+              price: documentPrice,
+            },
+            user: user,
+            tip: tipAmount,
+            discount: appliedDiscount ? getDiscountAmount() : 0,
+          }),
+        });
+
+        const { clientSecret, error: clientSecretError } = await response.json();
+
+        if (clientSecretError) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: clientSecretError.message || "Could not initiate payment. Please try again.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        const cardElement = elements.getElement(CardElement);
+
+        if (!cardElement) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: "Card element not found. Please try again later.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+          },
+        });
+
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: error.message || "An unexpected error occurred. Please try again.",
+          });
+        } else if (paymentIntent.status === 'succeeded') {
+          toast({
+            title: "Payment Successful",
+            description: "Your payment has been processed successfully.",
+          });
+
+          
+
+          fetch("/api/ai-documents/save-document", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Cookies.get("auth_token")}`,
+            },
+            body: JSON.stringify({ 
+                docDetails: {
+                  prompt: documentRequest,
+                  content: generatedText,
+                  price: totalWithTip,
+                },
+                userDetails: user,
+                transaction: paymentIntent,
+            })
+          })
+          .then(response => {
+              if (!response.ok) {
+                  throw new Error("Failed to save document");
+              }
+              return response.json();
+          })
+          .then(data => {
+              localStorage.setItem("aiDocumentContent", generatedText);
+              localStorage.setItem("aiDocumentType", documentRequest.substring(0, 100) + "...");
+              window.location.href = "/ai-payment-confirmation";
+          })
+          .catch(error => {
+              console.error("Error saving AI document:", error);
+              toast({
+                variant: "destructive",
+                title: "Document Save Failed",
+                description: "An error occurred while saving the document. Please try again.",
+              });
+          });
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Payment Error",
+          description: "An unexpected error occurred. Please try again.",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  }, [paddle, documentRequest, generatedText, documentPrice, user, tipAmount, appliedDiscount, toast, paymentProvider, stripe, elements]);
+
+
+
+  const applyDiscountCode = useCallback(async () => {
+    if (!discountCode.trim()) {
+      toast({ variant: "destructive", title: "Error", description: "Please enter a promo code" });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promoCode: discountCode, total: documentPrice }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 400) {
+          toast({
+            variant: "destructive",
+            title: "Invalid Code",
+            description: data.error || "The promo code is invalid or expired.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: data.error || "Failed to validate promo code.",
+          });
+        }
+        setAppliedDiscount({ error: data.error || "Invalid discount code" });
+      } else {
+        setAppliedDiscount(data);
+        toast({
+          title: "Promo Code Applied",
+          description: `Successfully applied promo code ${data.promoCode}`,
+        });
+      }
+    } catch (error: any) {
+      setAppliedDiscount({ error: "Invalid discount code" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+      });
+    }
+  }, [discountCode, documentPrice, toast]);
 
   const removeDiscount = useCallback(() => {
-    setAppliedDiscount(null)
-    setDiscountCode("")
-  }, [])
-
-  const calculateDiscountedPrice = useCallback(() => {
-    if (!appliedDiscount || appliedDiscount.error) return documentPrice
-
-    if (appliedDiscount.type === "percentage") {
-      return documentPrice - (documentPrice * appliedDiscount.value) / 100
-    } else {
-      return Math.max(0, documentPrice - appliedDiscount.value)
-    }
-  }, [appliedDiscount, documentPrice])
-
-  const getDiscountAmount = useCallback(() => {
-    if (!appliedDiscount || appliedDiscount.error) return 0
-
-    if (appliedDiscount.type === "percentage") {
-      return (documentPrice * appliedDiscount.value) / 100
-    } else {
-      return Math.min(documentPrice, appliedDiscount.value)
-    }
-  }, [appliedDiscount, documentPrice])
-
-  const finalPrice = calculateDiscountedPrice()
-  const totalWithTip = finalPrice + tipAmount
+    setAppliedDiscount(null);
+    setDiscountCode("");
+  }, []);
 
   const toggleSection = useCallback((section: string) => {
-    setExpandedSection((prev) => (prev === section ? "" : section))
-  }, [])
+    setExpandedSection((prev) => (prev === section ? "" : section));
+  }, []);
 
   const formatCardNumber = useCallback((value: string) => {
     const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
@@ -413,175 +438,6 @@ Generated by Monzic AI Documents
     const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
     return v.length >= 2 ? `${v.substring(0, 2)} / ${v.substring(2, 4)}` : v
   }, [])
-
-  // Handle sign in
-  const handleSignIn = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
-      setSignInError("")
-      setIsSigningIn(true)
-
-      try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // Validate credentials against test accounts
-        if (!email || !password) {
-          setSignInError("Please enter both email and password")
-          setIsSigningIn(false)
-          return
-        }
-
-        // Check if account exists
-        const account = TEST_ACCOUNTS.find((acc) => acc.email.toLowerCase() === email.toLowerCase())
-
-        if (!account) {
-          setSignInError("Account not found. Please check your email address.")
-          setIsSigningIn(false)
-          return
-        }
-
-        if (account.password !== password) {
-          setSignInError("Incorrect password. Please try again.")
-          setIsSigningIn(false)
-          return
-        }
-
-        // Credentials are valid, show verification step
-        setShowVerification(true)
-        setIsSigningIn(false)
-      } catch (error) {
-        console.error("Sign in error:", error)
-        setSignInError("An error occurred during sign in. Please try again.")
-        setIsSigningIn(false)
-      }
-    },
-    [email, password],
-  )
-
-  const handleVerificationCodeChange = (index: number, value: string) => {
-    if (value.length > 1) return
-
-    const newCode = [...verificationCode]
-    newCode[index] = value
-    setVerificationCode(newCode)
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`ai-code-${index + 1}`)
-      nextInput?.focus()
-    }
-  }
-
-  const handleVerificationKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
-      const prevInput = document.getElementById(`ai-code-${index - 1}`)
-      prevInput?.focus()
-    }
-  }
-
-  // Handle verification
-  const handleVerification = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
-      setVerificationError("")
-
-      const code = verificationCode.join("")
-      if (code.length !== 6) {
-        setVerificationError("Please enter the complete 6-digit verification code")
-        return
-      }
-
-      setIsVerifying(true)
-
-      try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // For demo purposes, accept any 6-digit code
-        if (verificationCode.join("").length === 6) {
-          // Set auth cookies and localStorage
-          document.cookie = `userLoggedIn=true; path=/; max-age=86400`
-          localStorage.setItem("userLoggedIn", "true")
-
-          // Use the appropriate email based on whether it's sign-in or sign-up
-          const userEmailToStore = showSignUp ? signUpEmail : email
-          localStorage.setItem("userEmail", userEmailToStore)
-
-          if (rememberMe) {
-            localStorage.setItem("rememberMe", "true")
-          }
-
-          setIsAuthenticated(true)
-          setShowSignInPopup(false)
-          setShowVerification(false)
-          setShowSignUp(false)
-
-          // Continue with document generation if that's what triggered the sign in
-          if (documentRequest.trim()) {
-            // Call the generation function directly instead of the handler
-            await generateDocument()
-          }
-        } else {
-          setVerificationError("Invalid verification code. Please enter a 6-digit code.")
-        }
-      } catch (error) {
-        console.error("Verification error:", error)
-        setVerificationError("An error occurred during verification. Please try again.")
-      } finally {
-        setIsVerifying(false)
-      }
-    },
-    [verificationCode, signUpEmail, email, rememberMe, showSignUp, documentRequest, generateDocument],
-  )
-
-  // Toggle between sign in and sign up
-  const toggleSignUpMode = useCallback(() => {
-    setShowSignUp(!showSignUp)
-    setSignInError("")
-    setSignUpError("")
-    setVerificationError("")
-    setShowVerification(false)
-    setVerificationCode(["", "", "", "", "", ""])
-  }, [showSignUp])
-
-  const handleSignUp = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
-      setSignUpError("")
-
-      if (!signUpEmail) {
-        setSignUpError("Please enter your email")
-        return
-      }
-
-      if (!signUpPassword) {
-        setSignUpError("Please enter a password")
-        return
-      }
-
-      if (signUpPassword !== signUpConfirmPassword) {
-        setSignUpError("Passwords do not match")
-        return
-      }
-
-      setIsSigningUp(true)
-
-      try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // For demo purposes, accept any email and password
-        setShowVerification(true)
-        setIsSigningUp(false)
-      } catch (error) {
-        console.error("Sign up error:", error)
-        setSignUpError("An error occurred during sign up. Please try again.")
-        setIsSigningUp(false)
-      }
-    },
-    [signUpEmail, signUpPassword, signUpConfirmPassword],
-  )
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-50 to-teal-50 flex flex-col overflow-hidden">
@@ -902,389 +758,26 @@ Generated by Monzic AI Documents
               {/* Document Content */}
               <div className="p-4 sm:p-6">
                 <div className="bg-gray-50 rounded-xl p-4 sm:p-6 max-h-[60vh] overflow-y-auto border border-gray-200">
-                  <div className="prose prose-sm sm:prose-lg max-w-none">
-                    {generatedText.split("\n").map((line, index) => {
-                      if (line.startsWith("# ")) {
-                        return (
-                          <h1
-                            key={index}
-                            className="text-xl sm:text-3xl font-bold text-teal-700 mb-3 sm:mb-4 mt-3 sm:mt-4 first:mt-0"
-                          >
-                            {line.substring(2)}
-                          </h1>
-                        )
-                      } else if (line.startsWith("## ")) {
-                        return (
-                          <h2
-                            key={index}
-                            className="text-lg sm:text-2xl font-semibold text-teal-600 mb-2 sm:mb-3 mt-4 sm:mt-6"
-                          >
-                            {line.substring(3)}
-                          </h2>
-                        )
-                      } else if (line.startsWith("### ")) {
-                        return (
-                          <h3
-                            key={index}
-                            className="text-base sm:text-xl font-semibold text-teal-600 mb-2 mt-3 sm:mt-4"
-                          >
-                            {line.substring(4)}
-                          </h3>
-                        )
-                      } else if (line.startsWith("- ")) {
-                        return (
-                          <li key={index} className="text-sm sm:text-base text-gray-700 mb-1 ml-4 sm:ml-6">
-                            {line.substring(2)}
-                          </li>
-                        )
-                      } else if (line.includes("**") && line.split("**").length > 2) {
-                        const parts = line.split("**")
-                        return (
-                          <p key={index} className="text-sm sm:text-base text-gray-700 mb-2 sm:mb-3 leading-relaxed">
-                            {parts.map((part, i) =>
-                              i % 2 === 1 ? (
-                                <strong key={i} className="font-semibold text-gray-900">
-                                  {part}
-                                </strong>
-                              ) : (
-                                part
-                              ),
-                            )}
-                          </p>
-                        )
-                      } else if (line.trim() === "") {
-                        return <div key={index} className="h-2 sm:h-3"></div>
-                      } else {
-                        return (
-                          <p key={index} className="text-sm sm:text-base text-gray-700 mb-2 sm:mb-3 leading-relaxed">
-                            {line}
-                          </p>
-                        )
-                      }
-                    })}
-                  </div>
+                  <div
+                    className="prose prose-sm sm:prose-lg max-w-none"
+                    dangerouslySetInnerHTML={{ __html: generatedText }}
+                  />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Sign In Required Popup */}
-          {showSignInPopup && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-md w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                <button
-                  onClick={() => setShowSignInPopup(false)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-
-                {/* Sign In Form */}
-                {!showSignUp && !showVerification && (
-                  <div className="text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                      <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-teal-600" />
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-                      Sign In to Generate Documents
-                    </h2>
-                    <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                      Sign in to your account to access our AI document generation service.
-                    </p>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                      <div className="flex items-start space-x-2">
-                        <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <div className="text-xs text-blue-800">
-                          <p className="font-medium mb-1">Test Credentials</p>
-                          <p>
-                            <strong>Email:</strong> test@monzic.com
-                          </p>
-                          <p>
-                            <strong>Password:</strong> test123
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <form onSubmit={handleSignIn} className="space-y-4 text-left">
-                      <div className="space-y-2">
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                          Email
-                        </label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Enter your email"
-                            className="pl-10 h-12 text-gray-900"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                          Password
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter your password"
-                            className="pl-10 pr-10 h-12 text-gray-900"
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <input
-                            id="remember-me"
-                            type="checkbox"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                            className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-                          />
-                          <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                            Remember me
-                          </label>
-                        </div>
-                        <div className="text-sm">
-                          <a href="#" className="font-medium text-teal-600 hover:text-teal-500">
-                            Forgot password?
-                          </a>
-                        </div>
-                      </div>
-
-                      {signInError && (
-                        <div className="bg-red-50 p-3 rounded-md flex items-start space-x-2">
-                          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-red-600">{signInError}</p>
-                        </div>
-                      )}
-
-                      <Button
-                        type="submit"
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-lg font-medium h-12 touch-manipulation"
-                        disabled={isSigningIn}
-                      >
-                        {isSigningIn ? (
-                          <div className="flex items-center justify-center space-x-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Signing In...</span>
-                          </div>
-                        ) : (
-                          "Sign In"
-                        )}
-                      </Button>
-                    </form>
-
-                    <div className="mt-4 text-center">
-                      <p className="text-sm text-gray-600">
-                        Don't have an account?{" "}
-                        <button onClick={toggleSignUpMode} className="font-medium text-teal-600 hover:text-teal-500">
-                          Sign up
-                        </button>
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Sign Up Form */}
-                {showSignUp && !showVerification && (
-                  <div className="text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                      <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-teal-600" />
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Create Your Account</h2>
-                    <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                      Sign up to access our AI document generation service.
-                    </p>
-
-                    <form onSubmit={handleSignUp} className="space-y-4 text-left">
-                      <div className="space-y-2">
-                        <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700">
-                          Email
-                        </label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="signup-email"
-                            type="email"
-                            value={signUpEmail}
-                            onChange={(e) => setSignUpEmail(e.target.value)}
-                            placeholder="Enter your email"
-                            className="pl-10 h-12 text-gray-900"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700">
-                          Password
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="signup-password"
-                            type={showSignUpPassword ? "text" : "password"}
-                            value={signUpPassword}
-                            onChange={(e) => setSignUpPassword(e.target.value)}
-                            placeholder="Create a password"
-                            className="pl-10 pr-10 h-12 text-gray-900"
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                          Confirm Password
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="confirm-password"
-                            type="password"
-                            value={signUpConfirmPassword}
-                            onChange={(e) => setSignUpConfirmPassword(e.target.value)}
-                            placeholder="Confirm your password"
-                            className="pl-10 h-12 text-gray-900"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {signUpError && (
-                        <div className="bg-red-50 p-3 rounded-md flex items-start space-x-2">
-                          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-red-600">{signUpError}</p>
-                        </div>
-                      )}
-
-                      <Button
-                        type="submit"
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-lg font-medium h-12 touch-manipulation"
-                        disabled={isSigningUp}
-                      >
-                        {isSigningUp ? (
-                          <div className="flex items-center justify-center space-x-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Creating Account...</span>
-                          </div>
-                        ) : (
-                          "Create Account"
-                        )}
-                      </Button>
-                    </form>
-
-                    <div className="mt-4 text-center">
-                      <p className="text-sm text-gray-600">
-                        Already have an account?{" "}
-                        <button onClick={toggleSignUpMode} className="font-medium text-teal-600 hover:text-teal-500">
-                          Sign in
-                        </button>
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Verification Form */}
-                {showVerification && (
-                  <div className="text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                      <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-teal-600" />
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Verify Your Email</h2>
-                    <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                      We've sent a 6-digit verification code to your email. Please enter it below to complete your
-                      registration.
-                    </p>
-
-                    <form onSubmit={handleVerification} className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
-                          Enter Verification Code
-                        </label>
-                        <div className="flex justify-center space-x-2">
-                          {verificationCode.map((digit, index) => (
-                            <Input
-                              key={index}
-                              id={`ai-code-${index}`}
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]"
-                              maxLength={1}
-                              value={digit}
-                              onChange={(e) => handleVerificationCodeChange(index, e.target.value)}
-                              onKeyDown={(e) => handleVerificationKeyDown(index, e)}
-                              className="w-10 h-12 sm:w-12 sm:h-12 text-center text-xl font-bold border-2 border-gray-200 focus:border-teal-500 rounded-lg"
-                              autoComplete="off"
-                            />
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500 text-center mt-2">
-                          For demo purposes, enter any 6-digit code (e.g., 123456)
-                        </p>
-                      </div>
-
-                      {verificationError && (
-                        <div className="bg-red-50 p-3 rounded-md flex items-start space-x-2">
-                          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-red-600">{verificationError}</p>
-                        </div>
-                      )}
-
-                      <Button
-                        type="submit"
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-lg font-medium h-12 touch-manipulation"
-                        disabled={isVerifying}
-                      >
-                        {isVerifying ? (
-                          <div className="flex items-center justify-center space-x-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Verifying...</span>
-                          </div>
-                        ) : (
-                          "Verify & Continue"
-                        )}
-                      </Button>
-                    </form>
-
-                    <div className="mt-4 text-center">
-                      <p className="text-sm text-gray-600">
-                        Didn't receive the code?{" "}
-                        <button className="font-medium text-teal-600 hover:text-teal-500">Resend code</button>
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <AuthDialog
+            isOpen={isAuthDialogOpen}
+            onClose={() => setIsAuthDialogOpen(false)}
+            title="Sign In to Generate Documents"
+            description="Sign in to your account to access our AI document generation service."
+            onSuccess={() => {
+              setIsAuthDialogOpen(false);
+              // we need to trigger document generation again
+              generateDocument();
+            }}
+          />
 
           {/* Payment Popup */}
           {showPaymentPopup && (
@@ -1310,7 +803,7 @@ Generated by Monzic AI Documents
 
                     {appliedDiscount && !appliedDiscount.error && (
                       <div className="flex justify-between items-center text-green-600 text-xs sm:text-sm">
-                        <span>Discount ({appliedDiscount.description})</span>
+                        <span>Discount ({appliedDiscount.promoCode})</span>
                         <span>-£{getDiscountAmount().toFixed(2)}</span>
                       </div>
                     )}
@@ -1339,7 +832,7 @@ Generated by Monzic AI Documents
                         <Input
                           type="text"
                           value={discountCode}
-                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                          onChange={(e) => setDiscountCode(e.target.value)}
                           placeholder="Enter discount code"
                           className="pl-10 h-12 text-sm sm:text-base text-gray-900"
                           disabled={appliedDiscount && !appliedDiscount.error}
@@ -1368,9 +861,28 @@ Generated by Monzic AI Documents
                     {appliedDiscount?.error && <p className="text-xs text-red-600">{appliedDiscount.error}</p>}
 
                     {appliedDiscount && !appliedDiscount.error && (
-                      <p className="text-xs text-green-600">✓ {appliedDiscount.description} applied successfully!</p>
+                      <p className="text-xs text-green-600">✓ Discount applied successfully!</p>
                     )}
                   </div>
+
+                  {paymentProvider === 'stripe' && (
+                    <div className="border border-gray-200 rounded-xl p-4">
+                      <CardElement options={{
+                        style: {
+                          base: {
+                            fontSize: '16px',
+                            color: '#424770',
+                            '::placeholder': {
+                              color: '#aab7c4',
+                            },
+                          },
+                          invalid: {
+                            color: '#9e2146',
+                          },
+                        },
+                      }} />
+                    </div>
+                  )}
 
                   {/* Collapsible Tip Section */}
                   <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -1393,23 +905,22 @@ Generated by Monzic AI Documents
                     {expandedSection === "tip" && (
                       <div className="p-4 border-t border-gray-200 bg-gray-50">
                         <p className="text-xs text-gray-600 mb-3">
-                          Add a tip to show your appreciation for our service. Your support helps us continue providing
-                          high-quality document generation.
+                          Add a tip to show your appreciation for our service.
                         </p>
                         <input
                           type="range"
                           min="0"
-                          max="500"
-                          value={Math.min(tipAmount, 500)}
+                          max="50"
+                          value={Math.min(tipAmount, 50)}
                           onChange={(e) => setTipAmount(Number(e.target.value))}
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                           style={{
-                            background: `linear-gradient(to right, #0d9488 0%, #0d9488 ${(Math.min(tipAmount, 500) / 500) * 100}%, #e5e7eb ${(Math.min(tipAmount, 500) / 500) * 100}%, #e5e7eb 100%)`,
+                            background: `linear-gradient(to right, #0d9488 0%, #0d9488 ${(Math.min(tipAmount, 50) / 50) * 100}%, #e5e7eb ${(Math.min(tipAmount, 50) / 50) * 100}%, #e5e7eb 100%)`,
                           }}
                         />
                         <div className="flex justify-between text-xs text-gray-500 mt-1 mb-2">
                           <span>£0</span>
-                          <span>£500</span>
+                          <span>£50</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-gray-700">£</span>
@@ -1428,83 +939,6 @@ Generated by Monzic AI Documents
                       </div>
                     )}
                   </div>
-
-                  {/* Payment Details */}
-                  <div className="space-y-4 border-2 border-blue-100 rounded-xl p-4 sm:p-6 bg-white shadow-sm">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                      <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Pay with Card</h4>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Card number</label>
-                        <div className="relative">
-                          <Input
-                            type="text"
-                            value={cardNumber}
-                            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                            placeholder="1234 1234 1234 1234"
-                            className="h-12 pr-20 sm:pr-24 text-sm sm:text-base text-gray-900"
-                            maxLength={19}
-                          />
-                          <div className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 flex space-x-1">
-                            {/* Real Visa Logo */}
-                            <svg width="24" height="16" viewBox="0 0 32 20" className="rounded">
-                              <rect width="32" height="20" fill="#1434CB" rx="2" />
-                              <text x="16" y="14" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">
-                                VISA
-                              </text>
-                            </svg>
-                            {/* Real Mastercard Logo */}
-                            <svg width="24" height="16" viewBox="0 0 32 20" className="rounded">
-                              <rect width="32" height="20" fill="#EB001B" rx="2" />
-                              <circle cx="12" cy="10" r="6" fill="#FF5F00" />
-                              <circle cx="20" cy="10" r="6" fill="#F79E1B" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Expiry date</label>
-                          <Input
-                            type="text"
-                            value={cardExpiry}
-                            onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                            placeholder="MM / YY"
-                            className="h-12 text-sm sm:text-base text-gray-900"
-                            maxLength={7}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Security code</label>
-                          <div className="relative">
-                            <Input
-                              type="text"
-                              value={cardCvc}
-                              onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                              placeholder="123"
-                              className="h-12 text-sm sm:text-base text-gray-900"
-                              maxLength={4}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Postal code</label>
-                        <Input
-                          type="text"
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
-                          placeholder="SW1A 1AA"
-                          className="h-12 text-sm sm:text-base text-gray-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
@@ -1517,9 +951,10 @@ Generated by Monzic AI Documents
                   </Button>
                   <Button
                     onClick={handlePayment}
+                    disabled={isSubmitting || isPaddleLoading}
                     className="flex-1 bg-teal-600 hover:bg-teal-700 text-white h-12 text-sm sm:text-base font-semibold touch-manipulation"
                   >
-                    Pay £{totalWithTip.toFixed(2)}
+                    {isSubmitting || isPaddleLoading ? 'Processing...' : `Pay £${totalWithTip.toFixed(2)}`}
                   </Button>
                 </div>
               </div>
@@ -1529,4 +964,30 @@ Generated by Monzic AI Documents
       </main>
     </div>
   )
+}
+
+export default function AIDocumentsPageWrapper() {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+
+  useEffect(() => {
+    const fetchStripeKey = async () => {
+      try {
+        const stripeKeyResponse = await fetch("/api/settings/stripe");
+        const stripeKeyData = await stripeKeyResponse.json();
+        if (stripeKeyResponse.ok) {
+          setStripePromise(loadStripe(stripeKeyData.publishableKey));
+        }
+      } catch (error) {
+        console.error("Error fetching stripe key:", error);
+      }
+    };
+
+    fetchStripeKey();
+  }, []);
+
+  return (
+    <Elements stripe={stripePromise}>
+      <AIDocumentsPage />
+    </Elements>
+  );
 }

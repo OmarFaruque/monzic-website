@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,66 +15,118 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Search, Eye, Download, ArrowUpDown, AlertTriangle, Trash2 } from "lucide-react"
-import { getCustomerData, type CustomerData } from "@/lib/policy-data"
 
 export function UsersSection() {
+  const [users, setUsers] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("newest")
-  const [selectedUser, setSelectedUser] = useState<CustomerData | null>(null)
+  const [selectedUser, setSelectedUser] = useState<any | null>(null)
+  const [selectedUserPolicies, setSelectedUserPolicies] = useState<any[]>([])
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false)
   const [isBlacklistDialogOpen, setIsBlacklistDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedUserForBlacklist, setSelectedUserForBlacklist] = useState<CustomerData | null>(null)
-  const [selectedUserForDelete, setSelectedUserForDelete] = useState<CustomerData | null>(null)
+  const [selectedUserForBlacklist, setSelectedUserForBlacklist] = useState<any | null>(null)
+  const [selectedUserForDelete, setSelectedUserForDelete] = useState<any | null>(null)
 
-  const handleBlacklistUser = (user: CustomerData) => {
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/admin/users');
+        if (!response.ok) {
+          throw new Error('Failed to fetch users');
+        }
+        const data = await response.json();
+        setUsers(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const handleOpenUserDialog = async (user: any) => {
+    setSelectedUser(user);
+    setIsUserDialogOpen(true);
+    try {
+      const response = await fetch(`/api/admin/users/${user.userId}/policies`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch policies');
+      }
+      const data = await response.json();
+      setSelectedUserPolicies(data);
+    } catch (error) {
+      console.error(error);
+      // Handle error, maybe show a toast
+    }
+  };
+
+  const handleBlacklistUser = (user: any) => {
     setSelectedUserForBlacklist(user)
     setIsBlacklistDialogOpen(true)
   }
 
-  const handleDeleteUser = (user: CustomerData) => {
+  const handleDeleteUser = (user: any) => {
     setSelectedUserForDelete(user)
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmBlacklist = () => {
+  const confirmBlacklist = async () => {
     if (selectedUserForBlacklist) {
-      // In a real app, you would send this to your blacklist API
-      console.log("Blacklisting user:", selectedUserForBlacklist)
-      alert(`User ${selectedUserForBlacklist.firstName} ${selectedUserForBlacklist.lastName} has been blacklisted`)
-      setIsBlacklistDialogOpen(false)
-      setSelectedUserForBlacklist(null)
+      try {
+        const response = await fetch(`/api/admin/users/${selectedUserForBlacklist.userId}`, {
+          method: 'POST',
+        });
+        if (!response.ok) {
+          throw new Error('Failed to blacklist user');
+        }
+        alert(`User ${selectedUserForBlacklist.firstName} ${selectedUserForBlacklist.lastName} has been blacklisted`);
+      } catch (error) {
+        console.error(error);
+        alert('Failed to blacklist user.');
+      } finally {
+        setIsBlacklistDialogOpen(false)
+        setSelectedUserForBlacklist(null)
+      }
     }
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedUserForDelete) {
-      // In a real app, you would send this to your delete API
-      console.log("Deleting user:", selectedUserForDelete)
-      alert(`User ${selectedUserForDelete.firstName} ${selectedUserForDelete.lastName} has been deleted`)
-      setIsDeleteDialogOpen(false)
-      setSelectedUserForDelete(null)
+      try {
+        const response = await fetch(`/api/admin/users/${selectedUserForDelete.userId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          throw new Error('Failed to delete user');
+        }
+        setUsers(users.filter((u) => u.userId !== selectedUserForDelete.userId));
+        const { firstName, lastName, email } = selectedUserForDelete;
+        const displayName = firstName || lastName
+                ? `${firstName ?? ''} ${lastName ?? ''}`.trim()
+                : email;
+        alert(`User ${displayName} has been deleted`);
+      } catch (error) {
+        console.error(error);
+        alert('Failed to delete user.');
+      } finally {
+        setIsDeleteDialogOpen(false)
+        setSelectedUserForDelete(null)
+      }
     }
   }
-
-  // Get customer data
-  const mockUsers = getCustomerData()
 
   // Sort users based on selected criteria
-  const sortedUsers = [...mockUsers].sort((a, b) => {
+  const sortedUsers = [...users].sort((a, b) => {
     switch (sortBy) {
       case "newest":
-        return new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime()
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       case "oldest":
-        return new Date(a.joinDate).getTime() - new Date(b.joinDate).getTime()
-      case "highest-spent":
-        return b.totalSpent - a.totalSpent
-      case "lowest-spent":
-        return a.totalSpent - b.totalSpent
-      case "most-policies":
-        return b.totalPolicies - a.totalPolicies
-      case "least-policies":
-        return a.totalPolicies - b.totalPolicies
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       case "alphabetical":
         return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
       default:
@@ -88,11 +140,19 @@ export function UsersSection() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>User Management</CardTitle>
-        <CardDescription>View and manage all registered users ({mockUsers.length} total users)</CardDescription>
+        <CardDescription>View and manage all registered users ({users.length} total users)</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between mb-6">
@@ -114,10 +174,6 @@ export function UsersSection() {
               <SelectContent>
                 <SelectItem value="newest">Newest First</SelectItem>
                 <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="highest-spent">Highest Spent</SelectItem>
-                <SelectItem value="lowest-spent">Lowest Spent</SelectItem>
-                <SelectItem value="most-policies">Most Policies</SelectItem>
-                <SelectItem value="least-policies">Least Policies</SelectItem>
                 <SelectItem value="alphabetical">Alphabetical</SelectItem>
               </SelectContent>
             </Select>
@@ -136,43 +192,27 @@ export function UsersSection() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Join Date</TableHead>
-                <TableHead>Last Policy</TableHead>
-                <TableHead>Policies</TableHead>
-                <TableHead>Total Spent</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.customerId}>
+                <TableRow key={user.userId}>
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {user.firstName} {user.middleName && `${user.middleName} `}
-                        {user.lastName}
+                        {user.firstName} {user.lastName}
                       </div>
                       <div className="text-sm text-gray-500">{user.email}</div>
                     </div>
                   </TableCell>
-                  <TableCell>{user.joinDate}</TableCell>
-                  <TableCell>
-                    {user && user.policies && user.policies.length > 0
-                      ? user.policies
-                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
-                          .createdAt.split(" ")[0]
-                      : "Never"}
-                  </TableCell>
-                  <TableCell>{user.totalPolicies}</TableCell>
-                  <TableCell>£{user.totalSpent.toFixed(2)}</TableCell>
+                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setSelectedUser(user)
-                          setIsUserDialogOpen(true)
-                        }}
+                        onClick={() => handleOpenUserDialog(user)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -206,7 +246,7 @@ export function UsersSection() {
             <DialogHeader>
               <DialogTitle>User Details</DialogTitle>
               <DialogDescription>
-                Detailed information for {selectedUser?.firstName} {selectedUser?.middleName} {selectedUser?.lastName}
+                Detailed information for {selectedUser?.firstName} {selectedUser?.lastName}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6">
@@ -217,32 +257,12 @@ export function UsersSection() {
                     <div className="flex justify-between">
                       <span className="font-medium">Name:</span>
                       <span>
-                        {selectedUser?.firstName} {selectedUser?.middleName} {selectedUser?.lastName}
+                        {selectedUser?.firstName} {selectedUser?.lastName}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Email:</span>
                       <span>{selectedUser?.email}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Phone:</span>
-                      <span>{selectedUser?.phoneNumber}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Date of Birth:</span>
-                      <span>{selectedUser?.dateOfBirth}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Address:</span>
-                      <span className="text-right">{selectedUser?.address}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Postcode:</span>
-                      <span>{selectedUser?.postcode}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Occupation:</span>
-                      <span>{selectedUser?.occupation}</span>
                     </div>
                   </div>
                 </div>
@@ -251,30 +271,14 @@ export function UsersSection() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="font-medium">Join Date:</span>
-                      <span>{selectedUser?.joinDate}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Total Policies:</span>
-                      <span>{selectedUser?.totalPolicies}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Total Spent:</span>
-                      <span>£{selectedUser?.totalSpent?.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">License Type:</span>
-                      <span>{selectedUser?.licenseType}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">License Held:</span>
-                      <span>{selectedUser?.licenseHeld}</span>
+                      <span>{selectedUser?.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString() : ''}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Policy History */}
-              {selectedUser && selectedUser.policies.length > 0 && (
+              {selectedUserPolicies.length > 0 && (
                 <div>
                   <h4 className="font-medium mb-3">Recent Policies</h4>
                   <div className="border rounded-lg">
@@ -288,14 +292,14 @@ export function UsersSection() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedUser.policies.slice(0, 5).map((policy) => (
+                        {selectedUserPolicies.slice(0, 5).map((policy) => (
                           <TableRow key={policy.policyNumber}>
                             <TableCell className="font-medium">{policy.policyNumber}</TableCell>
                             <TableCell>
                               {policy.vehicleMake} {policy.vehicleModel}
                             </TableCell>
-                            <TableCell>{policy.createdAt.split(" ")[0]}</TableCell>
-                            <TableCell>£{policy.premium.toFixed(2)}</TableCell>
+                            <TableCell>{new Date(policy.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell>£{parseFloat(policy.updatePrice).toFixed(2)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

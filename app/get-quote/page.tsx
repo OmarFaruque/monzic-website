@@ -75,15 +75,15 @@ const occupations = [
 ]
 
 // Mock address data for HA35RQ
-// const addressData = {
-//   HA35RQ: [
-//     "1 High Street, Harrow, HA3 5RQ",
-//     "2 High Street, Harrow, HA3 5RQ",
-//     "3 High Street, Harrow, HA3 5RQ",
-//     "4 High Street, Harrow, HA3 5RQ",
-//     "5 High Street, Harrow, HA3 5RQ",
-//   ],
-// }
+const addressData = {
+  HA35RQ: [
+    "1 High Street, Harrow, HA3 5RQ",
+    "2 High Street, Harrow, HA3 5RQ",
+    "3 High Street, Harrow, HA3 5RQ",
+    "4 High Street, Harrow, HA3 5RQ",
+    "5 High Street, Harrow, HA3 5RQ",
+  ],
+}
 
 // Add a new function to calculate the next 5-minute increment time
 const getNext5MinuteTime = () => {
@@ -698,53 +698,70 @@ export default function GetQuotePage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     setIsCalculating(true)
 
-    // Simulate calculation time
-    setTimeout(() => {
-      const calculatedQuote = calculateQuote()
+    const calculatedQuote = calculateQuote()
 
-      // Prepare quote data for checkout
-      const quoteDataForCheckout = {
-        total: calculatedQuote.total,
-        startTime: calculatedQuote.startTime,
-        expiryTime: calculatedQuote.expiryTime,
-        breakdown: {
-          duration: calculatedQuote.breakdown.duration,
-          reason: calculatedQuote.breakdown.reason,
+    const quoteDataForCheckout = {
+      total: calculatedQuote.total,
+      startTime: calculatedQuote.startTime,
+      expiryTime: calculatedQuote.expiryTime,
+      breakdown: {
+        duration: calculatedQuote.breakdown.duration,
+        reason: calculatedQuote.breakdown.reason,
+      },
+      customerData: {
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        dateOfBirth: `${formData.dateOfBirthDay}/${formData.dateOfBirthMonth}/${formData.dateOfBirthYear}`,
+        phoneNumber: formData.phoneNumber,
+        occupation: formData.occupation,
+        address: formData.address,
+        licenseType: formData.licenseType,
+        licenseHeld: formData.licenseHeld,
+        vehicleValue: formData.vehicleValue,
+        reason: formData.reason,
+        duration: formData.duration,
+        registration: registrationFromHome,
+        post_code: formData.postcode,
+        vehicle: {
+          make: vehicle?.make || "Unknown",
+          model: vehicle?.model || "Unknown",
+          year: vehicle?.year || "Unknown",
+          engineCC: "1400", // You can add this to vehicle data if needed
         },
-        customerData: {
-          firstName: formData.firstName,
-          middleName: formData.middleName,
-          lastName: formData.lastName,
-          dateOfBirth: `${formData.dateOfBirthDay}/${formData.dateOfBirthMonth}/${formData.dateOfBirthYear}`,
-          phoneNumber: formData.phoneNumber,
-          occupation: formData.occupation,
-          address: formData.address,
-          licenseType: formData.licenseType,
-          licenseHeld: formData.licenseHeld,
-          vehicleValue: formData.vehicleValue,
-          reason: formData.reason,
-          duration: formData.duration,
-          registration: registrationFromHome,
-          vehicle: {
-            make: vehicle?.make || "Unknown",
-            model: vehicle?.model || "Unknown",
-            year: vehicle?.year || "Unknown",
-            engineCC: "1400", // You can add this to vehicle data if needed
-          },
+      },
+    }
+
+    try {
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ quoteData: quoteDataForCheckout }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create quote');
       }
 
-      // Save quote data to localStorage
-      localStorage.setItem("quoteData", JSON.stringify(quoteDataForCheckout))
+      const newQuote = await response.json();
 
-      setIsCalculating(false)
+
+      // Save quote data to localStorage
+      localStorage.setItem("quoteData", JSON.stringify(newQuote))
 
       // Redirect to checkout page
-      window.location.href = "/checkout"
-    }, 2000)
+      router.push("/quote-checkout")
+    } catch (error) {
+      console.error("Error proceeding to payment:", error);
+      // Handle error appropriately, maybe show a notification to the user
+    } finally {
+      setIsCalculating(false)
+    }
   }
 
   const handleApplyPromo = () => {

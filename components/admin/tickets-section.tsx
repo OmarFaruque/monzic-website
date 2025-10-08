@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,223 +28,41 @@ import {
 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 
-import { getCustomerData } from "@/lib/policy-data"
+type Message = {
+  id: number
+  ticketId: number
+  messageId: string
+  message: string
+  isAdmin: boolean
+  createdAt: string
+  updatedAt: string
+}
 
-// Mock ticket data - now includes contact form submissions
-const mockTickets = [
-  {
-    id: "TKT-001",
-    subject: "Policy Cancellation Request",
-    customer: {
-      name: "John Smith",
-      email: "john.smith@example.com",
-    },
-    status: "Open",
-    priority: "High",
-    category: "Policy",
-    type: "contact_form",
-    createdAt: "2023-05-28T10:30:00",
-    updatedAt: "2023-05-28T14:45:00",
-    unreadMessages: 2,
-    ticketLink: "https://monzic.co.uk/ticket/TKT-001-abc123",
-    messages: [
-      {
-        id: "MSG-001",
-        sender: "customer",
-        content:
-          "I would like to cancel my policy POL-123456 as I've sold my vehicle. Can you please process this and let me know if I'm eligible for any refund?",
-        timestamp: "2023-05-28T10:30:00",
-        read: true,
-        attachments: [
-          {
-            id: "ATT-001",
-            name: "sale_receipt.pdf",
-            size: "245 KB",
-            type: "application/pdf",
-            url: "#",
-          },
-        ],
-      },
-      {
-        id: "MSG-002",
-        sender: "admin",
-        content:
-          "Thank you for your message. I can help you with cancelling your policy. Could you please confirm your policy number and the date you sold the vehicle?",
-        timestamp: "2023-05-28T11:15:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-003",
-        sender: "customer",
-        content: "My policy number is POL-123456 and I sold the vehicle on May 25th, 2023.",
-        timestamp: "2023-05-28T13:20:00",
-        read: false,
-        attachments: [],
-      },
-      {
-        id: "MSG-004",
-        sender: "customer",
-        content: "I've also attached the vehicle transfer document for your reference.",
-        timestamp: "2023-05-28T13:22:00",
-        read: false,
-        attachments: [
-          {
-            id: "ATT-002",
-            name: "transfer_document.pdf",
-            size: "320 KB",
-            type: "application/pdf",
-            url: "#",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "TKT-002",
-    subject: "General Inquiry - AI Document Services",
-    customer: {
-      name: "Sarah Johnson",
-      email: "sarah.j@example.com",
-    },
-    status: "Open",
-    priority: "Medium",
-    category: "General",
-    type: "contact_form",
-    createdAt: "2023-05-27T09:15:00",
-    updatedAt: "2023-05-27T16:30:00",
-    unreadMessages: 0,
-    ticketLink: "https://monzic.co.uk/ticket/TKT-002-def456",
-    messages: [
-      {
-        id: "MSG-005",
-        sender: "customer",
-        content:
-          "Hi, I'm interested in your AI document generation services. Can you tell me more about what types of documents you can create and the pricing?",
-        timestamp: "2023-05-27T09:15:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-006",
-        sender: "admin",
-        content:
-          "Thank you for your interest! Our AI can generate various business documents including contracts, proposals, reports, and marketing materials. Pricing starts at £10 per document. Would you like me to send you our full service catalog?",
-        timestamp: "2023-05-27T10:45:00",
-        read: true,
-        attachments: [],
-      },
-    ],
-  },
-  {
-    id: "TKT-003",
-    subject: "Payment Issue",
-    customer: {
-      name: "Michael Brown",
-      email: "m.brown@example.com",
-    },
-    status: "Pending",
-    priority: "High",
-    category: "Billing",
-    type: "contact_form",
-    createdAt: "2023-05-26T14:20:00",
-    updatedAt: "2023-05-26T17:45:00",
-    unreadMessages: 1,
-    ticketLink: "https://monzic.co.uk/ticket/TKT-003-ghi789",
-    messages: [
-      {
-        id: "MSG-009",
-        sender: "customer",
-        content: "I was charged twice for my policy renewal. Can you please check and refund the extra payment?",
-        timestamp: "2023-05-26T14:20:00",
-        read: true,
-        attachments: [
-          {
-            id: "ATT-003",
-            name: "bank_statement.jpg",
-            size: "180 KB",
-            type: "image/jpeg",
-            url: "#",
-          },
-        ],
-      },
-      {
-        id: "MSG-010",
-        sender: "admin",
-        content:
-          "I apologize for the inconvenience. I can see that there was indeed a duplicate charge on your account. I've initiated a refund for the extra payment, which should be back in your account within 3-5 business days. Please let me know if you don't receive it by then.",
-        timestamp: "2023-05-26T15:30:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-012",
-        sender: "customer",
-        content: "It's been 5 business days and I still haven't received the refund. Can you please check on this?",
-        timestamp: "2023-05-26T17:45:00",
-        read: false,
-        attachments: [],
-      },
-    ],
-  },
-  {
-    id: "TKT-004",
-    subject: "Data Protection Inquiry",
-    customer: {
-      name: "Emma Wilson",
-      email: "emma.w@example.com",
-    },
-    status: "Closed",
-    priority: "Low",
-    category: "Data Protection",
-    type: "contact_form",
-    createdAt: "2023-05-25T11:10:00",
-    updatedAt: "2023-05-25T14:30:00",
-    unreadMessages: 0,
-    ticketLink: "https://monzic.co.uk/ticket/TKT-004-jkl012",
-    messages: [
-      {
-        id: "MSG-013",
-        sender: "customer",
-        content: "I would like to know what personal data you have stored about me and request a copy under GDPR.",
-        timestamp: "2023-05-25T11:10:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-014",
-        sender: "admin",
-        content:
-          "Thank you for your data protection request. I've prepared a comprehensive report of all personal data we have on file for you. Please find it attached. If you have any questions about this data or would like to make any changes, please let me know.",
-        timestamp: "2023-05-25T12:45:00",
-        read: true,
-        attachments: [
-          {
-            id: "ATT-004",
-            name: "personal_data_report.pdf",
-            size: "156 KB",
-            type: "application/pdf",
-            url: "#",
-          },
-        ],
-      },
-      {
-        id: "MSG-015",
-        sender: "customer",
-        content: "Thank you so much! This is exactly what I needed.",
-        timestamp: "2023-05-25T13:20:00",
-        read: true,
-        attachments: [],
-      },
-    ],
-  },
-]
+type Ticket = {
+  id: number
+  user_id: string | null
+  first_name: string
+  last_name: string
+  email: string
+  token: string
+  policy_number: string | null
+  unread: boolean
+  is_closed: boolean
+  subject: string
+  status: string
+  priority: string
+  assigned_to: string | null
+  created_at: string
+  updated_at: string
+  messages: Message[]
+}
 
 export function TicketsSection() {
+  const [tickets, setTickets] = useState<Ticket[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("latest")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedTicket, setSelectedTicket] = useState<any>(null)
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false)
   const [newMessage, setNewMessage] = useState("")
   const [attachments, setAttachments] = useState<File[]>([])
@@ -259,10 +77,39 @@ export function TicketsSection() {
     attachments: [] as File[],
   })
   const [customerSearch, setCustomerSearch] = useState("")
-  const [filteredCustomers, setFilteredCustomers] = useState([])
+  const [filteredCustomers, setFilteredCustomers] = useState<any[]>([])
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
 
-  const mockCustomers = getCustomerData()
+  useEffect(() => {
+    const fetchTickets = async () => {
+      try {
+        const response = await fetch("/api/admin/tickets")
+        if (!response.ok) {
+          throw new Error("Failed to fetch tickets")
+        }
+        const data = await response.json()
+        setTickets(data)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    fetchTickets()
+  }, [])
+
+  const customers = useMemo(() => {
+    const customerMap = new Map()
+    tickets.forEach((ticket) => {
+      if (!customerMap.has(ticket.email)) {
+        customerMap.set(ticket.email, {
+          firstName: ticket.first_name,
+          lastName: ticket.last_name,
+          email: ticket.email,
+        })
+      }
+    })
+    return Array.from(customerMap.values())
+  }, [tickets])
 
   const handleCustomerSearch = (searchTerm: string) => {
     setCustomerSearch(searchTerm)
@@ -273,7 +120,7 @@ export function TicketsSection() {
       return
     }
 
-    const filtered = mockCustomers.filter(
+    const filtered = customers.filter(
       (customer) =>
         customer.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -322,13 +169,13 @@ export function TicketsSection() {
   }
 
   const handleEmailAllCustomers = () => {
-    const allEmails = mockCustomers.map((c) => c.email).join(", ")
+    const allEmails = customers.map((c) => c.email).join(", ")
     setEmailData({ ...emailData, to: allEmails })
     setIsEmailDialogOpen(true)
   }
 
   // Filter and sort tickets
-  const filteredTickets = mockTickets
+  const filteredTickets = tickets
     .filter((ticket) => {
       // Apply status filter
       if (statusFilter !== "all" && ticket.status.toLowerCase() !== statusFilter) {
@@ -337,29 +184,29 @@ export function TicketsSection() {
 
       // Apply search filter
       return (
-        ticket.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+        `${ticket.first_name} ${ticket.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.email.toLowerCase().includes(searchTerm.toLowerCase())
       )
     })
     .sort((a, b) => {
       switch (sortBy) {
         case "latest":
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         case "oldest":
-          return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+          return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
         case "priority-high":
-          const priorityOrder = { High: 3, Medium: 2, Low: 1 }
+          const priorityOrder = { high: 3, normal: 2, low: 1 }
           return (
             priorityOrder[b.priority as keyof typeof priorityOrder] -
             priorityOrder[a.priority as keyof typeof priorityOrder]
           )
         case "priority-low":
-          const priorityOrderReverse = { High: 3, Medium: 2, Low: 1 }
+          const priorityOrderReverse = { low: 3, normal: 2, high: 1 }
           return (
-            priorityOrderReverse[a.priority as keyof typeof priorityOrderReverse] -
-            priorityOrderReverse[b.priority as keyof typeof priorityOrderReverse]
+            priorityOrderReverse[b.priority as keyof typeof priorityOrderReverse] -
+            priorityOrderReverse[a.priority as keyof typeof priorityOrderReverse]
           )
         case "alphabetical":
           return a.subject.localeCompare(b.subject)
@@ -368,62 +215,73 @@ export function TicketsSection() {
       }
     })
 
-  const handleOpenTicket = (ticket: any) => {
-    setSelectedTicket({
-      ...ticket,
-      messages: ticket.messages.map((msg: any) => ({
-        ...msg,
-        read: true,
-      })),
-      unreadMessages: 0,
-    })
-    setIsTicketDialogOpen(true)
-    setNewMessage("")
-    setAttachments([])
+  const handleOpenTicket = async (ticket: Ticket) => {
+    try {
+      const response = await fetch(`/api/admin/tickets/${ticket.id}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch ticket details")
+      }
+      const data = await response.json()
+      setSelectedTicket(data)
+      setIsTicketDialogOpen(true)
+      setNewMessage("")
+      setAttachments([])
 
-    // Scroll to bottom of messages after dialog opens
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }, 100)
+      // Scroll to bottom of messages after dialog opens
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }, 100)
+    } catch (error) {
+      console.error(error)
+      alert("Failed to load ticket details.")
+    }
   }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() && attachments.length === 0) return
+    if (!selectedTicket) return
 
-    // In a real app, you would send the message and attachments to the server
-    // For this demo, we'll just update the local state
-    const newMsg = {
-      id: `MSG-${Math.floor(Math.random() * 1000)}`,
-      sender: "admin",
-      content: newMessage,
-      timestamp: new Date().toISOString(),
-      read: true,
-      attachments: attachments.map((file, index) => ({
-        id: `ATT-${Math.floor(Math.random() * 1000)}`,
-        name: file.name,
-        size: `${Math.round(file.size / 1024)} KB`,
-        type: file.type,
-        url: "#",
-      })),
+    try {
+      // Save the message to the database
+      const response = await fetch(`/api/admin/tickets/${selectedTicket.id}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: newMessage }),
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Failed to send reply")
+      }
+
+      // Send email notification in the background with attachments
+      const formData = new FormData();
+      formData.append("to", selectedTicket.email);
+      formData.append("name", `${selectedTicket.first_name} ${selectedTicket.last_name}`);
+      formData.append("ticketId", selectedTicket.token);
+      formData.append("message", newMessage);
+
+      // Append attachments to the FormData
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+
+      console.log("FormData content:", Array.from(formData.entries()));
+
+      fetch("/api/admin/tickets/send-reply-email", {
+        method: "POST",
+        body: formData,
+      });
+
+      // Refetch ticket data to show the new message
+      await handleOpenTicket(selectedTicket);
+      setNewMessage("");
+      setAttachments([]);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send reply.");
     }
-
-    setSelectedTicket({
-      ...selectedTicket,
-      messages: [...selectedTicket.messages, newMsg],
-      updatedAt: new Date().toISOString(),
-    })
-
-    setNewMessage("")
-    setAttachments([])
-
-    // In a real app, this would trigger an email to the customer with the ticket link
-    console.log("Would send email notification to:", selectedTicket.customer.email)
-    console.log("Ticket link:", selectedTicket.ticketLink)
-
-    // Scroll to bottom after sending message
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }, 100)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,15 +296,19 @@ export function TicketsSection() {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    if (!dateString || isNaN(new Date(dateString).getTime())) {
+      return "Invalid Date"; // Fallback for invalid date values
+    }
+
+    const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(date)
-  }
+    }).format(date);
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
@@ -478,6 +340,9 @@ export function TicketsSection() {
     navigator.clipboard.writeText(ticketLink)
     alert("Ticket link copied to clipboard!")
   }
+
+
+  console.log('selectedText: ', selectedTicket)  // Debugging line
 
   return (
     <Card>
@@ -552,17 +417,17 @@ export function TicketsSection() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {ticket.subject}
-                        {ticket.unreadMessages > 0 && (
+                        {ticket.unread && (
                           <Badge className="bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center p-0 text-xs">
-                            {ticket.unreadMessages}
+                            1
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{ticket.customer.name}</div>
-                        <div className="text-sm text-gray-500">{ticket.customer.email}</div>
+                        <div className="font-medium">{`${ticket.firstName} ${ticket.lastName}`}</div>
+                        <div className="text-sm text-gray-500">{ticket.email}</div>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(ticket.status)}</TableCell>
@@ -579,7 +444,11 @@ export function TicketsSection() {
                           <MessageSquare className="h-4 w-4 mr-2" />
                           View
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => copyTicketLink(ticket.ticketLink)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyTicketLink(`https://monzic.co.uk/ticket/${ticket.token}`)}
+                        >
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Copy Link
                         </Button>
@@ -612,7 +481,11 @@ export function TicketsSection() {
                 <div className="flex items-center gap-2">
                   {selectedTicket && getStatusBadge(selectedTicket.status)}
                   {selectedTicket && getPriorityBadge(selectedTicket.priority)}
-                  <Button variant="outline" size="sm" onClick={() => copyTicketLink(selectedTicket.ticketLink)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyTicketLink(`https://monzic.co.uk/ticket/${selectedTicket.token}`)}
+                  >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Copy Link
                   </Button>
@@ -621,11 +494,13 @@ export function TicketsSection() {
               <DialogDescription>
                 <div className="flex items-center justify-between">
                   <div>
-                    From: {selectedTicket?.customer.name} ({selectedTicket?.customer.email})
+                    From: {selectedTicket?.firstName} {selectedTicket?.lastName} ({selectedTicket?.email})
                   </div>
                   <div>Created: {selectedTicket && formatDate(selectedTicket.createdAt)}</div>
                 </div>
-                <div className="text-sm text-blue-600 mt-1">Customer Link: {selectedTicket?.ticketLink}</div>
+                <div className="text-sm text-blue-600 mt-1">
+                  Customer Link: {selectedTicket && `https://monzic.co.uk/ticket/${selectedTicket.token}`}
+                </div>
               </DialogDescription>
             </DialogHeader>
 
@@ -633,48 +508,25 @@ export function TicketsSection() {
               <div className="flex flex-col flex-1 overflow-hidden">
                 {/* Message Thread */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-md mb-4">
-                  {selectedTicket.messages.map((message: any) => (
+                  {selectedTicket.messages.map((message: Message) => (
                     <div
                       key={message.id}
-                      className={`flex ${message.sender === "admin" ? "justify-end" : "justify-start"}`}
+                      className={`flex ${message.isAdmin ? "justify-end" : "justify-start"}`}
                     >
                       <div
                         className={`max-w-[80%] rounded-lg p-4 ${
-                          message.sender === "admin" ? "bg-blue-100 text-blue-900" : "bg-white border border-gray-200"
+                          message.isAdmin ? "bg-blue-100 text-blue-900" : "bg-white border border-gray-200"
                         }`}
                       >
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-medium">
-                            {message.sender === "admin" ? "Support Agent" : selectedTicket.customer.name}
+                            {message.isAdmin
+                              ? "Support Agent"
+                              : `${selectedTicket.firstName} ${selectedTicket.lastName}`}
                           </span>
-                          <span className="text-xs text-gray-500">{formatDate(message.timestamp)}</span>
+                          <span className="text-xs text-gray-500 ml-2">{formatDate(message.createdAt)}</span>
                         </div>
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-
-                        {/* Attachments */}
-                        {message.attachments && message.attachments.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            <div className="text-xs font-medium text-gray-500">Attachments:</div>
-                            {message.attachments.map((attachment: any) => (
-                              <div
-                                key={attachment.id}
-                                className="flex items-center gap-2 bg-white rounded-md p-2 border border-gray-200"
-                              >
-                                <Paperclip className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm flex-1 truncate">{attachment.name}</span>
-                                <span className="text-xs text-gray-500">{attachment.size}</span>
-                                <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                                    <Eye className="h-3 w-3" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                                    <Download className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <p className="whitespace-pre-wrap">{message.message}</p>
                       </div>
                     </div>
                   ))}
@@ -706,7 +558,7 @@ export function TicketsSection() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="normal">Normal</SelectItem>
                           <SelectItem value="high">High</SelectItem>
                         </SelectContent>
                       </Select>
@@ -805,7 +657,7 @@ export function TicketsSection() {
                   <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {filteredCustomers.map((customer: any) => (
                       <button
-                        key={customer.customerId}
+                        key={customer.email}
                         type="button"
                         onClick={() => selectCustomer(customer)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
