@@ -1,13 +1,9 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { db } from "@/lib/db";
 import { users, quotes } from "@/lib/schema";
 import { eq } from "drizzle-orm";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-10",
-});
+import { settings } from "@/lib/schema";
 
 export async function POST(req: NextRequest) {
   const { quoteData, user } = await req.json();
@@ -17,6 +13,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Fetch the Stripe settings from the database
+    const stripeSettings = await db.select().from(settings).where(eq(settings.param, 'stripe')).limit(1);
+
+    if (!stripeSettings || stripeSettings.length === 0) {
+      return NextResponse.json({ error: "Stripe settings not found." }, { status: 500 });
+    }
+
+    const stripeConfig = JSON.parse(stripeSettings[0].value);
+    const stripeSecretKey = stripeConfig.secretKey;
+
+    if (!stripeSecretKey) {
+      return NextResponse.json({ error: "Stripe secret key not found in settings." }, { status: 500 });
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2024-04-10",
+    });
+
     let stripeCustomerId = user.stripeCustomerId;
 
     if (!stripeCustomerId) {
