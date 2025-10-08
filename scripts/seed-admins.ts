@@ -1,7 +1,7 @@
 
 import { db } from '../lib/db';
 import { admins } from '../lib/schema.ts';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 async function main() {
   const passwordAdmin = await bcrypt.hash('MonzicAdmin2024!', 10);
