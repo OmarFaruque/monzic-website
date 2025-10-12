@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { getPoliciesByEmail } from "@/lib/data"
+import { User } from "@/lib/definitions"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   UserIcon,
@@ -26,6 +26,7 @@ import {
 
 const PoliciesSection = () => {
   const [policies, setPolicies] = useState([])
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -33,27 +34,25 @@ const PoliciesSection = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
-    const fetchPolicies = async () => {
+    const fetchData = async () => {
       try {
-        const userEmail = localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail")
-
-        if (!userEmail) {
-          setError("User not authenticated")
-          setLoading(false)
-          return
+        const response = await fetch("/api/dashboard/policies")
+        if (!response.ok) {
+          throw new Error("Failed to fetch data")
         }
+        const { policies, user } = await response.json()
 
-        const userPolicies = await getPoliciesByEmail(userEmail)
-        setPolicies(userPolicies)
+        setPolicies(policies)
+        setUser(user || null)
         setLoading(false)
       } catch (err) {
-        console.error("Error fetching policies:", err)
-        setError("Failed to load policies. Please try again later.")
+        console.error("Error fetching data:", err)
+        setError("Failed to load data. Please try again later.")
         setLoading(false)
       }
     }
 
-    fetchPolicies()
+    fetchData()
   }, [])
 
   const getStatusColor = (status) => {
@@ -89,9 +88,9 @@ const PoliciesSection = () => {
   const filteredPolicies = policies.filter(
     (policy) =>
       policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      policy.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      policy.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      policy.vehicleReg.toLowerCase().includes(searchTerm.toLowerCase()),
+      policy.vehicleMake.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      policy.vehicleModel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      policy.regNumber.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const formatDate = (dateString) => {
@@ -247,17 +246,17 @@ const PoliciesSection = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600">Registration</span>
-                    <p className="font-medium text-gray-900">{policy.vehicleReg}</p>
+                    <p className="font-medium text-gray-900">{policy.regNumber}</p>
                   </div>
                   <div>
                     <span className="text-gray-600">Make & Model</span>
                     <p className="font-medium text-gray-900">
-                      {policy.make} {policy.model}
+                      {policy.vehicleMake} {policy.vehicleModel}
                     </p>
                   </div>
                   <div>
                     <span className="text-gray-600">Premium</span>
-                    <p className="font-medium text-teal-600 text-lg">£{policy.premium.toFixed(2)}</p>
+                    <p className="font-medium text-teal-600 text-lg">£{policy.quoteData ? JSON.parse(policy.quoteData).total.toFixed(2) : "N/A"}</p>
                   </div>
                 </div>
               </div>
@@ -377,11 +376,11 @@ const PoliciesSection = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Full Name</p>
-                        <p className="font-medium text-gray-900">John Smith</p>
+                        <p className="font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Date of Birth</p>
-                        <p className="font-medium text-gray-900">15/03/1985</p>
+                        <p className="font-medium text-gray-900">{user?.createdAt ? formatDate(user.createdAt) : "N/A"}</p>
                       </div>
                     </div>
 
@@ -389,7 +388,7 @@ const PoliciesSection = () => {
                       <Mail className="w-4 h-4 text-gray-600" />
                       <div>
                         <p className="text-sm text-gray-600">Email Address</p>
-                        <p className="font-medium text-gray-900">john.smith@example.com</p>
+                        <p className="font-medium text-gray-900">{user?.email}</p>
                       </div>
                     </div>
 
@@ -397,7 +396,7 @@ const PoliciesSection = () => {
                       <Phone className="w-4 h-4 text-gray-600" />
                       <div>
                         <p className="text-sm text-gray-600">Phone Number</p>
-                        <p className="font-medium text-gray-900">+44 7123 456789</p>
+                        <p className="font-medium text-gray-900">{user?.phone || "N/A"}</p>
                       </div>
                     </div>
 
@@ -405,8 +404,7 @@ const PoliciesSection = () => {
                       <MapPin className="w-4 h-4 text-gray-600 mt-1" />
                       <div>
                         <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium text-gray-900">123 Example Street, London</p>
-                        <p className="font-medium text-gray-900">SW1A 1AA</p>
+                        <p className="font-medium text-gray-900">{user?.address || "N/A"}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -424,14 +422,14 @@ const PoliciesSection = () => {
                     <div className="grid grid-cols-1 gap-4">
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Registration</p>
-                        <p className="font-medium text-gray-900 text-lg">{selectedPolicy.vehicleReg}</p>
+                        <p className="font-medium text-gray-900 text-lg">{selectedPolicy.regNumber}</p>
                       </div>
                     </div>
 
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <p className="text-sm text-gray-600 mb-1">Make & Model</p>
                       <p className="font-medium text-gray-900 text-lg">
-                        {selectedPolicy.make} {selectedPolicy.model}
+                        {selectedPolicy.vehicleMake} {selectedPolicy.vehicleModel}
                       </p>
                     </div>
                   </CardContent>
@@ -478,7 +476,7 @@ const PoliciesSection = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Amount Paid</p>
-                        <p className="font-medium text-gray-900 text-lg">£{selectedPolicy.premium.toFixed(2)}</p>
+                        <p className="font-medium text-gray-900 text-lg">£{selectedPolicy.quoteData ? JSON.parse(selectedPolicy.quoteData).total.toFixed(2) : "N/A"}</p>
                       </div>
                     </div>
                   </div>

@@ -62,6 +62,10 @@ const DEMO_REGISTRATIONS = [
 ]
 
 export function PoliciesSection() {
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+
+
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("latest")
   const [selectedPolicy, setSelectedPolicy] = useState<any | null>(null)
@@ -466,11 +470,34 @@ export function PoliciesSection() {
 
   const handleUpdatePolicy = async () => {
     if (!editPolicy) return;
+
+    // Map the form state back to the database schema format
+    const policyDataForDb = {
+      firstName: editPolicy.firstName,
+      lastName: editPolicy.lastName,
+      middleName: editPolicy.middleName,
+      phone: editPolicy.phone,
+      dateOfBirth: `${editPolicy.dateOfBirth} 00:00:00`,
+      postCode: editPolicy.postCode,
+      address: editPolicy.address,
+      occupation: editPolicy.occupation,
+      regNumber: editPolicy.regNumber,
+      vehicleMake: editPolicy.vehicleMake,
+      vehicleModel: editPolicy.vehicleModel,
+      vehicleValue: editPolicy.vehicleValue,
+      coverReason: editPolicy.reason,
+      licenceType: editPolicy.licenseType,
+      licencePeriod: editPolicy.licenseHeld,
+      startDate: `${editPolicy.startDate} ${editPolicy.startTime || '00:00'}:00`,
+      endDate: `${editPolicy.endDate} ${editPolicy.endTime || '00:00'}:00`,
+      cpw: String(editPolicy.premium),
+    };
+
     try {
       const response = await fetch("/api/admin/policies", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ policyId: editPolicy.id, policyData: editPolicy }),
+        body: JSON.stringify({ policyId: editPolicy.id, policyData: policyDataForDb }),
       });
       const updatedPolicy = await response.json();
       setPolicies((prev) =>
@@ -544,8 +571,6 @@ export function PoliciesSection() {
   if (error) {
     return <div>{error}</div>;
   }
-
-  console.log('policylist: ', addresses);
 
   return (
     <Card>
@@ -636,11 +661,42 @@ export function PoliciesSection() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          setSelectedPolicy(policy)
-                          setEditFoundVehicle(null)
-                          setEditVehicleLookupError("")
-                          setEditPolicy(policy)
-                          setIsEditDialogOpen(true)
+                          const parseDateTime = (dt) => {
+                            if (!dt || typeof dt !== 'string') return { date: '', time: '' };
+                            const [date, time] = dt.split(' ');
+                            return { date: date || '', time: time ? time.substring(0, 5) : '' };
+                          };
+
+                          setSelectedPolicy(policy);
+                          setEditFoundVehicle(null);
+                          setEditVehicleLookupError("");
+                          setEditPolicy({
+                            id: policy.id,
+                            policyNumber: policy.policyNumber,
+                            firstName: policy.firstName || '',
+                            middleName: policy.middleName || '',
+                            lastName: policy.lastName || '',
+                            email: policy.email || '',
+                            phone: policy.phone || '',
+                            dateOfBirth: parseDateTime(policy.dateOfBirth).date,
+                            postCode: policy.postCode || '',
+                            address: policy.address || '',
+                            occupation: policy.occupation || '',
+                            regNumber: policy.regNumber || '',
+                            vehicleMake: policy.vehicleMake || '',
+                            vehicleModel: policy.vehicleModel || '',
+                            vehicleYear: policy.vehicleYear || '',
+                            vehicleValue: policy.vehicleValue || '',
+                            reason: policy.coverReason || '',
+                            licenseType: policy.licenceType || '',
+                            licenseHeld: policy.licencePeriod || '',
+                            startDate: parseDateTime(policy.startDate).date,
+                            startTime: parseDateTime(policy.startDate).time,
+                            endDate: parseDateTime(policy.endDate).date,
+                            endTime: parseDateTime(policy.endDate).time,
+                            premium: parseFloat(policy.cpw) || 0,
+                          });
+                          setIsEditDialogOpen(true);
                         }}
                       >
                         <Edit className="h-4 w-4" />
@@ -1025,22 +1081,62 @@ export function PoliciesSection() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="editStartTime">Start Time</Label>
-                    <Input
-                      id="editStartTime"
-                      type="time"
-                      value={editPolicy.startTime}
-                      onChange={(e) => setEditPolicy({ ...editPolicy, startTime: e.target.value })}
-                    />
+                    <Label>Start Time</Label>
+                    <div className="flex gap-2">
+                      <Select
+                        value={editPolicy.startTime?.split(':')[0] || ''}
+                        onValueChange={(hour) => {
+                          const minute = editPolicy.startTime?.split(':')[1] || '00';
+                          setEditPolicy({ ...editPolicy, startTime: `${hour}:${minute}` });
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger>
+                        <SelectContent>
+                          {hours.map(h => <SelectItem key={`start-h-${h}`} value={h}>{h}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={editPolicy.startTime?.split(':')[1] || ''}
+                        onValueChange={(minute) => {
+                          const hour = editPolicy.startTime?.split(':')[0] || '00';
+                          setEditPolicy({ ...editPolicy, startTime: `${hour}:${minute}` });
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Minute" /></SelectTrigger>
+                        <SelectContent>
+                          {minutes.map(m => <SelectItem key={`start-m-${m}`} value={m}>{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div>
-                    <Label htmlFor="editEndTime">End Time</Label>
-                    <Input
-                      id="editEndTime"
-                      type="time"
-                      value={editPolicy.endTime}
-                      onChange={(e) => setEditPolicy({ ...editPolicy, endTime: e.target.value })}
-                    />
+                    <Label>End Time</Label>
+                    <div className="flex gap-2">
+                      <Select
+                        value={editPolicy.endTime?.split(':')[0] || ''}
+                        onValueChange={(hour) => {
+                          const minute = editPolicy.endTime?.split(':')[1] || '00';
+                          setEditPolicy({ ...editPolicy, endTime: `${hour}:${minute}` });
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger>
+                        <SelectContent>
+                          {hours.map(h => <SelectItem key={`end-h-${h}`} value={h}>{h}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={editPolicy.endTime?.split(':')[1] || ''}
+                        onValueChange={(minute) => {
+                          const hour = editPolicy.endTime?.split(':')[0] || '00';
+                          setEditPolicy({ ...editPolicy, endTime: `${hour}:${minute}` });
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Minute" /></SelectTrigger>
+                        <SelectContent>
+                          {minutes.map(m => <SelectItem key={`end-m-${m}`} value={m}>{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
                 <div>

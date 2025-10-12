@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
       if (!apiResponse.ok) {
         const errorData = await apiResponse.json().catch(() => ({}));
-        return NextResponse.json({ message: errorData.errorMessage || 'Failed to retrieve vehicle details from MOT API.' }, { status: apiResponse.status });
+        return NextResponse.json({ message: errorData.errorMessage || 'Failed to retrieve vehicle details from MOT API.' }, { status: 400 });
       }
 
       const data = await apiResponse.json();
@@ -129,9 +129,11 @@ export async function POST(request: Request) {
         headers: { 'Accept': 'application/json' },
       });
 
+      console.log('else inside');
+
       if (!apiResponse.ok) {
         const errorData = await apiResponse.json().catch(() => ({}));
-        return NextResponse.json({ message: errorData.errorMessage || 'Failed to retrieve vehicle details.' }, { status: apiResponse.status });
+        return NextResponse.json({ message: errorData.errorMessage || 'Failed to retrieve vehicle details.' }, { status: 400 });
       }
 
       const data = await apiResponse.json();

@@ -25,6 +25,7 @@ import {
   Mail,
   Users,
   ExternalLink,
+  Loader2,
 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 
@@ -79,6 +80,7 @@ export function TicketsSection() {
   const [customerSearch, setCustomerSearch] = useState("")
   const [filteredCustomers, setFilteredCustomers] = useState<any[]>([])
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -140,19 +142,48 @@ export function TicketsSection() {
 
   const handleSendEmail = async () => {
     if (!emailData.to || !emailData.subject || !emailData.message) {
-      alert("Please fill in all required fields")
-      return
+      alert("Please fill in all required fields: To, Subject, and Message.");
+      return;
     }
 
+    setIsSending(true);
+
+    const recipients = emailData.to.split(",").map(email => email.trim()).filter(email => email);
+
+    const emailPromises = recipients.map(recipient => {
+      const formData = new FormData();
+      formData.append('to', recipient);
+      formData.append('subject', emailData.subject);
+      formData.append('message', emailData.message);
+      emailData.attachments.forEach(file => {
+        formData.append('attachments', file);
+      });
+
+      return fetch('/api/send-email', {
+        method: 'POST',
+        body: formData,
+      });
+    });
+
     try {
-      // In a real app, you would send this to your email API
-      console.log("Sending email:", emailData)
-      alert("Email sent successfully!")
-      setIsEmailDialogOpen(false)
-      setEmailData({ to: "", subject: "", message: "", attachments: [] })
-      setCustomerSearch("")
+      const results = await Promise.all(emailPromises);
+      const failedDeliveries = results.filter(res => !res.ok);
+
+      if (failedDeliveries.length > 0) {
+        alert(`Failed to send email to ${failedDeliveries.length} recipient(s). Please check the console for details.`);
+        console.error('Failed deliveries:', failedDeliveries);
+      } else {
+        alert(`Email successfully sent to ${recipients.length} recipient(s).`);
+      }
+
+      setIsEmailDialogOpen(false);
+      setEmailData({ to: "", subject: "", message: "", attachments: [] });
+      setCustomerSearch("");
     } catch (error) {
-      alert("Failed to send email")
+      console.error("Failed to send emails:", error);
+      alert("An error occurred while sending the emails. Please try again.");
+    } finally {
+      setIsSending(false);
     }
   }
 
@@ -341,9 +372,6 @@ export function TicketsSection() {
     alert("Ticket link copied to clipboard!")
   }
 
-
-  console.log('selectedText: ', selectedTicket)  // Debugging line
-
   return (
     <Card>
       <CardHeader>
@@ -352,7 +380,7 @@ export function TicketsSection() {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -426,7 +454,7 @@ export function TicketsSection() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{`${ticket.firstName} ${ticket.lastName}`}</div>
+                        <div className="font-medium">{`${ticket.first_name} ${ticket.last_name}`}</div>
                         <div className="text-sm text-gray-500">{ticket.email}</div>
                       </div>
                     </TableCell>
@@ -435,7 +463,7 @@ export function TicketsSection() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-gray-400" />
-                        <span>{formatDate(ticket.updatedAt)}</span>
+                        <span>{formatDate(ticket.updated_at)}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -678,7 +706,7 @@ export function TicketsSection() {
                   id="emailTo"
                   value={emailData.to}
                   onChange={(e) => setEmailData({ ...emailData, to: e.target.value })}
-                  placeholder="customer@email.com"
+                  placeholder="customer@email.com, another@email.com"
                 />
               </div>
 
@@ -744,9 +772,12 @@ export function TicketsSection() {
               <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSendEmail}>
-                <Send className="h-4 w-4 mr-2" />
-                Send Email
+              <Button onClick={handleSendEmail} disabled={isSending}>
+                {isSending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+                ) : (
+                  <><Send className="h-4 w-4 mr-2" />Send Email</>
+                )}
               </Button>
             </div>
           </DialogContent>

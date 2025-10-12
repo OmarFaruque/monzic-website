@@ -35,8 +35,9 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailTe
   try {
     if (process.env.MAIL_DRIVER === "resend" && resend) {
       // 👉 Production (Resend)
+      const fromAddress = process.env.EMAIL_FROM || "Monzic <onboarding@resend.dev>";
       const data = await resend.emails.send({
-        from: "Monzic <noreply@monzic.co.uk>",
+        from: fromAddress,
         to: [to],
         subject,
         html,

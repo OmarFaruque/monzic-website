@@ -102,10 +102,8 @@ export async function POST(request: Request) {
     }
 
     // Generate a temporary policy number
-    const policyNumber = `Q-${Date.now()}`;
+    const policyNumber = `Q-${Date.now().toString(36).toUpperCase()}`;
 
-
-    console.log('Quote Data:', quoteData);
 
     const newQuote = await db
       .insert(quotes)

@@ -1,4 +1,4 @@
-import type React from "react"
+
 import type { Metadata } from "next"
 import "./globals.css"
 import { AuthProvider } from "@/context/auth"
@@ -10,17 +10,22 @@ import Script from "next/script"
 
 const inter = Inter({ subsets: ["latin"] })
 
+import { getSettings } from "@/lib/database"
+import { SettingsProvider } from "@/context/settings"
+
 export const metadata: Metadata = {
   title: "v0 App",
   description: "Created with v0",
   generator: "v0.dev",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const settings = await getSettings("general")
+
   return (
     <html lang="en">
       <head />
@@ -28,7 +33,9 @@ export default function RootLayout({
         <AuthProvider>
           <AdminAuthProvider>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-              {children}
+              <SettingsProvider settings={settings}>
+                {children}
+              </SettingsProvider>
               <Toaster />
             </ThemeProvider>
           </AdminAuthProvider>

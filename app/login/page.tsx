@@ -1,11 +1,12 @@
 "use client"
 
-import type React from "react"
+
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
+import { useAuth } from "@/context/auth"
 import { Mail, User, ArrowRight, Shield, Clock, RefreshCw, Menu, X } from "lucide-react"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
@@ -13,9 +14,13 @@ import { useRouter } from "next/navigation"
 
 
 
+import { useSettings } from "@/context/settings"
+
 export default function LoginPage() {
+  const { isAuthenticated, login, user } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [showVerification, setShowVerification] = useState(false)
+  const settings = useSettings()
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""])
@@ -40,6 +45,7 @@ export default function LoginPage() {
 
   // Timer for verification resend
   useEffect(() => {
+    
     let interval: NodeJS.Timeout
     if (showVerification && timeLeft > 0) {
       interval = setInterval(() => {
@@ -63,8 +69,6 @@ export default function LoginPage() {
       [field]: value,
     }))
   }
-
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -171,6 +175,9 @@ export default function LoginPage() {
       return;
     }
 
+
+
+
     try {
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
@@ -178,14 +185,18 @@ export default function LoginPage() {
         body: JSON.stringify({ email: userEmail, code }),
       });
       
+      const data = await response.json();
+
+      console.log('data: ', data)
 
       if (!response.ok) {
         showError("Verification Failed", "An unknown error occurred.");
         setVerificationCode(["", "", "", "", "", ""]);
         document.getElementById("code-0")?.focus();
       } else {
+        login({ user: data.user, token: data.token });
+        showSuccess("Email Verified!", "Your account is now active. Proceeding to payment...");
         router.push("/dashboard");
-
       }
     } catch (error) {
       console.error("Verification submission error:", error);
@@ -234,7 +245,7 @@ export default function LoginPage() {
       <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-md relative">
         <div className="flex items-center">
           <Link href="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            MONZIC
+            {settings?.siteName || "MONZIC"}
           </Link>
         </div>
 
@@ -290,7 +301,7 @@ export default function LoginPage() {
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
             {/* Form Header */}
             <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-6 text-white text-center">
-              <h2 className="text-2xl font-bold mb-2">{isLogin ? "Welcome Back" : "Join MONZIC"}</h2>
+              <h2 className="text-2xl font-bold mb-2">{isLogin ? "Welcome Back" : `Join ${settings?.siteName || 'MONZIC'}`}</h2>
               <p className="text-teal-100 text-sm">
                 {isLogin ? "Sign in to your account" : "Create your account to get started"}
               </p>
@@ -534,7 +545,7 @@ export default function LoginPage() {
             </Link>
           </div>
           <div className="text-center mt-2 text-xs text-teal-100">
-            © 2025 Monzic Solutions Ltd. All rights reserved.
+            © 2025 {settings?.siteName || "Monzic Solutions Ltd."}. All rights reserved.
           </div>
         </div>
       </footer>

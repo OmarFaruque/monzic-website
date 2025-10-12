@@ -25,7 +25,7 @@ import { AnalyticsSection } from "@/components/admin/analytics-section"
 import { CouponsSection } from "@/components/admin/coupons-section"
 import { BlacklistSection } from "@/components/admin/blacklist-section"
 import { AdminsSection } from "@/components/admin/admins-section"
-import { AiConfigSection } from "@/components/admin/ai-config-section"
+
 import { SettingsSection } from "@/components/admin/settings-section"
 import { useTickets } from "@/hooks/use-tickets"
 import { useAdminAuth } from "@/context/admin-auth"
@@ -41,7 +41,6 @@ const navigationItems = [
   { id: "coupons", label: "Coupons", icon: Tag },
   { id: "blacklist", label: "Blacklist", icon: Shield },
   { id: "admins", label: "Admins", icon: UserCheck },
-  { id: "ai-config", label: "AI Config", icon: Brain },
   { id: "settings", label: "Settings", icon: Settings },
 ]
 
@@ -87,8 +86,6 @@ export function AdminDashboardClient({ statsData, recentActivityData, systemStat
         return <BlacklistSection blacklistData={blacklistData} />
       case "admins":
         return <AdminsSection />
-      case "ai-config":
-        return <AiConfigSection />
       case "settings":
         return <SettingsSection />
       default:

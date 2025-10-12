@@ -2,28 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useNotifications } from "@/hooks/use-notifications"
 import { User, Mail, Phone, MapPin, Lock, Save, Eye, EyeOff } from "lucide-react"
 
-// Mock user data
-const mockUserData = {
-  firstName: "John",
-  lastName: "Doe",
-  email: "john.doe@example.com",
-  phone: "+44 7700 900123",
-  address: {
-    street: "123 Main Street",
-    city: "London",
-    postcode: "SW1A 1AA",
-    country: "United Kingdom",
-  },
-}
-
 export function AccountSection() {
-  const [userData, setUserData] = useState(mockUserData)
+  const [userData, setUserData] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
@@ -34,22 +20,20 @@ export function AccountSection() {
   })
   const { showSuccess, showError } = useNotifications()
 
-  const handleInputChange = (field: string, value: string) => {
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".")
-      setUserData({
-        ...userData,
-        [parent]: {
-          ...userData[parent as keyof typeof userData],
-          [child]: value,
-        },
-      })
-    } else {
-      setUserData({
-        ...userData,
-        [field]: value,
-      })
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await fetch("/api/user")
+      const data = await response.json()
+      setUserData(data.user)
     }
+    fetchData()
+  }, [])
+
+  const handleInputChange = (field: string, value: string) => {
+    setUserData({
+      ...userData,
+      [field]: value,
+    })
   }
 
   const handlePasswordChange = (field: string, value: string) => {
@@ -59,10 +43,21 @@ export function AccountSection() {
     })
   }
 
-  const handleSaveChanges = () => {
-    showSuccess("Profile Updated", "Your account information has been updated successfully.", 3000)
-    setIsEditing(false)
-    console.log("Updated user data:", userData)
+  const handleSaveChanges = async () => {
+    const response = await fetch("/api/user", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    })
+
+    if (response.ok) {
+      showSuccess("Profile Updated", "Your account information has been updated successfully.", 3000)
+      setIsEditing(false)
+    } else {
+      showError("Update Failed", "Failed to update your account information.")
+    }
   }
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -85,6 +80,10 @@ export function AccountSection() {
       newPassword: "",
       confirmPassword: "",
     })
+  }
+
+  if (!userData) {
+    return <div>Loading...</div>
   }
 
   return (
@@ -116,7 +115,7 @@ export function AccountSection() {
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="text"
-                  value={userData.firstName}
+                  value={userData.firstName || ''}
                   onChange={(e) => handleInputChange("firstName", e.target.value)}
                   disabled={!isEditing}
                   className={`pl-10 ${!isEditing ? "bg-gray-50 text-gray-500" : ""}`}
@@ -129,7 +128,7 @@ export function AccountSection() {
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="text"
-                  value={userData.lastName}
+                  value={userData.lastName || ''}
                   onChange={(e) => handleInputChange("lastName", e.target.value)}
                   disabled={!isEditing}
                   className={`pl-10 ${!isEditing ? "bg-gray-50 text-gray-500" : ""}`}
@@ -142,7 +141,7 @@ export function AccountSection() {
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="email"
-                  value={userData.email}
+                  value={userData.email || ''}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   disabled={!isEditing}
                   className={`pl-10 ${!isEditing ? "bg-gray-50 text-gray-500" : ""}`}
@@ -155,10 +154,9 @@ export function AccountSection() {
                 <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="tel"
-                  value={userData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  disabled={!isEditing}
-                  className={`pl-10 ${!isEditing ? "bg-gray-50 text-gray-500" : ""}`}
+                  value={userData.phone || "N/A"}
+                  disabled
+                  className={`pl-10 bg-gray-50 text-gray-500`}
                 />
               </div>
             </div>
@@ -166,62 +164,10 @@ export function AccountSection() {
         </div>
       </div>
 
-      {/* Address Information */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Address Information</h2>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  type="text"
-                  value={userData.address.street}
-                  onChange={(e) => handleInputChange("address.street", e.target.value)}
-                  disabled={!isEditing}
-                  className={`pl-10 ${!isEditing ? "bg-gray-50 text-gray-500" : ""}`}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-              <Input
-                type="text"
-                value={userData.address.city}
-                onChange={(e) => handleInputChange("address.city", e.target.value)}
-                disabled={!isEditing}
-                className={!isEditing ? "bg-gray-50 text-gray-500" : ""}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Postcode</label>
-              <Input
-                type="text"
-                value={userData.address.postcode}
-                onChange={(e) => handleInputChange("address.postcode", e.target.value)}
-                disabled={!isEditing}
-                className={!isEditing ? "bg-gray-50 text-gray-500" : ""}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-              <Input
-                type="text"
-                value={userData.address.country}
-                onChange={(e) => handleInputChange("address.country", e.target.value)}
-                disabled={!isEditing}
-                className={!isEditing ? "bg-gray-50 text-gray-500" : ""}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* Change Password */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      {/* <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-900">Change Password</h2>
         </div>
@@ -289,7 +235,7 @@ export function AccountSection() {
             </div>
           </form>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }

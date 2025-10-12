@@ -298,6 +298,7 @@ export default function CheckoutPage() {
     e.preventDefault()
     const code = verificationCode.join("");
 
+    console.log('code inside verrifycation submit: ', code)
     if (code.length !== 6) {
       addNotification({type: "warning", title: "Incomplete Code", message: "Please enter the complete 6-digit verification code."});
       return;

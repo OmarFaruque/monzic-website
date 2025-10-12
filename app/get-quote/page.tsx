@@ -1,8 +1,8 @@
 "use client"
 
-import type React from "react"
 
-import { useState, useEffect } from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
@@ -32,58 +32,7 @@ const vehicleData = {
   },
 }
 
-// Mock occupation data
-const occupations = [
-  "Accountant",
-  "Actor",
-  "Architect",
-  "Artist",
-  "Baker",
-  "Barber",
-  "Carpenter",
-  "Chef",
-  "Dentist",
-  "Designer",
-  "Doctor",
-  "Driver",
-  "Electrician",
-  "Engineer",
-  "Farmer",
-  "Firefighter",
-  "Journalist",
-  "Lawyer",
-  "Manager",
-  "Mechanic",
-  "Nurse",
-  "Pharmacist",
-  "Photographer",
-  "Pilot",
-  "Plumber",
-  "Police Officer",
-  "Professor",
-  "Programmer",
-  "Receptionist",
-  "Retired",
-  "Sales Representative",
-  "Scientist",
-  "Self Employed",
-  "Student",
-  "Teacher",
-  "Veterinarian",
-  "Waiter/Waitress",
-  "Writer",
-]
-
-// Mock address data for HA35RQ
-const addressData = {
-  HA35RQ: [
-    "1 High Street, Harrow, HA3 5RQ",
-    "2 High Street, Harrow, HA3 5RQ",
-    "3 High Street, Harrow, HA3 5RQ",
-    "4 High Street, Harrow, HA3 5RQ",
-    "5 High Street, Harrow, HA3 5RQ",
-  ],
-}
+import { occupation_list } from "@/lib/occupation";
 
 // Add a new function to calculate the next 5-minute increment time
 const getNext5MinuteTime = () => {
@@ -153,7 +102,7 @@ export default function GetQuotePage() {
   const [vehicle, setVehicle] = useState(null)
   const [addresses, setAddresses] = useState([])
   const [showAddresses, setShowAddresses] = useState(false)
-  const [filteredOccupations, setFilteredOccupations] = useState(occupations)
+  const [filteredOccupations, setFilteredOccupations] = useState(occupation_list)
   const [showOccupationDropdown, setShowOccupationDropdown] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [quote, setQuote] = useState(null)
@@ -184,6 +133,8 @@ export default function GetQuotePage() {
     country: "United Kingdom",
   })
   const [sameBillingAddress, setSameBillingAddress] = useState(true)
+  const [reviewStartTime, setReviewStartTime] = useState(null);
+  const [reviewExpiryTime, setReviewExpiryTime] = useState(null);
   // 1. Add a new state for showing time selection:
   const [showTimeSelection, setShowTimeSelection] = useState(false)
 
@@ -285,7 +236,7 @@ export default function GetQuotePage() {
 
     // Filter occupations when typing in occupation field
     if (field === "occupation") {
-      const filtered = occupations.filter((job) => job.toLowerCase().includes(value.toString().toLowerCase()))
+      const filtered = occupation_list.filter((job) => job.desc.toLowerCase().includes(value.toString().toLowerCase()))
       setFilteredOccupations(filtered)
       setShowOccupationDropdown(true)
     }
@@ -509,6 +460,22 @@ export default function GetQuotePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const calculatedQuote = calculateQuote();
+    setQuote(calculatedQuote);
+
+    const startTime = getNext5MinuteTime();
+    const expiryTime = new Date(startTime);
+    const durationValue = Number.parseInt(formData.duration.split(" ")[0]);
+    if (formData.durationType === "Hours") {
+      expiryTime.setHours(expiryTime.getHours() + durationValue);
+    } else if (formData.durationType === "Days") {
+      expiryTime.setDate(expiryTime.getDate() + durationValue);
+    } else {
+      expiryTime.setDate(expiryTime.getDate() + durationValue * 7);
+    }
+    setReviewStartTime(formatDateTime(startTime));
+    setReviewExpiryTime(formatDateTime(expiryTime));
+
     setShowReview(true)
     // Scroll to top on mobile
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -521,8 +488,8 @@ export default function GetQuotePage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const selectOccupation = (occupation: string) => {
-    handleInputChange("occupation", occupation)
+  const selectOccupation = (occupation: any) => {
+    handleInputChange("occupation", occupation.desc)
     setShowOccupationDropdown(false)
   }
 
@@ -802,35 +769,6 @@ export default function GetQuotePage() {
     alert("Purchase successful! Your covernote will be emailed to you shortly.")
   }
 
-  // 5. Update the handleAutofill function to include the new fields:
-  const handleAutofill = () => {
-    setFormData({
-      firstName: "John",
-      middleName: "",
-      lastName: "Doe",
-      dateOfBirthDay: "01",
-      dateOfBirthMonth: "01",
-      dateOfBirthYear: "1990",
-      phoneNumber: "07123456789",
-      occupation: "Accountant",
-      postcode: "HA35RQ",
-      address: "1 High Street, Harrow, HA3 5RQ",
-      licenseType: "Full UK License",
-      licenseHeld: "10+ Years",
-      vehicleValue: "£10,000 - £20,000",
-      reason: "Borrowing",
-      durationType: "Hours",
-      duration: "1 hour",
-      showDurationDropdown: false,
-      startDate: "Immediate Start",
-      startTime: "",
-      startHour: "",
-      startMinute: "",
-    })
-    setAddresses(addressData["HA35RQ"])
-    setShowAddresses(true)
-  }
-
   const toggleSummary = () => {
     setShowSummary(!showSummary)
   }
@@ -854,6 +792,9 @@ export default function GetQuotePage() {
       }
     }
   }
+
+  const monthInputRef = useRef<HTMLInputElement>(null);
+  const yearInputRef = useRef<HTMLInputElement>(null);
 
   // If redirecting, show loading state
   if (!registrationFromHome) {
@@ -933,9 +874,7 @@ export default function GetQuotePage() {
                   <div className="text-base sm:text-lg font-semibold text-gray-900">{vehicle?.model || "Unknown"}</div>
                 </div>
               </div>
-              <Button onClick={handleAutofill} className="mt-4">
-                Auto-fill Form
-              </Button>
+              
             </div>
           )}
 
@@ -1133,29 +1072,11 @@ export default function GetQuotePage() {
                     </div>
                     <div className="flex justify-between text-sm sm:text-base">
                       <span className="text-gray-600">Start Time:</span>
-                      <span className="font-medium text-right">{formatDateTime(getNext5MinuteTime())}</span>
+                      <span className="font-medium text-right">{reviewStartTime}</span>
                     </div>
                     <div className="flex justify-between text-sm sm:text-base">
                       <span className="text-gray-600">Expiry Time:</span>
-                      <span className="font-medium text-right">
-                        {(() => {
-                          const startTime = getNext5MinuteTime()
-                          const expiryTime = new Date(startTime)
-
-                          // Add duration
-                          const durationValue = Number.parseInt(formData.duration.split(" ")[0])
-                          if (formData.durationType === "Hours") {
-                            expiryTime.setHours(expiryTime.getHours() + durationValue)
-                          } else if (formData.durationType === "Days") {
-                            expiryTime.setDate(expiryTime.getDate() + durationValue)
-                          } else {
-                            // Weeks
-                            expiryTime.setDate(expiryTime.getDate() + durationValue * 7)
-                          }
-
-                          return formatDateTime(expiryTime)
-                        })()}
-                      </span>
+                      <span className="font-medium text-right">{reviewExpiryTime}</span>
                     </div>
                     <div className="flex justify-between text-sm sm:text-base">
                       <span className="text-gray-600">Reason:</span>
@@ -1189,7 +1110,7 @@ export default function GetQuotePage() {
                   <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-4 sm:p-6">
                     <div className="text-center">
                       <div className="text-2xl sm:text-3xl font-bold text-teal-600 mb-2">
-                        £{calculateQuote().total.toFixed(2)}
+                        £{quote?.total.toFixed(2)}
                       </div>
                       <div className="text-sm sm:text-base text-gray-700">Calculated Premium</div>
                     </div>
@@ -1558,6 +1479,9 @@ export default function GetQuotePage() {
                             const value = e.target.value.replace(/\D/g, "").slice(0, 2)
                             handleInputChange("dateOfBirthDay", value)
                             validateAge(value, formData.dateOfBirthMonth, formData.dateOfBirthYear)
+                            if (value.length === 2) {
+                              monthInputRef.current?.focus()
+                            }
                           }}
                           className="w-full h-10 sm:h-12 text-sm sm:text-base"
                           placeholder="DD"
@@ -1567,12 +1491,19 @@ export default function GetQuotePage() {
                       </div>
                       <div>
                         <Input
+                          ref={monthInputRef}
                           type="text"
                           value={formData.dateOfBirthMonth}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, "").slice(0, 2)
+                            let value = e.target.value.replace(/\D/g, "").slice(0, 2)
+                            if (parseInt(value, 10) > 12) {
+                              value = "12"
+                            }
                             handleInputChange("dateOfBirthMonth", value)
                             validateAge(formData.dateOfBirthDay, value, formData.dateOfBirthYear)
+                            if (value.length === 2) {
+                              yearInputRef.current?.focus()
+                            }
                           }}
                           className="w-full h-10 sm:h-12 text-sm sm:text-base"
                           placeholder="MM"
@@ -1582,6 +1513,7 @@ export default function GetQuotePage() {
                       </div>
                       <div>
                         <Input
+                          ref={yearInputRef}
                           type="text"
                           value={formData.dateOfBirthYear}
                           onChange={(e) => {
@@ -1615,12 +1547,12 @@ export default function GetQuotePage() {
                       <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                         {filteredOccupations.slice(0, 10).map((occupation) => (
                           <button
-                            key={occupation}
+                            key={occupation.id}
                             type="button"
                             onClick={() => selectOccupation(occupation)}
                             className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm sm:text-base"
                           >
-                            {occupation}
+                            {occupation.desc}
                           </button>
                         ))}
                       </div>

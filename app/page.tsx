@@ -1,11 +1,12 @@
 "use client"
 
-import type React from "react"
+
 
 import { useState, useCallback, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Check, Menu, X } from "lucide-react"
+import { Check, Menu, X } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
@@ -13,6 +14,8 @@ import { checkBlacklist } from "@/lib/blacklist"
 import { useAuth } from "@/context/auth"
 import Cookies from "js-cookie"; // Import js-cookie at the top
 import { Loader2 } from "lucide-react"
+
+import { useSettings } from "@/context/settings"
 
 export default function MonzicHomepage() {
   const [message, setMessage] = useState("")
@@ -22,6 +25,7 @@ export default function MonzicHomepage() {
   const [loading, setLoading] = useState(false); // State for loading
   const router = useRouter()
   const { notifications, removeNotification, showError } = useNotifications()
+  const settings = useSettings()
 
 
 
@@ -71,8 +75,14 @@ export default function MonzicHomepage() {
         });
 
         if (!vehicleResponse.ok) {
-          // If the API returns an error (e.g., 404 Not Found), show an error.
-          const errorData = await vehicleResponse.json();
+          
+          let errorData = { message: "Vehicle registration not found. Please check and try again." };
+          try {
+            errorData = await vehicleResponse.json();
+          } catch (e) {
+            // Ignore JSON parsing error if the response body is empty
+          }
+          setLoading(false);
           showError("Vehicle Not Found", errorData.message || "Vehicle registration not found. Please check and try again.");
           return;
         }
@@ -122,10 +132,10 @@ export default function MonzicHomepage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-          <span className="text-gray-600">Loading...</span>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-teal-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500 mx-auto"></div>
+          <p className="mt-4 text-teal-700">Loading...</p>
         </div>
       </div>
     )
@@ -138,8 +148,8 @@ export default function MonzicHomepage() {
         <div className="flex justify-between items-center">
           <div className="flex items-center">
             <Link href="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-              MONZIC
-            </Link>
+            {settings?.siteName || 'MONZIC'}
+          </Link>
           </div>
 
           {/* Desktop Navigation */}
@@ -220,17 +230,22 @@ export default function MonzicHomepage() {
       <main className="flex-1 flex flex-col items-center justify-start px-4 sm:px-6 py-6 sm:py-8 bg-teal-50">
         <div className="w-full max-w-sm sm:max-w-md text-center space-y-6 sm:space-y-8">
           {/* Logo */}
-          <div className="flex flex-col items-center space-y-3 sm:space-y-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-teal-600 rounded-full flex items-center justify-center">
-              <span className="text-xl sm:text-2xl font-bold text-white">M</span>
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative w-48 h-12 sm:w-56 sm:h-14">
+              <Image
+                src="/tempnow-logo-horizontal.png"
+                alt={`${settings.siteName} Logo`}
+                fill
+                style={{ objectFit: "contain" }}
+              />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-teal-600">MONZIC</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-teal-600">{settings?.siteName || 'MONZIC'}</h1>
           </div>
 
           {/* Main Heading */}
           <div className="space-y-2">
             <h2 className="text-lg sm:text-xl font-medium text-teal-700 px-2">Affordable, Lightning-Fast Delivery</h2>
-            <p className="text-base sm:text-lg text-teal-500">Only at Monzic</p>
+            <p className="text-base sm:text-lg text-teal-500">Only at {settings?.siteName || 'Monzic'}</p>
           </div>
 
           {/* Message Display */}
@@ -322,7 +337,7 @@ export default function MonzicHomepage() {
               Return Policy
             </Link>
           </div>
-          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 MONZIC. All rights reserved.</div>
+          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 {settings?.siteName || 'MONZIC'}. All rights reserved.</div>
         </div>
       </footer>
 

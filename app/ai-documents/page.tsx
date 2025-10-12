@@ -47,6 +47,8 @@ import Airwallex from "airwallex-payment-elements";
 
 import { PaymentForm, CreditCard as SquareCreditCard } from 'react-square-web-payments-sdk';
 
+import { useSettings } from "@/context/settings";
+
 function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }) {
   const [documentRequest, setDocumentRequest] = useState("");
   const [generatedText, setGeneratedText] = useState("");
@@ -55,6 +57,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
   const [discountCode, setDiscountCode] = useState("");
+  const settings = useSettings();
   const [appliedDiscount, setAppliedDiscount] = useState(null);
   const [expandedSection, setExpandedSection] = useState("");
   const { isAuthenticated, user } = useAuth();
@@ -690,7 +693,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
               href="/"
               className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors"
             >
-              MONZIC
+              {settings?.siteName}
             </Link>
           </div>
 
@@ -1490,7 +1493,7 @@ export default function AIDocumentsPageWrapper() {
         const response = await fetch("/api/settings/payment");
         const data = await response.json();
         if (response.ok) {
-          let paymentProvider = JSON.parse(data.paymentProvider);
+          let paymentProvider = data.paymentProvider;
           setPaymentProvider(paymentProvider.activeProcessor);
         } else {
           console.error("Failed to fetch payment provider");
