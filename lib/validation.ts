@@ -16,13 +16,7 @@ export const userRegistrationSchema = z
     firstName: nameSchema,
     lastName: nameSchema,
     email: emailSchema,
-    password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password too long"),
-    confirmPassword: z.string(),
     phoneNumber: phoneSchema.optional(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
   })
 
 // Quote form validation

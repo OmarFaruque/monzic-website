@@ -20,62 +20,14 @@ import {
 } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
-// Mock analytics data with current dates
-const mockAnalytics = {
-  overview: {
-    totalUsers: 1247,
-    totalPolicies: 892,
-    totalRevenue: 23456.78,
-    trends: {
-      users: 12.5,
-      policies: 8.3,
-      revenue: 15.7,
-    },
-  },
-  salesData: {
-    daily: [
-      { date: "01/06/2025", sales: 856.5, policies: 32 },
-      { date: "02/06/2025", sales: 1024.75, policies: 38 },
-      { date: "03/06/2025", sales: 945.25, policies: 35 },
-      { date: "04/06/2025", sales: 1156.8, policies: 42 },
-      { date: "05/06/2025", sales: 1087.45, policies: 39 },
-      { date: "06/06/2025", sales: 1134.6, policies: 41 },
-      { date: "07/06/2025", sales: 1245.9, policies: 44 },
-    ],
-    weekly: [
-      { period: "Week 1", sales: 6789.45, policies: 245 },
-      { period: "Week 2", sales: 6234.8, policies: 221 },
-      { period: "Week 3", sales: 7456.25, policies: 267 },
-      { period: "Week 4", sales: 4976.28, policies: 159 },
-    ],
-    monthly: [
-      { period: "Oct 2024", sales: 22456.78, policies: 834 },
-      { period: "Nov 2024", sales: 21234.45, policies: 798 },
-      { period: "Dec 2024", sales: 23456.78, policies: 892 },
-      { period: "Jan 2025", sales: 22789.34, policies: 823 },
-    ],
-  },
-  topSpenders: [
-    { name: "John Smith", email: "john.smith@email.com", totalSpent: 2456.78, policies: 12 },
-    { name: "Sarah Johnson", email: "sarah.j@email.com", totalSpent: 1987.45, policies: 8 },
-    { name: "Michael Brown", email: "m.brown@email.com", totalSpent: 1756.23, policies: 9 },
-    { name: "Emma Wilson", email: "emma.w@email.com", totalSpent: 1534.67, policies: 7 },
-    { name: "David Lee", email: "david.l@email.com", totalSpent: 1423.89, policies: 6 },
-  ],
-  recentActivity: [
-    { type: "policy_created", user: "john.smith@email.com", amount: 25.5, timestamp: Date.now() - 1000 * 60 * 15 },
-    { type: "payment_completed", user: "sarah.j@email.com", amount: 18.75, timestamp: Date.now() - 1000 * 60 * 32 },
-    { type: "user_registered", user: "mike.w@email.com", amount: 0, timestamp: Date.now() - 1000 * 60 * 45 },
-    { type: "policy_created", user: "emma.davis@email.com", amount: 32.25, timestamp: Date.now() - 1000 * 60 * 67 },
-    { type: "payment_failed", user: "test@example.com", amount: 15.5, timestamp: Date.now() - 1000 * 60 * 89 },
-  ],
-}
 
-export function AnalyticsSection() {
+export function AnalyticsSection({ analyticsData }: { analyticsData: any }) {
   const [timeRange, setTimeRange] = useState("daily")
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
-  const [analytics, setAnalytics] = useState(mockAnalytics)
+
+  // The component now uses the analyticsData prop instead of state
+  const analytics = analyticsData;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-GB", {

@@ -23,8 +23,7 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const expiresAt = new Date(user.verificationCodeExpiresAt);
-    console.log("Current time for verification:", now.toISOString());
-    console.log("Expiration time from DB:", expiresAt.toISOString());
+    
 
     if (now > expiresAt) {
       return NextResponse.json({ success: false, error: "Verification code has expired." }, { status: 410 });
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
       .where(eq(users.userId, user.userId));
 
     // Generate and return a JWT for the now-verified user
-    const token = sign({ userId: user.userId, email: user.email, firstName: user.firstName, lastName: user.lastName, role: 'user' }, process.env.JWT_SECRET!, { expiresIn: "24h" });
+    const token = sign({ id: user.userId, email: user.email, firstName: user.firstName, lastName: user.lastName, role: 'user' }, process.env.JWT_SECRET!, { expiresIn: "24h" });
 
 
 

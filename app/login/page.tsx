@@ -6,48 +6,36 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Shield, Clock, RefreshCw, KeyRound, Menu, X } from "lucide-react"
+import { Mail, User, ArrowRight, Shield, Clock, RefreshCw, Menu, X } from "lucide-react"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/context/auth"
 
-// Test accounts for validation
-const TEST_ACCOUNTS = [
-  { email: "test@monzic.com", password: "test123", isAdmin: false },
-  { email: "admin@monzic.com", password: "admin123", isAdmin: true },
-  { email: "user@monzic.com", password: "user123", isAdmin: false },
-]
+
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showVerification, setShowVerification] = useState(false)
-  const [showForgotPassword, setShowForgotPassword] = useState(false)
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""])
   const [timeLeft, setTimeLeft] = useState(60)
   const [canResend, setCanResend] = useState(false)
   const [userEmail, setUserEmail] = useState("")
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("")
-  const [resetTimeLeft, setResetTimeLeft] = useState(60)
-  const [canResendReset, setCanResendReset] = useState(false)
-  const [resetRequestSubmitted, setResetRequestSubmitted] = useState(false)
+
+
+
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     agreeToTerms: false,
   })
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [currentUser, setCurrentUser] = useState<(typeof TEST_ACCOUNTS)[0] | null>(null)
 
   const router = useRouter()
-  const { login } = useAuth()
   const { notifications, removeNotification, showSuccess, showError, showInfo, showWarning } = useNotifications()
 
   // Timer for verification resend
@@ -67,22 +55,7 @@ export default function LoginPage() {
     return () => clearInterval(interval)
   }, [showVerification, timeLeft])
 
-  // Timer for password reset resend
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (showForgotPassword && resetRequestSubmitted && resetTimeLeft > 0) {
-      interval = setInterval(() => {
-        setResetTimeLeft((time) => {
-          if (time <= 1) {
-            setCanResendReset(true)
-            return 0
-          }
-          return time - 1
-        })
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [showForgotPassword, resetRequestSubmitted, resetTimeLeft])
+
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({
@@ -91,28 +64,14 @@ export default function LoginPage() {
     }))
   }
 
-  // Validate credentials against test accounts
-  const validateCredentials = (email: string, password: string) => {
-    const account = TEST_ACCOUNTS.find((acc) => acc.email.toLowerCase() === email.toLowerCase())
 
-    if (!account) {
-      return { valid: false, message: "Account not found. Please check your email." }
-    }
-
-    if (account.password !== password) {
-      return { valid: false, message: "Incorrect password. Please try again." }
-    }
-
-    return { valid: true, account }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // Validate form
-      if (!formData.email || !formData.password) {
+      if (!formData.email) {
         showError("Missing Information", "Please fill in all required fields.")
         setIsLoading(false)
         return
@@ -120,11 +79,6 @@ export default function LoginPage() {
 
        // --- REGISTRATION LOGIC ---
       if (!isLogin) {
-        if (formData.password !== formData.confirmPassword) {
-          showError("Password Mismatch", "The passwords you entered do not match.");
-          setIsLoading(false);
-          return;
-        }
         if (!formData.agreeToTerms) {
           showWarning("Terms Required", "Please agree to the Terms of Service and Privacy Policy.");
           setIsLoading(false);
@@ -138,60 +92,43 @@ export default function LoginPage() {
             firstName: formData.firstName,
             lastName: formData.lastName,
             email: formData.email,
-            password: formData.password,
           }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-          showError("Registration Failed", data.error || "An unknown error occurred.");
+          showError("Registration Failed", "An unknown error occurred.");
         } else {
-          // Use the auth context to set user state and handle token
-          // login({
-          //   id: data.user.id,
-          //   email: data.user.email,
-          //   isAdmin: data.user.role === "admin",
-          // }, data.token);
-
-          // showSuccess("Account Created!", "Your account has been created successfully!");
-          // setTimeout(() => router.push("/dashboard"), 1500);
-
-          showInfo("Verification Required", "Please check your email for a 6-digit verification code.");
+          showInfo("Verification Required", "Please check your email for a 6-digit verification code to complete your registration.");
           setUserEmail(formData.email); // Store email for verification modal
           setShowVerification(true); // Show the verification modal
           setTimeLeft(300); // Start 5-minute timer
           setCanResend(false);
-
         }
       }
-      // For login, validate credentials
+      // For login, request a verification code
       else {
-        if (!formData.email || !formData.password) {
-          showError("Missing Information", "Please fill in all required fields.");
+        if (!formData.email) {
+          showError("Missing Information", "Please fill in your email address.");
           setIsLoading(false);
           return;
         }
 
-        const response = await fetch("/api/auth/login", {
+        const response = await fetch("/api/auth/request-code", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: formData.email,
-            password: formData.password,
           }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-          showError("Authentication Failed", data.error || "Invalid credentials.");
+          showError("Authentication Failed", "Could not request verification code.");
         } else {
-          // Use the auth context to set user state and handle token
-          // login(data.user, data.token);
-          login({ user: data.user, token: data.token });
-          showSuccess("Login Successful!", "Welcome back! Redirecting...");
-          setTimeout(() => router.push("/dashboard"), 1500);
+          showInfo("Verification Required", "Please check your email for a 6-digit verification code to sign in.");
+          setUserEmail(formData.email); // Store email for verification modal
+          setShowVerification(true); // Show the verification modal
+          setTimeLeft(300); // Start 5-minute timer
+          setCanResend(false);
         }
       }
     } catch (error) {
@@ -202,34 +139,7 @@ export default function LoginPage() {
     }
   }
 
-  const handleForgotPassword = (e: React.FormEvent) => {
-    e.preventDefault()
 
-    if (!forgotPasswordEmail.trim()) {
-      showError("Email Required", "Please enter your email address.")
-      return
-    }
-
-    // Check if email exists in test accounts
-    const accountExists = TEST_ACCOUNTS.some((acc) => acc.email.toLowerCase() === forgotPasswordEmail.toLowerCase())
-
-    if (!accountExists) {
-      showError("Account Not Found", "No account found with this email address.")
-      return
-    }
-
-    showSuccess("Reset Email Sent", `Password reset instructions have been sent to ${forgotPasswordEmail}.`, 8000)
-
-    setResetRequestSubmitted(true)
-    setResetTimeLeft(60)
-    setCanResendReset(false)
-  }
-
-  const handleResendPasswordReset = () => {
-    setResetTimeLeft(60)
-    setCanResendReset(false)
-    showInfo("Reset Email Resent", "Password reset instructions have been sent again.")
-  }
 
   const handleVerificationCodeChange = (index: number, value: string) => {
     if (value.length > 1) return
@@ -267,22 +177,15 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: userEmail, code }),
       });
-
-      const data = await response.json();
       
 
       if (!response.ok) {
-        showError("Verification Failed", data.error || "An unknown error occurred.");
+        showError("Verification Failed", "An unknown error occurred.");
         setVerificationCode(["", "", "", "", "", ""]);
         document.getElementById("code-0")?.focus();
       } else {
-        // On successful verification, log the user in
-        console.log('user after verification: ', data.user);
+        router.push("/dashboard");
 
-        login({ user: data.user, token: data.token });
-        showSuccess("Email Verified!", "Your account is now active. Redirecting...");
-        setShowVerification(false);
-        setTimeout(() => router.push("/dashboard"), 1500);
       }
     } catch (error) {
       console.error("Verification submission error:", error);
@@ -313,16 +216,10 @@ export default function LoginPage() {
       firstName: "",
       lastName: "",
       email: "",
-      password: "",
-      confirmPassword: "",
       agreeToTerms: false,
     })
-    setShowPassword(false)
-    setShowConfirmPassword(false)
     setShowVerification(false)
-    setShowForgotPassword(false)
     setRememberMe(false)
-    setCurrentUser(null)
   }
 
   const formatTime = (seconds: number) => {
@@ -399,23 +296,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Testing Credentials Notice */}
-            {isLogin && (
-              <div className="bg-blue-50 border-b border-blue-200 px-6 py-4">
-                <div className="flex items-start space-x-3">
-                  <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium mb-1">Testing Credentials</p>
-                    <p className="mb-1">
-                      <strong>Email:</strong> test@monzic.com
-                    </p>
-                    <p>
-                      <strong>Password:</strong> test123
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {/* Form Content */}
             <div className="px-6 py-6">
@@ -470,29 +351,6 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Password field */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
-                      placeholder={isLogin ? "Enter password" : "Create password"}
-                      className="pl-11 pr-11 h-12 border-2 border-gray-200 focus:border-teal-500"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-
                 {/* Remember Me checkbox for login */}
                 {isLogin && (
                   <div className="flex items-center space-x-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
@@ -510,30 +368,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Confirm Password field for signup */}
-                {!isLogin && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <Input
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={formData.confirmPassword}
-                        onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                        placeholder="Confirm password"
-                        className="pl-11 pr-11 h-12 border-2 border-gray-200 focus:border-teal-500"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                
 
                 {/* Terms agreement for signup */}
                 {!isLogin && (
@@ -559,21 +394,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Forgot password for login */}
-                {isLogin && (
-                  <div className="text-right">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgotPassword(true)
-                        setResetRequestSubmitted(false)
-                      }}
-                      className="text-sm text-teal-600 hover:text-teal-700 underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                )}
+
 
                 {/* Submit button */}
                 <Button
@@ -606,91 +427,7 @@ export default function LoginPage() {
         </div>
       </main>
 
-      {/* Forgot Password Popup */}
-      {showForgotPassword && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <KeyRound className="w-8 h-8 text-orange-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Reset Password</h3>
-              <p className="text-gray-600 text-sm">
-                Enter your email address and we'll send you instructions to reset your password.
-              </p>
-            </div>
 
-            <form onSubmit={handleForgotPassword} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="email"
-                    value={forgotPasswordEmail}
-                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="pl-11 h-12 border-2 border-gray-200 focus:border-orange-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <Clock className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-yellow-800">
-                    <p className="font-medium mb-1">Testing Mode</p>
-                    <p>Password reset emails are simulated. Check console for logs.</p>
-                  </div>
-                </div>
-              </div>
-
-              {resetRequestSubmitted && (
-                <div className="text-center">
-                  {canResendReset ? (
-                    <button
-                      type="button"
-                      onClick={handleResendPasswordReset}
-                      className="text-orange-600 hover:text-orange-700 font-semibold underline flex items-center justify-center space-x-2 mx-auto text-sm"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      <span>Resend Reset Email</span>
-                    </button>
-                  ) : (
-                    <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                      <Clock className="w-4 h-4" />
-                      <span>Resend available in {formatTime(resetTimeLeft)}</span>
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white h-12 font-semibold"
-              >
-                Send Reset Instructions
-              </Button>
-            </form>
-
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => {
-                  setShowForgotPassword(false)
-                  setForgotPasswordEmail("")
-                  setResetTimeLeft(60)
-                  setCanResendReset(false)
-                  setResetRequestSubmitted(false)
-                }}
-                className="text-gray-500 hover:text-gray-700 text-sm underline"
-              >
-                Back to login
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Email Verification Popup */}
       {showVerification && (

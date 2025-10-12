@@ -55,24 +55,23 @@ export function AuthDialog({
   const [verificationCode, setVerificationCode] = useState(Array(6).fill(""));
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSigningIn(true);
     setSignInError("");
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/request-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       });
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message || "Sign in failed");
+        throw new Error("Requesting code failed");
       }
-      login({ user: data.user, token: data.token });
-      onSuccess();
-      onClose();
+      setVerificationEmail(email);
+      setShowVerification(true);
     } catch (error: any) {
       setSignInError(error.message);
     } finally {
@@ -92,13 +91,13 @@ export function AuthDialog({
           firstName: signUpFirstName,
           lastName: signUpLastName,
           email: signUpEmail,
-          password: signUpPassword,
         }),
       });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || "Sign up failed");
       }
+      setVerificationEmail(signUpEmail);
       setShowVerification(true);
     } catch (error: any) {
       setSignUpError(error.message);
@@ -115,7 +114,7 @@ export function AuthDialog({
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: signUpEmail, code: verificationCode.join("") }),
+        body: JSON.stringify({ email: verificationEmail, code: verificationCode.join("") }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -185,30 +184,7 @@ export function AuthDialog({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      className="pl-10 pr-10 h-12 text-gray-900"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+
 
                 {signInError && (
                   <div className="bg-red-50 p-3 rounded-md flex items-start space-x-2">
@@ -284,48 +260,7 @@ export function AuthDialog({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="signup-password"
-                      type={showSignUpPassword ? "text" : "password"}
-                      value={signUpPassword}
-                      onChange={(e) => setSignUpPassword(e.target.value)}
-                      placeholder="Create a password"
-                      className="pl-10 pr-10 h-12 text-gray-900"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                    Confirm Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={signUpConfirmPassword}
-                      onChange={(e) => setSignUpConfirmPassword(e.target.value)}
-                      placeholder="Confirm your password"
-                      className="pl-10 h-12 text-gray-900"
-                      required
-                    />
-                  </div>
-                </div>
 
                 {signUpError && (
                   <div className="bg-red-50 p-3 rounded-md flex items-start space-x-2">
@@ -355,8 +290,9 @@ export function AuthDialog({
           <div className="text-center">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Verify Your Email</h2>
             <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-              We've sent a 6-digit verification code to your email. Please enter it below to complete your
-              registration.
+              {activeTab === 'signup'
+                ? "We've sent a 6-digit verification code to your email. Please enter it below to complete your registration."
+                : "We've sent a 6-digit verification code to your email. Please enter it below to sign in."}
             </p>
 
             <form onSubmit={handleVerification} className="space-y-4">

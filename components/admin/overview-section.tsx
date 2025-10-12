@@ -1,48 +1,100 @@
-"use client"
+"use client";
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, FileText, MessageSquare, TrendingUp, DollarSign, Shield, Clock } from "lucide-react"
+import { formatDistanceToNow } from 'date-fns';
 
-export function OverviewSection() {
+// Define types for the props
+interface StatData {
+  value: number;
+  change: string;
+  changeType: 'positive' | 'negative' | 'neutral';
+}
+
+interface OverviewData {
+  totalUsers: StatData;
+  totalPolicies: StatData;
+  openTickets: StatData;
+  totalRevenue: StatData;
+  activePolicies: StatData;
+}
+
+interface Activity {
+  id: number;
+  message: string;
+  time: string;
+  type: string;
+}
+
+interface Status {
+  service: string;
+  status: string;
+  details: string;
+}
+
+interface OverviewSectionProps {
+  statsData: OverviewData;
+  recentActivityData: Activity[];
+  systemStatusData: Status[];
+}
+
+export function OverviewSection({ statsData, recentActivityData, systemStatusData }: OverviewSectionProps) {
+  const [apiStatus, setApiStatus] = useState({ status: 'Checking...', details: 'Performing health check...' });
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then(res => {
+        if (res.ok) {
+          setApiStatus({ status: 'Online', details: 'API is responding normally' });
+        } else {
+          setApiStatus({ status: 'Offline', details: 'API is not responding' });
+        }
+      })
+      .catch(() => {
+        setApiStatus({ status: 'Offline', details: 'Failed to connect to API' });
+      });
+  }, []);
+
   const stats = [
     {
       title: "Total Users",
-      value: "2,847",
-      change: "+12%",
-      changeType: "positive" as const,
+      value: statsData.totalUsers.value.toLocaleString(),
+      change: statsData.totalUsers.change,
+      changeType: statsData.totalUsers.changeType,
       icon: Users,
-      description: "Active customers",
+      description: "vs. previous 30 days",
     },
     {
       title: "Total Policies",
-      value: "4,567",
-      change: "+18%",
-      changeType: "positive" as const,
+      value: statsData.totalPolicies.value.toLocaleString(),
+      change: statsData.totalPolicies.change,
+      changeType: statsData.totalPolicies.changeType,
       icon: FileText,
-      description: "All time policies",
+      description: "vs. previous 30 days",
     },
     {
       title: "Open Tickets",
-      value: "23",
-      change: "-15%",
-      changeType: "positive" as const,
+      value: statsData.openTickets.value.toLocaleString(),
+      change: statsData.openTickets.change, // Note: This change is static
+      changeType: statsData.openTickets.changeType,
       icon: MessageSquare,
-      description: "Support requests",
+      description: "Currently open",
     },
     {
-      title: "Revenue",
-      value: "£45,678",
-      change: "+23%",
-      changeType: "positive" as const,
+      title: "Revenue (Last 30d)",
+      value: `£${statsData.totalRevenue.value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: statsData.totalRevenue.change,
+      changeType: statsData.totalRevenue.changeType,
       icon: DollarSign,
-      description: "This month",
+      description: "vs. previous 30 days",
     },
     {
       title: "Active Policies",
-      value: "1,234",
-      change: "+8%",
-      changeType: "positive" as const,
+      value: statsData.activePolicies.value.toLocaleString(),
+      change: statsData.activePolicies.change, // Note: This change is static
+      changeType: statsData.activePolicies.changeType,
       icon: Shield,
       description: "Currently active",
     },
@@ -54,45 +106,27 @@ export function OverviewSection() {
       icon: Clock,
       description: "Support tickets",
     },
-  ]
+  ];
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: "policy",
-      message: "New policy created for John Smith",
-      time: "2 minutes ago",
-      status: "success",
-    },
-    {
-      id: 2,
-      type: "ticket",
-      message: "Support ticket #1234 resolved",
-      time: "15 minutes ago",
-      status: "success",
-    },
-    {
-      id: 3,
-      type: "user",
-      message: "New user registration: jane.doe@email.com",
-      time: "1 hour ago",
-      status: "info",
-    },
-    {
-      id: 4,
-      type: "payment",
-      message: "Payment received for policy #5678",
-      time: "2 hours ago",
-      status: "success",
-    },
-    {
-      id: 5,
-      type: "alert",
-      message: "System maintenance scheduled",
-      time: "3 hours ago",
-      status: "warning",
-    },
-  ]
+  const allStatuses = [
+    { service: 'API Status', ...apiStatus },
+    ...systemStatusData,
+    { service: 'Backup Status', status: 'Last: 2h ago', details: 'Static value' }
+  ];
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'Online':
+      case 'Healthy':
+      case 'Active':
+      case 'Connected':
+        return 'default';
+      case 'Checking...':
+        return 'secondary';
+      default:
+        return 'destructive';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -114,7 +148,7 @@ export function OverviewSection() {
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
                 <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant={stat.changeType === "positive" ? "default" : "destructive"} className="text-xs">
+                  <Badge variant={stat.changeType === 'negative' ? 'destructive' : 'default'} className="text-xs">
                     {stat.change}
                   </Badge>
                   <p className="text-xs text-gray-500">{stat.description}</p>
@@ -125,7 +159,7 @@ export function OverviewSection() {
         })}
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Activity & System Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -136,22 +170,22 @@ export function OverviewSection() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivity.map((activity) => (
+              {recentActivityData.map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-3">
                   <div
                     className={`w-2 h-2 rounded-full mt-2 ${
-                      activity.status === "success"
+                      activity.type === "policy"
                         ? "bg-green-500"
-                        : activity.status === "warning"
+                        : activity.type === "ticket"
                           ? "bg-yellow-500"
-                          : activity.status === "info"
+                          : activity.type === "user"
                             ? "bg-blue-500"
                             : "bg-gray-500"
                     }`}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-900">{activity.message}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+                    <p className="text-xs text-gray-500">{formatDistanceToNow(new Date(activity.time), { addSuffix: true })}</p>
                   </div>
                 </div>
               ))}
@@ -168,34 +202,14 @@ export function OverviewSection() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">API Status</span>
-                <Badge variant="default" className="bg-green-500">
-                  Online
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Database</span>
-                <Badge variant="default" className="bg-green-500">
-                  Healthy
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Email Service</span>
-                <Badge variant="default" className="bg-green-500">
-                  Active
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Payment Gateway</span>
-                <Badge variant="default" className="bg-green-500">
-                  Connected
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Backup Status</span>
-                <Badge variant="secondary">Last: 2h ago</Badge>
-              </div>
+              {allStatuses.map(s => (
+                <div key={s.service} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{s.service}</span>
+                  <Badge variant={getStatusBadgeVariant(s.status)}>
+                    {s.status}
+                  </Badge>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

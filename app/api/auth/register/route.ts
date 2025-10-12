@@ -8,9 +8,9 @@ import { sign } from 'jsonwebtoken';
 
 export async function POST(request: Request) {
   try {
-    const { firstName, lastName, email, password } = await request.json();
+    const { firstName, lastName, email } = await request.json();
 
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !lastName || !email) {
       return NextResponse.json({ success: false, error: "All fields are required." }, { status: 400 });
     }
 
@@ -26,8 +26,6 @@ export async function POST(request: Request) {
     // Add actual email sending logic here
     await sendVerificationEmail(email, verificationCode); 
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, email.toLowerCase()),
     });
@@ -38,7 +36,6 @@ export async function POST(request: Request) {
       } else {
         // User exists but is not verified, update their verification code
         await db.update(users).set({
-          password: hashedPassword,
           verificationCodeHash: hashedVerificationCode,
           verificationCodeExpiresAt: verificationCodeExpiresAt.toISOString(),
         }).where(eq(users.userId, existingUser.userId));
@@ -49,7 +46,6 @@ export async function POST(request: Request) {
         first_name: firstName,
         last_name: lastName,
         email: email.toLowerCase(),
-        password: hashedPassword,
         verificationCodeHash: hashedVerificationCode,
         verificationCodeExpiresAt: verificationCodeExpiresAt.toISOString(),
       });

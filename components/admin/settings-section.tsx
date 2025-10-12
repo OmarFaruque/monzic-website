@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 
 function EmailTemplatesTab() {
   const [templates, setTemplates] = useState({
@@ -507,6 +508,17 @@ export function SettingsSection() {
       webhookSecret: "",
       environment: "test", // Changed to "test" since we're using test API key
     },
+    square: {
+      appId: "",
+      appLocationId: "",
+      accessToken: "",
+      environment: "sandbox",
+      paymentMethods: {
+        card: true,
+        googlePay: false,
+        applePay: false,
+      },
+    },
     openai: {
       apiKey: "",
       model: "gpt-4",
@@ -536,6 +548,20 @@ export function SettingsSection() {
       timezone: "Europe/London",
       currency: "GBP",
       policyScheduleVisible: true,
+    },
+    bank: {
+      show: false,
+      name: "",
+      sortCode: "",
+      accountNumber: "",
+      reference: "Use your quote ID as the payment reference.",
+      info: "Your payment will be processed within 2 business days.",
+      discountPercentage: 0,
+    },
+    airwallex: {
+      client_id: "",
+      apikey: "",
+      environment: "test",
     },
   })
 
@@ -585,6 +611,7 @@ export function SettingsSection() {
     paddle: false,
     stripe: false,
     mollie: false,
+    square: false,
     openai: false,
     resend: false,
     vehicleApi: false,
@@ -603,6 +630,20 @@ export function SettingsSection() {
         [field]: value,
       },
     }))
+    setHasChanges(true)
+  }
+
+  const updateSquarePaymentMethod = (method: 'card' | 'googlePay' | 'applePay', checked: boolean) => {
+    setSettings((prev) => ({
+      ...prev,
+      square: {
+        ...prev.square,
+        paymentMethods: {
+          ...prev.square.paymentMethods,
+          [method]: checked,
+        },
+      },
+    }));
     setHasChanges(true)
   }
 
@@ -839,6 +880,8 @@ export function SettingsSection() {
                       </SelectItem>
                       <SelectItem value="stripe">Stripe</SelectItem>
                       <SelectItem value="mollie">Mollie</SelectItem>
+                      <SelectItem value="airwallex">AirWallex</SelectItem>
+                      <SelectItem value="square">Square</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-gray-500 mt-1">
@@ -1055,6 +1098,176 @@ export function SettingsSection() {
             </CardContent>
           </Card>
 
+          {/* Airwallex Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-purple-600" />
+                Airwallex Payment Settings
+              </CardTitle>
+              <CardDescription>Configure your Airwallex payment processor integration</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="airwallex-environment">Environment</Label>
+                <Select
+                  value={settings?.airwallex?.environment}
+                  onValueChange={(value) => updateSetting("airwallex", "environment", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="test">
+                      Test Mode
+                      <Badge className="ml-2 bg-yellow-100 text-yellow-800">Test</Badge>
+                    </SelectItem>
+                    <SelectItem value="production">
+                      Live Mode
+                      <Badge className="ml-2 bg-green-100 text-green-800">Live</Badge>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="airwallex-publishable-key">Airwallex Client ID</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="airwallex-publishable-key"
+                    type={showKeys.airwallex ? "text" : "password"}
+                    placeholder="client id..."
+                    value={
+                      showKeys.airwallex ? settings?.airwallex?.client_id : maskApiKey(settings?.airwallex?.client_id)
+                    }
+                    onChange={(e) => updateSetting("airwallex", "client_id", e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => toggleKeyVisibility("airwallex")}>
+                    {showKeys.airwallex ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="airwallex-secret-key">API Key</Label>
+                <Input
+                  id="airwallex-secret-key"
+                  type="password"
+                  placeholder="apikey..."
+                  value={settings?.airwallex?.apikey}
+                  onChange={(e) => updateSetting("airwallex", "apikey", e.target.value)}
+                />
+              </div>
+
+              <Button
+                onClick={() => testConnection("airwallex")}
+                disabled={testing.airwallex || !settings?.airwallex?.apikey}
+                variant="outline"
+                className="w-full"
+              >
+                {testing.airwallex ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2" />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    <TestTube className="h-4 w-4 mr-2" />
+                    Test Airwallex Connection
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Square Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-gray-800" />
+                Square Payment Settings
+                {settings.payment.activeProcessor === "square" && (
+                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Configure your Square payment processor integration</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="square-environment">Environment</Label>
+                <Select
+                  value={settings.square.environment}
+                  onValueChange={(value) => updateSetting("square", "environment", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sandbox">
+                      Sandbox
+                      <Badge className="ml-2 bg-yellow-100 text-yellow-800">Test</Badge>
+                    </SelectItem>
+                    <SelectItem value="production">
+                      Production
+                      <Badge className="ml-2 bg-green-100 text-green-800">Live</Badge>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="square-app-id">App ID</Label>
+                  <Input
+                    id="square-app-id"
+                    placeholder="Enter your Square App ID"
+                    value={settings.square.appId}
+                    onChange={(e) => updateSetting("square", "appId", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="square-location-id">App Location ID</Label>
+                  <Input
+                    id="square-location-id"
+                    placeholder="Enter your Square Location ID"
+                    value={settings.square.appLocationId}
+                    onChange={(e) => updateSetting("square", "appLocationId", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="square-access-token">App Access Token</Label>
+                <Input
+                  id="square-access-token"
+                  type={showKeys.square ? "text" : "password"}
+                  placeholder="Enter your Square Access Token"
+                  value={showKeys.square ? settings.square.accessToken : maskApiKey(settings.square.accessToken)}
+                  onChange={(e) => updateSetting("square", "accessToken", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label>Square Payment Methods</Label>
+                <div className="mt-2 space-y-2 rounded-md border p-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="square-card" checked={settings.square.paymentMethods.card} onCheckedChange={(checked) => updateSquarePaymentMethod('card', !!checked)} />
+                    <Label htmlFor="square-card">Card Payment</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="square-google" checked={settings.square.paymentMethods.googlePay} onCheckedChange={(checked) => updateSquarePaymentMethod('googlePay', !!checked)} />
+                    <Label htmlFor="square-google">Google Pay</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="square-apple" checked={settings.square.paymentMethods.applePay} onCheckedChange={(checked) => updateSquarePaymentMethod('applePay', !!checked)} />
+                    <Label htmlFor="square-apple">Apple Pay</Label>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Mollie Settings */}
           <Card>
             <CardHeader>
@@ -1127,88 +1340,93 @@ export function SettingsSection() {
               </Button>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="ai" className="space-y-6">
+          {/* Bank Payment Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-purple-600" />
-                OpenAI Settings
+                <Database className="h-5 w-5 text-blue-600" />
+                Bank Payment Settings
               </CardTitle>
-              <CardDescription>Configure OpenAI for document generation and AI features</CardDescription>
+              <CardDescription>
+                Configure settings for manual bank transfers. This option will appear alongside your active payment processor.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="openai-api-key">OpenAI API Key</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="openai-api-key"
-                    type={showKeys.openai ? "text" : "password"}
-                    placeholder="sk-..."
-                    value={showKeys.openai ? settings.openai.apiKey : maskApiKey(settings.openai.apiKey)}
-                    onChange={(e) => updateSetting("openai", "apiKey", e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={() => toggleKeyVisibility("openai")}>
-                    {showKeys.openai ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
+              <div className="flex items-center space-x-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <Checkbox
+                  id="show-bank-payment"
+                  checked={settings.bank.show}
+                  onCheckedChange={(checked) => updateSetting("bank", "show", !!checked)}
+                />
+                <Label htmlFor="show-bank-payment" className="font-medium text-blue-800">
+                  Enable Bank Payment option at checkout
+                </Label>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="openai-model">Model</Label>
-                  <Select
-                    value={settings.openai.model}
-                    onValueChange={(value) => updateSetting("openai", "model", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gpt-4">
-                        GPT-4 <Badge className="ml-2 bg-green-100 text-green-800">Recommended</Badge>
-                      </SelectItem>
-                      <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                      <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="bank-account-name">Account Name</Label>
+                  <Input
+                    id="bank-account-name"
+                    placeholder="Enter your Bank Account Name"
+                    value={settings.bank.name}
+                    onChange={(e) => updateSetting("bank", "name", e.target.value)}
+                    disabled={!settings.bank.show}
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="openai-max-tokens">Price</Label>
+                  <Label htmlFor="bank-account-number">Account Number</Label>
                   <Input
-                    id="openai-max-tokens"
-                    type="number"
-                    placeholder="2048"
-                    value={settings.openai.price}
-                    onChange={(e) => updateSetting("openai", "price", Number.parseInt(e.target.value))}
+                    id="bank-account-number"
+                    placeholder="Enter your Bank Account Number"
+                    value={settings.bank.accountNumber}
+                    onChange={(e) => updateSetting("bank", "accountNumber", e.target.value)}
+                    disabled={!settings.bank.show}
                   />
                 </div>
               </div>
-
-              <Button
-                onClick={() => testConnection("openai")}
-                disabled={testing.openai || !settings.openai.apiKey}
-                variant="outline"
-                className="w-full"
-              >
-                {testing.openai ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2" />
-                    Testing...
-                  </>
-                ) : (
-                  <>
-                    <TestTube className="h-4 w-4 mr-2" />
-                    Test AI Connection
-                  </>
-                )}
-              </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bank-sort-code">Sort Code</Label>
+                  <Input
+                    id="bank-sort-code"
+                    placeholder="e.g., 04-00-04"
+                    value={settings.bank.sortCode}
+                    onChange={(e) => updateSetting("bank", "sortCode", e.target.value)}
+                    disabled={!settings.bank.show}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bank-reference">Reference Information</Label>
+                  <Input
+                    id="bank-reference"
+                    placeholder="e.g., Use your quote ID as the payment reference."
+                    value={settings.bank.reference}
+                    onChange={(e) => updateSetting("bank", "reference", e.target.value)}
+                    disabled={!settings.bank.show}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="bank-info-text">Additional Info Text</Label>
+                <Textarea
+                  id="bank-info-text"
+                  placeholder="e.g., Your quote will be marked as paid once we confirm receipt of your payment."
+                  value={settings.bank.info}
+                  onChange={(e) => updateSetting("bank", "info", e.target.value)}
+                  disabled={!settings.bank.show}
+                />
+              </div>
+              <div>
+                <Label htmlFor="bank-discount">Percentage Off for Bank Payment (%)</Label>
+                <Input id="bank-discount" type="number" value={settings.bank.discountPercentage} onChange={(e) => updateSetting("bank", "discountPercentage", Number(e.target.value))} disabled={!settings.bank.show} />
+                <p className="text-xs text-gray-500 mt-1">Apply a discount for customers who choose to pay via bank transfer. Enter 0 for no discount.</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
-
+                
         <TabsContent value="email" className="space-y-6">
           <Card>
             <CardHeader>

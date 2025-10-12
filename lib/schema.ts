@@ -128,8 +128,22 @@ export const messages = pgTable("messages", {
 
 export const blacklist = pgTable("blacklist", {
 	id: serial("id").primaryKey().notNull(),
-	type: varchar("type", { length: 50 }).notNull(), // "email", "phone", "postcode", "ip", "name"
-	value: varchar("value", { length: 255 }).notNull(),
+	type: varchar("type", { length: 50 }).notNull(), // 'user', 'ip', 'postcode'
+	
+	// Fields for 'user' type
+	firstName: varchar("first_name", { length: 255 }),
+	lastName: varchar("last_name", { length: 255 }),
+	email: varchar("email", { length: 255 }),
+	dateOfBirth: varchar("date_of_birth", { length: 255 }),
+	operator: varchar("operator", { length: 10 }).default('AND'), // 'AND' or 'OR'
+
+	// Field for 'ip' type
+	ipAddress: varchar("ip_address", { length: 255 }),
+
+	// Field for 'postcode' type
+	postcode: varchar("postcode", { length: 50 }),
+
+	// Common fields
 	reason: text("reason"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 });

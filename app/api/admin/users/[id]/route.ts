@@ -41,10 +41,10 @@ export async function POST(
 
     // Add to blacklist
     if (email) {
-      await db.insert(blacklist).values({ type: 'email', value: email, reason: 'Blacklisted by admin' });
+      await db.insert(blacklist).values({ type:  'user', email: email, reason: 'Blacklisted by admin user list' });
     }
     if (firstName && lastName) {
-      await db.insert(blacklist).values({ type: 'name', value: `${firstName} ${lastName}`, reason: 'Blacklisted by admin' });
+      await db.insert(blacklist).values({ type: 'user', firstName: `${firstName}`, lastName: `${lastName}`, reason: 'Blacklisted by admin user list' });
     }
 
     return NextResponse.json({ message: 'User blacklisted successfully' });
