@@ -77,10 +77,11 @@ export function TicketsSection() {
     message: "",
     attachments: [] as File[],
   })
-  const [customerSearch, setCustomerSearch] = useState("")
-  const [filteredCustomers, setFilteredCustomers] = useState<any[]>([])
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
-  const [isSending, setIsSending] = useState(false);
+  const [userSearch, setUserSearch] = useState("")
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([])
+  const [showUserDropdown, setShowUserDropdown] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [users, setUsers] = useState<any[]>([])
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -96,48 +97,54 @@ export function TicketsSection() {
       }
     }
 
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch("/api/admin/users")
+        if (!response.ok) {
+          throw new Error("Failed to fetch users")
+        }
+        const data = await response.json()
+        setUsers(data.users || data)
+      } catch (error) {
+        console.error("Error fetching users:", error)
+      }
+    }
+
     fetchTickets()
+    fetchUsers()
   }, [])
 
-  const customers = useMemo(() => {
-    const customerMap = new Map()
-    tickets.forEach((ticket) => {
-      if (!customerMap.has(ticket.email)) {
-        customerMap.set(ticket.email, {
-          firstName: ticket.first_name,
-          lastName: ticket.last_name,
-          email: ticket.email,
-        })
-      }
-    })
-    return Array.from(customerMap.values())
-  }, [tickets])
-
-  const handleCustomerSearch = (searchTerm: string) => {
-    setCustomerSearch(searchTerm)
+  const handleUserSearch = (searchTerm: string) => {
+    setUserSearch(searchTerm)
 
     if (searchTerm.trim() === "") {
-      setFilteredCustomers([])
-      setShowCustomerDropdown(false)
+      setFilteredUsers([])
+      setShowUserDropdown(false)
       return
     }
 
-    const filtered = customers.filter(
-      (customer) =>
-        customer.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${customer.firstName} ${customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()),
+    const filtered = users.filter(
+      (user) =>
+        (user.firstName && user.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (user.lastName && user.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.firstName &&
+          user.lastName &&
+          `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())),
     )
 
-    setFilteredCustomers(filtered.slice(0, 10))
-    setShowCustomerDropdown(true)
+    setFilteredUsers(filtered.slice(0, 10))
+    setShowUserDropdown(true)
   }
 
-  const selectCustomer = (customer: any) => {
-    setEmailData({ ...emailData, to: customer.email })
-    setCustomerSearch(`${customer.firstName} ${customer.lastName} (${customer.email})`)
-    setShowCustomerDropdown(false)
+  const selectUser = (user: any) => {
+    const currentTo = emailData.to.split(",").map((e) => e.trim()).filter((e) => e)
+    if (!currentTo.includes(user.email)) {
+      const newTo = [...currentTo, user.email].join(", ")
+      setEmailData({ ...emailData, to: newTo })
+    }
+    setUserSearch("")
+    setShowUserDropdown(false)
   }
 
   const handleSendEmail = async () => {
@@ -178,7 +185,7 @@ export function TicketsSection() {
 
       setIsEmailDialogOpen(false);
       setEmailData({ to: "", subject: "", message: "", attachments: [] });
-      setCustomerSearch("");
+      setUserSearch("");
     } catch (error) {
       console.error("Failed to send emails:", error);
       alert("An error occurred while sending the emails. Please try again.");
@@ -199,8 +206,8 @@ export function TicketsSection() {
     setEmailData({ ...emailData, attachments: newAttachments })
   }
 
-  const handleEmailAllCustomers = () => {
-    const allEmails = customers.map((c) => c.email).join(", ")
+  const handleEmailAllUsers = () => {
+    const allEmails = users.map((c) => c.email).join(", ")
     setEmailData({ ...emailData, to: allEmails })
     setIsEmailDialogOpen(true)
   }
@@ -408,11 +415,11 @@ export function TicketsSection() {
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setIsEmailDialogOpen(true)}>
                 <Mail className="h-4 w-4 mr-2" />
-                Email Customer
+                Email User
               </Button>
-              <Button variant="outline" onClick={handleEmailAllCustomers}>
+              <Button variant="outline" onClick={handleEmailAllUsers}>
                 <Users className="h-4 w-4 mr-2" />
-                Email All
+                Email All Users
               </Button>
             </div>
             <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-auto">
@@ -661,39 +668,40 @@ export function TicketsSection() {
         <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Email Customer</DialogTitle>
-              <DialogDescription>Send an email to customers with attachments</DialogDescription>
+              <DialogTitle>Email User</DialogTitle>
+              <DialogDescription>Send an email to users with attachments</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="relative">
-                <Label htmlFor="customerSearch">Search Customer</Label>
+                <Label htmlFor="userSearch">Search User</Label>
                 <Input
-                  id="customerSearch"
-                  value={customerSearch}
-                  onChange={(e) => handleCustomerSearch(e.target.value)}
+                  id="userSearch"
+                  autoComplete="new-user-search"
+                  value={userSearch}
+                  onChange={(e) => handleUserSearch(e.target.value)}
                   onFocus={() => {
-                    if (customerSearch && filteredCustomers.length > 0) {
-                      setShowCustomerDropdown(true)
+                    if (userSearch && filteredUsers.length > 0) {
+                      setShowUserDropdown(true)
                     }
                   }}
-                  placeholder="Type customer name or email..."
+                  placeholder="Type user name or email..."
                   className="w-full"
                 />
 
-                {showCustomerDropdown && filteredCustomers.length > 0 && (
+                {showUserDropdown && filteredUsers.length > 0 && (
                   <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                    {filteredCustomers.map((customer: any) => (
+                    {filteredUsers.map((user: any) => (
                       <button
-                        key={customer.email}
+                        key={user.email}
                         type="button"
-                        onClick={() => selectCustomer(customer)}
+                        onClick={() => selectUser(user)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
                       >
                         <div className="font-medium">
-                          {customer.firstName} {customer.lastName}
+                          {user.firstName} {user.lastName}
                         </div>
-                        <div className="text-sm text-gray-500">{customer.email}</div>
+                        <div className="text-sm text-gray-500">{user.email}</div>
                       </button>
                     ))}
                   </div>

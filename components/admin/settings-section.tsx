@@ -1726,16 +1726,30 @@ export function SettingsSection() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="company-registration">Company Registration</Label>
-                  <Input
-                    id="company-registration"
-                    type="text"
-                    value={settings.general.companyRegistration}
-                    onChange={(e) => updateSetting("general", "companyRegistration", e.target.value)}
-                  />
-                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <div>
+                    <Label htmlFor="company-registration">Company Registration</Label>
+                    <Input
+                      id="company-registration"
+                      type="text"
+                      value={settings.general.companyRegistration}
+                      onChange={(e) => updateSetting("general", "companyRegistration", e.target.value)}
+                    />
+                  </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <div>
+                    <Label htmlFor="company-registration">Checkbox content at checkout page</Label>
+                    <Textarea
+                      id="company-registration"
+                      placeholder='e.g., I confirm I’ve read and agree to the <a href="/customer-terms-of-business" target="_blank">Terms of Service</a> and understand this is a non-refundable digital document service. || I acknowledge that all purchases are final and the information I have entered is accurate'
+                      value={settings.general?.checkoutCheckboxContent}
+                      onChange={(e) => updateSetting("general", "checkoutCheckboxContent", e.target.value)}
+                    />
+                    <small>Each entry should be separeted by ||</small>
+                  </div>
               </div>
             </CardContent>
           </Card>

@@ -1,19 +1,13 @@
 "use client";
 
 import type React from "react";
+import DOMPurify from "dompurify";
 import { useState, useEffect, useRef } from "react";
 import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthDialog } from "@/components/auth/auth-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import Link from "next/link";
 import {
   Shield,
@@ -23,6 +17,8 @@ import {
   ArrowLeft,
   Info,
   Loader2,
+  CreditCard,
+  Landmark,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +37,8 @@ import Loading from "./loading";
 // Dynamically import heavy payment components
 const PaymentForm = dynamic(() => import('react-square-web-payments-sdk').then(mod => mod.PaymentForm), { ssr: false, loading: () => <Loader2 className="w-5 h-5 animate-spin" /> });
 const SquareCreditCard = dynamic(() => import('react-square-web-payments-sdk').then(mod => mod.CreditCard), { ssr: false });
+const SquareGooglePay = dynamic(() => import('react-square-web-payments-sdk').then(mod => mod.GooglePay), { ssr: false });
+const SquareApplePay = dynamic(() => import('react-square-web-payments-sdk').then(mod => mod.ApplePay), { ssr: false });
 
 interface QuoteData {
   id?: string;
@@ -162,13 +160,44 @@ function QuoteCheckoutPage({
   const [isPromoLoading, setIsPromoLoading] = useState(false);
   const [discountedTotal, setDiscountedTotal] = useState<number | null>(null);
   const [isLoginCompleted, setIsLoginCompleted] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(paymentProvider);
+  const [pendingSquareToken, setPendingSquareToken] = useState<any>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
 
   const stripe = paymentProvider === 'stripe' ? useStripe() : null;
   const elements = paymentProvider === 'stripe' ? useElements() : null;
   const airwallexCardRef = useRef(null);
   const [airwallexElement, setAirwallexElement] = useState<any>(null);
-  const { settings } = useSettings();
+  const settings = useSettings();
+  const [checkboxContent, setCheckboxContent] = useState<any>([]);
+
+  useEffect(() => {
+    if (paymentProvider) {
+      setSelectedPaymentMethod(paymentProvider);
+    }
+  }, [paymentProvider]);
+
+  const paymentMethods = [];
+  if (paymentProvider) {
+    let providerTitle = paymentProvider.charAt(0).toUpperCase() + paymentProvider.slice(1);
+    let providerDescription = "Securely pay with your card.";
+    if (paymentProvider === 'square') {
+        providerDescription = "Pay with Card, Google Pay, or Apple Pay.";
+    }
+    paymentMethods.push({
+      id: paymentProvider,
+      title: `Pay by Card (${providerTitle})`,
+      description: providerDescription,
+      icon: <CreditCard className="w-8 h-8 text-gray-400" />,
+    });
+  }
+  if (bankPaymentEnabled) {
+    paymentMethods.push({
+      id: 'bank',
+      title: 'Pay by Bank Transfer',
+      description: 'Transfer money directly from your bank account.',
+      icon: <Landmark className="w-8 h-8 text-gray-400" />,
+    });
+  }
 
   useEffect(() => {
     const storedQuoteData = localStorage.getItem("quoteData");
@@ -181,7 +210,11 @@ function QuoteCheckoutPage({
     } else {
       router.push("/get-quote");
     }
-  }, [router]);
+    if (settings) {
+      const checkboxContent = settings?.checkoutCheckboxContent.split('||');
+      setCheckboxContent(checkboxContent);
+    }
+  }, [router, settings]);
 
   useEffect(() => {
     if (selectedPaymentMethod === "airwallex" && isAuthenticated && quoteData) {
@@ -225,10 +258,15 @@ function QuoteCheckoutPage({
 
   useEffect(() => {
     if (isAuthenticated && isLoginCompleted) {
-      handleCompletePayment();
+      if (pendingSquareToken) {
+        handleSquarePayment(pendingSquareToken);
+        setPendingSquareToken(null);
+      } else {
+        handleCompletePayment();
+      }
       setIsLoginCompleted(false);
     }
-  }, [isAuthenticated, isLoginCompleted]);
+  }, [isAuthenticated, isLoginCompleted, pendingSquareToken]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -389,6 +427,15 @@ function QuoteCheckoutPage({
     }
   };
 
+  const handleSquarePaymentWithAuth = (token: any) => {
+    if (!isAuthenticated) {
+      setPendingSquareToken(token);
+      setIsAuthDialogOpen(true);
+    } else {
+      handleSquarePayment(token);
+    }
+  };
+
   const handleSquarePayment = async (token: any) => {
     if (!token) return;
     setIsProcessingPayment(true);
@@ -398,7 +445,7 @@ function QuoteCheckoutPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sourceId: token.token,
-          quoteData: { ...quoteData, total: discountedTotal ?? quoteData?.total },
+          quoteData: { ...quoteData, id: quote.id, total: discountedTotal ?? quoteData?.total },
           user: user,
         }),
       });
@@ -415,6 +462,18 @@ function QuoteCheckoutPage({
       setIsProcessingPayment(false);
     }
   };
+
+  const createPaymentRequest = () => ({
+    countryCode: "GB",
+    currencyCode: "GBP",
+    total: {
+      amount: (discountedTotal ?? quoteData?.total ?? 0).toFixed(2),
+      label: "Total",
+    },
+  });
+
+  console.log('content array: ', settings)
+
 
   if (!quoteData) {
     return <Loading />;
@@ -492,13 +551,38 @@ function QuoteCheckoutPage({
 
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-                  <Select value={selectedPaymentMethod || ''} onValueChange={setSelectedPaymentMethod}>
-                    <SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger>
-                    <SelectContent>
-                      {paymentProvider && <SelectItem value={paymentProvider}>{`Pay by Card (${paymentProvider.charAt(0).toUpperCase() + paymentProvider.slice(1)})`}</SelectItem>}
-                      {bankPaymentEnabled && <SelectItem value="bank">Pay by Bank Transfer</SelectItem>}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-3">
+                    {paymentMethods.map((method) => (
+                      <div
+                        key={method.id}
+                        onClick={() => setSelectedPaymentMethod(method.id)}
+                        className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                          selectedPaymentMethod === method.id
+                            ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-200'
+                            : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <div className="flex-shrink-0 mr-4">{method.icon}</div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-800">{method.title}</p>
+                            <p className="text-sm text-gray-500">{method.description}</p>
+                          </div>
+                          <div className="ml-4">
+                            <div
+                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                                selectedPaymentMethod === method.id ? 'border-teal-600 bg-teal-600' : 'border-gray-300'
+                              }`}
+                            >
+                              {selectedPaymentMethod === method.id && (
+                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {selectedPaymentMethod === "stripe" && (
@@ -508,8 +592,19 @@ function QuoteCheckoutPage({
                   <div id="airwallex-card-element" ref={airwallexCardRef} className="border border-gray-200 rounded-lg p-4 mb-6"></div>
                 )}
                 {selectedPaymentMethod === 'square' && squareAppId && squareLocationId && (
-                  <PaymentForm applicationId={squareAppId} locationId={squareLocationId} cardTokenizeResponseReceived={handleSquarePayment}>
-                    <div className="border border-gray-200 rounded-lg p-4 mb-6"><SquareCreditCard /></div>
+                  <PaymentForm
+                    applicationId={squareAppId}
+                    locationId={squareLocationId}
+                    cardTokenizeResponseReceived={handleSquarePaymentWithAuth}
+                    createPaymentRequest={createPaymentRequest}
+                  >
+                    <div className="space-y-4 my-4">
+                      <SquareGooglePay />
+                      <SquareApplePay />
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <SquareCreditCard />
+                      </div>
+                    </div>
                   </PaymentForm>
                 )}
               </div>
@@ -529,18 +624,40 @@ function QuoteCheckoutPage({
 
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <div className="space-y-3">
-                  <div className="flex items-start space-x-3">
-                    <Checkbox id="terms" checked={formData.termsAccepted} onCheckedChange={(c) => handleInputChange("termsAccepted", c as boolean)} />
-                    <label htmlFor="terms" className="text-sm text-gray-700">
-                      I confirm I've read and agree to the <Link href="/terms-of-services" className="text-teal-600 hover:text-teal-700">Terms of Service</Link> and understand this is a non-refundable digital document service. *
-                    </label>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <Checkbox id="accuracy" checked={formData.accuracyConfirmed} onCheckedChange={(c) => handleInputChange("accuracyConfirmed", c as boolean)} />
-                    <label htmlFor="accuracy" className="text-sm text-gray-700">
-                      I acknowledge that all purchases are final and the information I have entered is accurate *
-                    </label>
-                  </div>
+                  {checkboxContent && checkboxContent.length > 0 && checkboxContent[0] ? (
+                    checkboxContent.map((content, index) => (
+                      <div className="flex items-start space-x-3" key={index}>
+                        <Checkbox
+                          id={`checkout-checkbox-${index}`}
+                          checked={index === 0 ? formData.termsAccepted : formData.accuracyConfirmed}
+                          onCheckedChange={(c) => {
+                            const field = index === 0 ? "termsAccepted" : "accuracyConfirmed";
+                            handleInputChange(field, c as boolean);
+                          }}
+                        />
+                        <label
+                          htmlFor={`checkout-checkbox-${index}`}
+                          className="text-sm text-gray-700 richtext-label"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-start space-x-3">
+                        <Checkbox id="terms" checked={formData.termsAccepted} onCheckedChange={(c) => handleInputChange("termsAccepted", c as boolean)} />
+                        <label htmlFor="terms" className="text-sm text-gray-700">
+                          I confirm I've read and agree to the <Link href="/terms-of-services" className="text-teal-600 hover:text-teal-700">Terms of Service</Link> and understand this is a non-refundable digital document service. *
+                        </label>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <Checkbox id="accuracy" checked={formData.accuracyConfirmed} onCheckedChange={(c) => handleInputChange("accuracyConfirmed", c as boolean)} />
+                        <label htmlFor="accuracy" className="text-sm text-gray-700">
+                          I acknowledge that all purchases are final and the information I have entered is accurate *
+                        </label>
+                      </div>
+                    </>
+                  )}
                 </div>
                 {selectedPaymentMethod === 'paddle' ? (
                     <PaddleCheckoutButton 
@@ -660,7 +777,7 @@ export default function QuoteCheckoutPageWrapper() {
 
         // console.log("Bank settings:", bankData);
 
-        if (bankRes.ok && bankData.settings?.active) {
+        if (bankRes.ok && bankData.settings?.show) {
           setBankPaymentEnabled(true);
         }
       } catch (error) {
@@ -673,12 +790,9 @@ export default function QuoteCheckoutPageWrapper() {
 
     fetchSettings(); // Initial fetch
 
-    // Re-fetch when the window gains focus
-    window.addEventListener('focus', fetchSettings);
-
     // Cleanup listener when the component unmounts
     return () => {
-      window.removeEventListener('focus', fetchSettings);
+      // No-op
     };
   }, []);
 

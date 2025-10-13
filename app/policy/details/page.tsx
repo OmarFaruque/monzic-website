@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Header } from "@/components/header"
 import { useNotifications } from "@/hooks/use-notifications"
-import { getPolicyByNumber } from "@/lib/policy-data"
+import { getPolicyByNumber } from "@/lib/policy-server"
 import { FileText, Download, User, Car, Calendar, X, MessageSquare, ArrowLeft, Shield } from "lucide-react"
 
 export default function PolicyDetailsPage() {
@@ -42,33 +42,46 @@ export default function PolicyDetailsPage() {
 
   // Check if user is verified and load policy data
   useEffect(() => {
-    if (!policyNumber) {
-      router.push("/")
-      return
-    }
+    const fetchPolicyData = async () => {
+      if (!policyNumber) {
+        router.push("/")
+        return
+      }
 
-    const verified = sessionStorage.getItem(`policy_verified_${policyNumber}`)
-    if (verified !== "true") {
-      router.push(`/policy/view?number=${policyNumber}`)
-      return
-    }
+      const verified = sessionStorage.getItem(`policy_verified_${policyNumber}`)
+      if (verified !== "true") {
+        router.push(`/policy/view?number=${policyNumber}`)
+        return
+      }
 
-    setIsVerified(true)
+      setIsVerified(true)
 
-    // Load policy data
-    const policy = getPolicyByNumber(policyNumber)
-    if (policy) {
-      setPolicyData(policy)
-    } else {
-      addNotification({
-        type: "error",
-        title: "Policy Not Found",
-        message: "The requested policy could not be found.",
-      })
-      router.push("/")
-    }
+      try {
+        // Load policy data
+        const policy = await getPolicyByNumber(policyNumber)
+        if (policy) {
+          setPolicyData(policy)
+        } else {
+          addNotification({
+            type: "error",
+            title: "Policy Not Found",
+            message: "The requested policy could not be found.",
+          })
+          router.push("/")
+        }
+      } catch (error) {
+        console.error("Error loading policy:", error)
+        addNotification({
+          type: "error",
+          title: "Error",
+          message: "Failed to load policy details.",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+  }
 
-    setIsLoading(false)
+  fetchPolicyData()
   }, [policyNumber, router, addNotification])
 
   const handleDownloadPDF = async () => {
@@ -122,8 +135,8 @@ export default function PolicyDetailsPage() {
       doc.setFontSize(8)
       doc.setTextColor(51, 51, 51)
       doc.text(`Policy Number: ${policyData.policyNumber}`, 132, yPosition + 6)
-      doc.text(`Valid From: ${formatDateTime(policyData.startDate, policyData.startTime)}`, 132, yPosition + 10)
-      doc.text(`Valid Until: ${formatDateTime(policyData.endDate, policyData.endTime)}`, 132, yPosition + 14)
+      doc.text(`Valid From: ${formatDateTime(policyData.startDate, policyData.startDate.split(" ")[1])}`, 132, yPosition + 10)
+      doc.text(`Valid Until: ${formatDateTime(policyData.endDate, policyData.endDate.split(" ")[1])}`, 132, yPosition + 14)
 
       // Holder Section (Left side)
       doc.setFontSize(12)
@@ -134,7 +147,7 @@ export default function PolicyDetailsPage() {
       doc.setFontSize(9)
       doc.setFont("helvetica", "normal")
       doc.setTextColor(51, 51, 51)
-      doc.text(`Name: ${policyData.customerFirstName} ${policyData.customerSurname}`, 20, yPosition + 7)
+      doc.text(`Name: ${policyData.firstName} ${policyData.lastName}`, 20, yPosition + 7)
       doc.text(
         `Date of Birth: ${new Date(policyData.dateOfBirth).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}`,
         20,
@@ -159,7 +172,7 @@ export default function PolicyDetailsPage() {
       doc.setTextColor(51, 51, 51)
       doc.text(`Make: ${policyData.vehicleMake}`, 132, yPosition + 6)
       doc.text(`Model: ${policyData.vehicleModel}`, 132, yPosition + 10)
-      doc.text(`Registration: ${policyData.vehicleReg}`, 132, yPosition + 14)
+      doc.text(`Registration: ${policyData.regNumber}`, 132, yPosition + 14)
 
       // Coverage Section (Left side)
       doc.setFontSize(12)
@@ -251,7 +264,7 @@ export default function PolicyDetailsPage() {
       doc.setFont("helvetica", "normal")
       doc.setTextColor(51, 51, 51)
       const contactText =
-        "For any inquiries or if you need to contact Monzic regarding your policy, please fill out the contact form on our website. We will respond to your message as promptly as possible."
+        "For any inquiries or if you need to contact TEMPNOW regarding your policy, please fill out the contact form on our website. We will respond to your message as promptly as possible."
       const splitContact = doc.splitTextToSize(contactText, 170)
       doc.text(splitContact, 20, yPosition + 5)
 
@@ -274,7 +287,7 @@ export default function PolicyDetailsPage() {
       // Footer
       doc.setFontSize(8)
       doc.setTextColor(102, 102, 102)
-      doc.text(`Monzic Insurance Ltd - Certificate Generated on ${new Date().toLocaleDateString()}`, 105, 280, {
+      doc.text(`TEMPNOW Insurance Ltd - Certificate Generated on ${new Date().toLocaleDateString()}`, 105, 280, {
         align: "center",
       })
 
@@ -397,7 +410,7 @@ export default function PolicyDetailsPage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Registration:</span>
-                        <span className="font-medium">{policyData.vehicleReg}</span>
+                        <span className="font-medium">{policyData.regNumber}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Make:</span>
@@ -409,7 +422,8 @@ export default function PolicyDetailsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Value:</span>
-                        <span className="font-medium">{policyData.vehicleValue}</span>
+                        <span className="font-medium">{JSON.parse(policyData.quoteData)?.customerData?.vehicleValue}</span>
+                        
                       </div>
                     </div>
                   </div>
@@ -423,20 +437,16 @@ export default function PolicyDetailsPage() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Name:</span>
                         <span className="font-medium text-right">
-                          {policyData.customerFirstName} {policyData.customerSurname}
+                          {policyData.firstName} {policyData.lastName}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Date of Birth:</span>
-                        <span className="font-medium">{policyData.dateOfBirth}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Email:</span>
-                        <span className="font-medium text-right break-all">{policyData.email}</span>
+                        <span className="font-medium">{policyData.dateOfBirth ? new Date(policyData.dateOfBirth).toLocaleDateString() : "N/A"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Phone:</span>
-                        <span className="font-medium">{policyData.phoneNumber}</span>
+                        <span className="font-medium">{policyData.phone}</span>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                         <span className="text-gray-600">Address:</span>
@@ -473,7 +483,7 @@ export default function PolicyDetailsPage() {
                       </div>
                       <div className="flex justify-between sm:flex-col">
                         <span className="text-gray-600 text-sm">Premium:</span>
-                        <span className="font-medium text-sm">£{policyData.premium}</span>
+                        <span className="font-medium text-sm">£{Number(policyData.update_price ?? policyData.cpw).toFixed(2)}</span>
                       </div>
                     </div>
 
@@ -481,13 +491,13 @@ export default function PolicyDetailsPage() {
                       <div className="flex justify-between sm:flex-col">
                         <span className="text-gray-600 text-sm">Valid From:</span>
                         <span className="font-medium text-sm text-right sm:text-left">
-                          {formatDateTime(policyData.startDate, policyData.startTime)}
+                          {formatDateTime(policyData.startDate, policyData.startDate.split(" ")[1])}
                         </span>
                       </div>
                       <div className="flex justify-between sm:flex-col">
                         <span className="text-gray-600 text-sm">Valid Until:</span>
                         <span className="font-medium text-sm text-right sm:text-left">
-                          {formatDateTime(policyData.endDate, policyData.endTime)}
+                          {formatDateTime(policyData.endDate, policyData.endDate.split(" ")[1])}
                         </span>
                       </div>
                     </div>
@@ -594,11 +604,11 @@ export default function PolicyDetailsPage() {
                       </p>
                       <p className="text-xs sm:text-sm mb-1">
                         <span className="font-medium">Valid From:</span>{" "}
-                        {formatDateTime(policyData.startDate, policyData.startTime)}
+                        {formatDateTime(policyData.startDate, policyData.startDate.split(" ")[1])}
                       </p>
                       <p className="text-xs sm:text-sm">
                         <span className="font-medium">Valid Until:</span>{" "}
-                        {formatDateTime(policyData.endDate, policyData.endTime)}
+                        {formatDateTime(policyData.endDate, policyData.endDate.split(" ")[1])}
                       </p>
                     </div>
 
@@ -613,7 +623,7 @@ export default function PolicyDetailsPage() {
                           <span className="font-medium">Model:</span> {policyData.vehicleModel}
                         </div>
                         <div>
-                          <span className="font-medium">Registration:</span> {policyData.vehicleReg}
+                          <span className="font-medium">Registration:</span> {policyData.regNumber}
                         </div>
                       </div>
                     </div>
@@ -623,8 +633,8 @@ export default function PolicyDetailsPage() {
                       <div>
                         <h2 className="text-base sm:text-lg font-semibold text-teal-700 mb-2">Holder</h2>
                         <p className="text-xs sm:text-sm mb-1">
-                          <span className="font-medium">Name:</span> {policyData.customerFirstName}{" "}
-                          {policyData.customerSurname}
+                          <span className="font-medium">Name:</span> {policyData.firstName}{" "}
+                          {policyData.lastName}
                         </p>
                         <p className="text-xs sm:text-sm">
                           <span className="font-medium">Date of Birth:</span>{" "}
@@ -681,7 +691,7 @@ export default function PolicyDetailsPage() {
                       <div>
                         <h2 className="text-base sm:text-lg font-semibold text-teal-700 mb-2">Contact</h2>
                         <p className="text-xs sm:text-sm">
-                          For any inquiries or if you need to contact Monzic regarding your policy, please fill out the
+                          For any inquiries or if you need to contact TEMPNOW regarding your policy, please fill out the
                           contact form on our website. We will respond to your message as promptly as possible.
                         </p>
                       </div>

@@ -58,10 +58,6 @@ export interface CustomerData {
   policies: PolicyData[]
 }
 
-export async function getPolicyByNumber(policyNumber: string): Promise<any | null> {
-  const [policy] = await db.select().from(quotes).where(eq(quotes.policyNumber, policyNumber));
-  return policy || null;
-}
 
 // Demo credentials for testing
 export const DEMO_POLICIES = [

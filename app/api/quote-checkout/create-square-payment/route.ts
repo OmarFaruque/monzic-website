@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SquareClient, SquareEnvironment } from 'square';
 import { randomUUID } from 'crypto';
 import { db } from '@/lib/db';
-import { settings } from '@/lib/schema';
+import { settings, quotes } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
-
+import { sendEmail, createInsurancePolicyEmail } from '@/lib/email';
+import { generateInvoicePdf } from '@/lib/invoice';
 
 export async function POST(req: NextRequest) {
+  // Store original toJSON if it exists to avoid side-effects
+  const originalToJSON = (BigInt.prototype as any).toJSON;
+
   try {
+    // Temporarily modify BigInt serialization to Number for this request
+    (BigInt.prototype as any).toJSON = function () {
+      return Number(this);
+    };
+
     const squareSettingsRecord = await db.select().from(settings).where(eq(settings.param, 'square'));
 
     if (squareSettingsRecord.length === 0 || !squareSettingsRecord[0].value) {
@@ -26,11 +35,11 @@ export async function POST(req: NextRequest) {
       token: accessToken,
     });
 
-
     const { sourceId, quoteData, user } = await req.json();
 
-    if (!sourceId || !quoteData || !user) {
-      return NextResponse.json({ success: false, details: "Missing required payment information." }, { status: 400 });
+
+    if (!sourceId || !quoteData || !user || !quoteData.id) {
+      return NextResponse.json({ success: false, details: "Missing required payment information or quote ID." }, { status: 400 });
     }
 
     const amount = quoteData.total || 0;
@@ -38,30 +47,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, details: "Payment amount must be positive." }, { status: 400 });
     }
 
-    BigInt.prototype.toJSON = function () { return this.toString(); };
     const totalAmount = BigInt(Math.round(amount * 100));
 
-
-
-
-    
-    const result = await squareClient.payments.create({
+    const paymentResult = await squareClient.payments.create({
         sourceId,
         idempotencyKey: randomUUID(),
         locationId: appLocationId,
         amountMoney: {
-            amount: totalAmount.toString(),
-            currency: "USD",
+            amount: totalAmount,
+            currency: "USD", // Reverted to hardcoded USD for stability
         },
     });
 
-    // Here you would typically update your database to mark the quote as 'paid'
-    // and store the transaction ID from result.payment.id
 
-    return NextResponse.json({ success: true, payment: result.payment });
+
+    console.log('paymentResult: ', paymentResult);
+
+    if (paymentResult.payment) {
+      // Update database
+      await db.update(quotes).set({
+        status: 'paid',
+        userId: user.id,
+        transactionId: paymentResult.payment.id,
+        paymentProvider: 'square'
+      }).where(eq(quotes.id, quoteData.id));
+
+      // Generate invoice
+      const pdfBytes = await generateInvoicePdf(quoteData, user);
+
+      // Send confirmation email
+      const vehicle = quoteData.customerData.vehicle;
+      const emailHtml = createInsurancePolicyEmail(
+        `${user.firstName} ${user.lastName}`,
+        quoteData.id, // Using quote ID as policy number
+        `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+        quoteData.startTime,
+        quoteData.expiryTime,
+        quoteData.total,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quoteData.id}` // Example link
+      );
+
+      await sendEmail({
+        to: user.email,
+        subject: 'Your Insurance Policy Confirmation',
+        html: emailHtml,
+        attachments: [
+          {
+            filename: `invoice-${quoteData.id}.pdf`,
+            content: Buffer.from(pdfBytes),
+          },
+        ],
+      });
+    }
+
+    return NextResponse.json({ success: true, payment: paymentResult.payment });
   } catch (error: any) {
     console.error('Square payment error:', error);
     const errorMessage = error?.errors?.[0]?.detail || "An unexpected error occurred during payment.";
     return NextResponse.json({ success: false, details: errorMessage }, { status: 500 });
+  } finally {
+    // Restore original toJSON to prevent side-effects
+    (BigInt.prototype as any).toJSON = originalToJSON;
   }
 }

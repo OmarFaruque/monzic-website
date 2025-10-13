@@ -358,7 +358,7 @@ const PoliciesSection = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Premium</p>
-                  <p className="text-xl font-bold text-teal-600">£{selectedPolicy.premium.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-teal-600">£{ Number(selectedPolicy.update_price ?? selectedPolicy.cpw).toFixed(2)}</p>
                 </div>
               </div>
 

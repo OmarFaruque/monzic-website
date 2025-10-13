@@ -49,7 +49,6 @@ export default function PaymentConfirmationPage() {
   }
 
 
-  console.log('Quotes: ', quotes);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -80,7 +79,7 @@ export default function PaymentConfirmationPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-medium">£{(quotes?.quoteData?.update_price ?? quotes?.cpw).toFixed(2)}</span>
+                  <span className="font-medium">£{Number(quotes?.update_price ?? quotes?.cpw).toFixed(2)}</span>
                 </div>
               </div>
             </div>

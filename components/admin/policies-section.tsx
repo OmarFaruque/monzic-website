@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Search,
   Edit,
@@ -75,6 +76,7 @@ export function PoliciesSection() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false)
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("policies")
 
   // Add these state variables after the existing state declarations:
   const [customerSearch, setCustomerSearch] = useState("")
@@ -182,13 +184,25 @@ export function PoliciesSection() {
     }
   })
 
-  const filteredPolicies = sortedPolicies.filter(
-    (policy) =>
-      `${policy.firstName} ${policy.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      policy.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      policy.regNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filterLogic = (
+    policy: any, // Add type annotation for policy
+  ) =>
+    `${policy.firstName} ${policy.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    policy.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    policy.regNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    policy.policyNumber.toLowerCase().includes(searchTerm.toLowerCase())
+
+  const paidPolicies = sortedPolicies
+    .filter((p) => {
+      return p.status !== "pending"
+    })
+    .filter(filterLogic)
+
+  const unconfirmedPolicies = sortedPolicies
+    .filter((p) => {
+      return p.status === "pending"
+    })
+    .filter(filterLogic)
 
   const getStatusBadge = (policy: any) => {
     if (!policy || !policy.startDate || !policy.endDate) {
@@ -617,113 +631,230 @@ export function PoliciesSection() {
           </div>
         </div>
 
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Policy ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Vehicle</TableHead>
-                <TableHead>Registration</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPolicies.map((policy) => (
-                <TableRow key={policy.id}>
-                  <TableCell className="font-medium">{policy.policyNumber}</TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">
-                        {policy.firstName} {policy.lastName}
-                      </div>
-                      <div className="text-sm text-gray-500">{policy.email}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {policy.vehicleMake} {policy.vehicleModel}
-                  </TableCell>
-                  <TableCell className="font-mono">{policy.regNumber}</TableCell>
-                  <TableCell>£{Number(policy.cpw || 0).toFixed(2)}</TableCell>
-                  <TableCell>{getStatusBadge(policy)}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{formatDateTime(policy.startDate, '00:00')}</div>
-                      <div className="text-gray-500">to {formatDateTime(policy.endDate, '23:59')}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const parseDateTime = (dt) => {
-                            if (!dt || typeof dt !== 'string') return { date: '', time: '' };
-                            const [date, time] = dt.split(' ');
-                            return { date: date || '', time: time ? time.substring(0, 5) : '' };
-                          };
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="policies">Policies</TabsTrigger>
+            <TabsTrigger value="unconfirmed">Unconfirmed Policies</TabsTrigger>
+          </TabsList>
+          <TabsContent value="policies">
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Policy ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Registration</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paidPolicies.map((policy) => (
+                    <TableRow key={policy.id}>
+                      <TableCell className="font-medium">{policy.policyNumber}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {policy.firstName} {policy.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">{policy.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {policy.vehicleMake} {policy.vehicleModel}
+                      </TableCell>
+                      <TableCell className="font-mono">{policy.regNumber}</TableCell>
+                      <TableCell>£{Number(policy.cpw || 0).toFixed(2)}</TableCell>
+                      <TableCell>{getStatusBadge(policy)}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>{formatDateTime(policy.startDate, '00:00')}</div>
+                          <div className="text-gray-500">to {formatDateTime(policy.endDate, '23:59')}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const parseDateTime = (dt) => {
+                                if (!dt || typeof dt !== 'string') return { date: '', time: '' };
+                                const [date, time] = dt.split(' ');
+                                return { date: date || '', time: time ? time.substring(0, 5) : '' };
+                              };
 
-                          setSelectedPolicy(policy);
-                          setEditFoundVehicle(null);
-                          setEditVehicleLookupError("");
-                          setEditPolicy({
-                            id: policy.id,
-                            policyNumber: policy.policyNumber,
-                            firstName: policy.firstName || '',
-                            middleName: policy.middleName || '',
-                            lastName: policy.lastName || '',
-                            email: policy.email || '',
-                            phone: policy.phone || '',
-                            dateOfBirth: parseDateTime(policy.dateOfBirth).date,
-                            postCode: policy.postCode || '',
-                            address: policy.address || '',
-                            occupation: policy.occupation || '',
-                            regNumber: policy.regNumber || '',
-                            vehicleMake: policy.vehicleMake || '',
-                            vehicleModel: policy.vehicleModel || '',
-                            vehicleYear: policy.vehicleYear || '',
-                            vehicleValue: policy.vehicleValue || '',
-                            reason: policy.coverReason || '',
-                            licenseType: policy.licenceType || '',
-                            licenseHeld: policy.licencePeriod || '',
-                            startDate: parseDateTime(policy.startDate).date,
-                            startTime: parseDateTime(policy.startDate).time,
-                            endDate: parseDateTime(policy.endDate).date,
-                            endTime: parseDateTime(policy.endDate).time,
-                            premium: parseFloat(policy.cpw) || 0,
-                          });
-                          setIsEditDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedPolicy(policy)
-                          setIsDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
-                        <User className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                              setSelectedPolicy(policy);
+                              setEditFoundVehicle(null);
+                              setEditVehicleLookupError("");
+                              setEditPolicy({
+                                id: policy.id,
+                                policyNumber: policy.policyNumber,
+                                firstName: policy.firstName || '',
+                                middleName: policy.middleName || '',
+                                lastName: policy.lastName || '',
+                                email: policy.email || '',
+                                phone: policy.phone || '',
+                                dateOfBirth: parseDateTime(policy.dateOfBirth).date,
+                                postCode: policy.postCode || '',
+                                address: policy.address || '',
+                                occupation: policy.occupation || '',
+                                regNumber: policy.regNumber || '',
+                                vehicleMake: policy.vehicleMake || '',
+                                vehicleModel: policy.vehicleModel || '',
+                                vehicleYear: policy.vehicleYear || '',
+                                vehicleValue: policy.vehicleValue || '',
+                                reason: policy.coverReason || '',
+                                licenseType: policy.licenceType || '',
+                                licenseHeld: policy.licencePeriod || '',
+                                startDate: parseDateTime(policy.startDate).date,
+                                startTime: parseDateTime(policy.startDate).time,
+                                endDate: parseDateTime(policy.endDate).date,
+                                endTime: parseDateTime(policy.endDate).time,
+                                premium: parseFloat(policy.cpw) || 0,
+                              });
+                              setIsEditDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPolicy(policy)
+                              setIsDeleteDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
+                            <User className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+          <TabsContent value="unconfirmed">
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Policy ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Registration</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {unconfirmedPolicies.map((policy) => (
+                    <TableRow key={policy.id}>
+                      <TableCell className="font-medium">{policy.policyNumber}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {policy.firstName} {policy.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">{policy.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {policy.vehicleMake} {policy.vehicleModel}
+                      </TableCell>
+                      <TableCell className="font-mono">{policy.regNumber}</TableCell>
+                      <TableCell>£{Number(policy.cpw || 0).toFixed(2)}</TableCell>
+                      <TableCell>{getStatusBadge(policy)}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>{formatDateTime(policy.startDate, '00:00')}</div>
+                          <div className="text-gray-500">to {formatDateTime(policy.endDate, '23:59')}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const parseDateTime = (dt) => {
+                                if (!dt || typeof dt !== 'string') return { date: '', time: '' };
+                                const [date, time] = dt.split(' ');
+                                return { date: date || '', time: time ? time.substring(0, 5) : '' };
+                              };
+
+                              setSelectedPolicy(policy);
+                              setEditFoundVehicle(null);
+                              setEditVehicleLookupError("");
+                              setEditPolicy({
+                                id: policy.id,
+                                policyNumber: policy.policyNumber,
+                                firstName: policy.firstName || '',
+                                middleName: policy.middleName || '',
+                                lastName: policy.lastName || '',
+                                email: policy.email || '',
+                                phone: policy.phone || '',
+                                dateOfBirth: parseDateTime(policy.dateOfBirth).date,
+                                postCode: policy.postCode || '',
+                                address: policy.address || '',
+                                occupation: policy.occupation || '',
+                                regNumber: policy.regNumber || '',
+                                vehicleMake: policy.vehicleMake || '',
+                                vehicleModel: policy.vehicleModel || '',
+                                vehicleYear: policy.vehicleYear || '',
+                                vehicleValue: policy.vehicleValue || '',
+                                reason: policy.coverReason || '',
+                                licenseType: policy.licenceType || '',
+                                licenseHeld: policy.licencePeriod || '',
+                                startDate: parseDateTime(policy.startDate).date,
+                                startTime: parseDateTime(policy.startDate).time,
+                                endDate: parseDateTime(policy.endDate).date,
+                                endTime: parseDateTime(policy.endDate).time,
+                                premium: parseFloat(policy.cpw) || 0,
+                              });
+                              setIsEditDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPolicy(policy)
+                              setIsDeleteDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
+                            <User className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Policy Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

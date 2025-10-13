@@ -234,42 +234,7 @@ export default function PolicyViewPage() {
               </div>
             </div>
 
-            {/* Demo Credentials Helper */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-sm font-medium text-blue-800">Available Demo Policies:</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={fillDemoData}
-                  className="text-xs px-2 py-1 h-auto"
-                >
-                  Fill Demo Data
-                </Button>
-              </div>
-              <div className="text-xs text-blue-700 space-y-2">
-                {DEMO_POLICIES.map((policy, index) => (
-                  <div key={index} className="bg-white/50 p-2 rounded text-xs">
-                    {policy}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 p-2 bg-white/50 rounded">
-                <p className="text-xs font-medium text-blue-800">For policy {policyNumber}:</p>
-                <div className="text-xs text-blue-700 mt-1">
-                  <p>
-                    <strong>Surname:</strong> SMITH
-                  </p>
-                  <p>
-                    <strong>Date of Birth:</strong> 15/03/1985
-                  </p>
-                  <p>
-                    <strong>Postcode:</strong> SW1A1AA
-                  </p>
-                </div>
-              </div>
-            </div>
+            
 
             <form onSubmit={handleVerify} className="space-y-6">
               <div>

@@ -91,3 +91,9 @@ export async function getCustomers() {
     };
   });
 }
+
+
+export async function getPolicyByNumber(policyNumber: string): Promise<any | null> {
+  const [policy] = await db.select().from(quotes).where(eq(quotes.policyNumber, policyNumber));
+  return policy || null;
+}

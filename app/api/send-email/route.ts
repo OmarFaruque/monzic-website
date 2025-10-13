@@ -4,6 +4,7 @@ import {
   createAIDocumentPurchaseEmail,
   createInsurancePolicyEmail,
   createAdminNotificationEmail,
+  createDirectEmail,
 } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
@@ -97,11 +98,13 @@ export async function POST(request: NextRequest) {
         processedAttachments.push({ filename: file.name, content: buffer });
       }
 
+      const emailHtml = createDirectEmail(subject, message);
+
       // Send the direct email
       const result = await sendEmail({
         to: to,
         subject: subject,
-        html: message.replace(/\n/g, '<br>'), // Convert newlines to breaks for HTML email
+        html: emailHtml,
         attachments: processedAttachments,
       });
 

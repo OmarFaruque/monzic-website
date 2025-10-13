@@ -4,7 +4,7 @@ import nodemailer from "nodemailer"
 export interface EmailTemplate {
   to: string
   subject: string
-  html: string, 
+  html: string,
   attachments?:any
 }
 
@@ -422,3 +422,67 @@ export async function sendTicketReplyEmail({
     })
 }
 
+export function createDirectEmail(subject: string, message: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${subject}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+        .header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .header img {
+            max-width: 150px;
+        }
+        .content {
+            padding: 30px;
+            line-height: 1.6;
+            color: #333333;
+        }
+        .footer {
+            background-color: #f8f8f8;
+            color: #888888;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${process.env.NEXT_PUBLIC_BASE_URL}/tempnow-logo-horizontal.png" alt="Monzic Logo">
+        </div>
+        <div class="content">
+            ${message.replace(/\n/g, '<br>')}
+        </div>
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Monzic. All rights reserved.</p>
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+`
+}
