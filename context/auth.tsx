@@ -11,16 +11,17 @@ interface User {
   isAdmin: boolean;
   firstName: string;
   lastName: string;
+  stripeCustomerId: string | null;
 }
 interface LoginArgs {
-  user: { id: number|string; email: string; role: string; firstName: string; lastName: string; };
+  user: { id: number|string; email: string; role: string; firstName: string; lastName: string; stripeCustomerId: string | null; };
   token: string;
 }
 interface AuthContextType {
   isAuthenticated: boolean
   isAdmin: boolean
   user: User | null
-  login: (args: LoginArgs) => void;
+  login: (args: LoginArgs, options?: { redirect?: boolean }) => void;
   logout: () => void
   loading: boolean
 }
@@ -40,13 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const token = Cookies.get("auth_token");
 
-        
-
         if (token) {
           // Decode the token to get user data and expiration
-          const decodedToken: { id: string; email: string; role: string; exp: number; firstName: string; lastName: string; } = jwtDecode(token);
+          const decodedToken: { id: string; email: string; role: string; exp: number; firstName: string; lastName: string; stripeCustomerId: string | null; } = jwtDecode(token);
 
-     
           // Check if the token is expired
           if (decodedToken.exp * 1000 > Date.now()) {
 
@@ -57,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isAdmin: userIsAdmin,
               firstName: decodedToken.firstName,
               lastName: decodedToken.lastName,
+              stripeCustomerId: decodedToken.stripeCustomerId,
             };
             setUser(userData);
             setIsAuthenticated(true);
@@ -79,19 +78,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = ({ user: apiUser, token }: LoginArgs) => {
+  const login = ({ user: apiUser, token }: LoginArgs, options?: { redirect?: boolean }) => {
     if (!apiUser || !token) {
       console.error("Login failed: Missing user data or token in login arguments.");
-      // Fallback to a test user if needed, or just return
-      console.log('tokenis: ', token);
-      console.log('apiUser is: ', user);
       return;
     }
 
-
-    console.log('user from api: ', apiUser);
-
-    // Convert the 'role' from the API to the 'isAdmin' boolean the context expects
     const userIsAdmin = apiUser.role === 'admin';
 
     const userToStore = {
@@ -100,20 +92,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: userIsAdmin,
       firstName: apiUser.firstName,
       lastName: apiUser.lastName,
+      stripeCustomerId: apiUser.stripeCustomerId,
     };
 
-    console.log("Login called with:", userToStore);
-
-    // Use js-cookie for reliable cookie setting
     Cookies.set("auth_token", token, { expires: 1, secure: process.env.NODE_ENV === 'production' });
-
 
     setUser(userToStore);
     setIsAuthenticated(true);
     setIsAdmin(userIsAdmin);
     setLoading(false);
 
-    console.log("User logged in:", userToStore);
+    const shouldRedirect = options?.redirect ?? true;
+
+    if (shouldRedirect) {
+      if (userIsAdmin) {
+        router.push("/administrator");
+      } else {
+        router.push("/dashboard");
+      }
+    }
   };
 
   const logout = async () => {

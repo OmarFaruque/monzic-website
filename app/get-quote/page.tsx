@@ -21,7 +21,11 @@ import {
   Download,
   Shield,
   AlertTriangle,
+  Tag,
 } from "lucide-react"
+import { useAuth } from "@/context/auth"
+import { AuthDialog } from "@/components/auth/auth-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 // Mock data for the demo registration
 const vehicleData = {
@@ -63,15 +67,18 @@ export default function GetQuotePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const registrationFromHome = searchParams.get("reg")
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Redirect to home if accessed directly without registration parameter
   useEffect(() => {
-    // Only redirect if user accessed /get-quote directly without registration parameter
-    if (!registrationFromHome) {
+    if (isClient && !registrationFromHome) {
       router.push("/")
-      return
     }
-  }, [registrationFromHome, router])
+  }, [isClient, registrationFromHome, router])
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   // 1. Replace the existing formData state initialization to include separate hour and minute fields:
@@ -110,8 +117,15 @@ export default function GetQuotePage() {
   const [postcodeError, setPostcodeError] = useState("")
   const [showReview, setShowReview] = useState(false)
   const [ageError, setAgeError] = useState("")
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { isAuthenticated, user } = useAuth()
+  const { toast } = useToast()
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
+  const [isLoginCompleted, setIsLoginCompleted] = useState(false)
+  const [isLookingUpPostcode, setIsLookingUpPostcode] = useState(false)
   const [promoCode, setPromoCode] = useState("")
+  const [appliedPromo, setAppliedPromo] = useState(null)
+  const [discountAmount, setDiscountAmount] = useState(0)
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false)
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -137,6 +151,16 @@ export default function GetQuotePage() {
   const [reviewExpiryTime, setReviewExpiryTime] = useState(null);
   // 1. Add a new state for showing time selection:
   const [showTimeSelection, setShowTimeSelection] = useState(false)
+
+  useEffect(() => {
+    if (isAuthenticated && isLoginCompleted) {
+      if (sessionStorage.getItem("pendingPayment") === "true") {
+        sessionStorage.removeItem("pendingPayment")
+        proceedToPaymentLogic()
+      }
+      setIsLoginCompleted(false)
+    }
+  }, [isAuthenticated, isLoginCompleted, quote])
 
   useEffect(() => {
     // Look up vehicle data
@@ -293,6 +317,8 @@ export default function GetQuotePage() {
       return
     }
 
+    setIsLookingUpPostcode(true);
+
     try {
       const response = await fetch(`/api/postcode-lookup?postcode=${encodeURIComponent(formData.postcode)}`);
 
@@ -315,6 +341,8 @@ export default function GetQuotePage() {
       console.error("An error occurred during postcode lookup", error);
       setPostcodeError("An unexpected error occurred. Please try again.");
       setShowAddresses(false);
+    } finally {
+      setIsLookingUpPostcode(false);
     }
   }
 
@@ -665,13 +693,20 @@ export default function GetQuotePage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const handleProceedToPayment = async () => {
+  const proceedToPaymentLogic = async () => {
     setIsCalculating(true)
 
     const calculatedQuote = calculateQuote()
+    const finalTotal = calculatedQuote.total - discountAmount
 
     const quoteDataForCheckout = {
-      total: calculatedQuote.total,
+      userId: user.id,
+      total: finalTotal,
+      originalTotal: calculatedQuote.total,
+      cpw: calculatedQuote.total.toFixed(2),
+      update_price: finalTotal.toFixed(2),
+      discountAmount: discountAmount,
+      promoCode: appliedPromo ? appliedPromo.promoCode : undefined,
       startTime: calculatedQuote.startTime,
       expiryTime: calculatedQuote.expiryTime,
       breakdown: {
@@ -703,20 +738,29 @@ export default function GetQuotePage() {
     }
 
     try {
-      const response = await fetch('/api/quotes', {
-        method: 'POST',
+      const response = await fetch("/api/quotes", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ quoteData: quoteDataForCheckout }),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error('Failed to create quote');
+        throw new Error("Failed to create quote")
       }
 
-      const newQuote = await response.json();
+      const newQuote = await response.json()
 
+      // Manually inject the correct total into the object before storing.
+      const parsedQuoteData = JSON.parse(newQuote.quoteData);
+      parsedQuoteData.total = finalTotal;
+      if (appliedPromo) {
+        parsedQuoteData.promoCode = appliedPromo.promoCode;
+        parsedQuoteData.discountAmount = discountAmount;
+        parsedQuoteData.originalTotal = calculatedQuote.total;
+      }
+      newQuote.quoteData = JSON.stringify(parsedQuoteData);
 
       // Save quote data to localStorage
       localStorage.setItem("quoteData", JSON.stringify(newQuote))
@@ -724,16 +768,65 @@ export default function GetQuotePage() {
       // Redirect to checkout page
       router.push("/quote-checkout")
     } catch (error) {
-      console.error("Error proceeding to payment:", error);
-      // Handle error appropriately, maybe show a notification to the user
+      console.error("Error proceeding to payment:", error)
+      toast({ variant: "destructive", title: "Error", description: "Could not proceed to payment. Please try again." })
     } finally {
       setIsCalculating(false)
     }
   }
 
-  const handleApplyPromo = () => {
-    // Mock promo code application
-    alert(`Promo code ${promoCode} applied!`)
+  const handleProceedToPayment = async () => {
+    if (!isAuthenticated) {
+      sessionStorage.setItem("pendingPayment", "true")
+      setIsAuthDialogOpen(true)
+      return
+    }
+    await proceedToPaymentLogic()
+  }
+
+  const calculateDiscountedTotal = (total: number, promo: any) => {
+    let discountAmount = 0
+    if (promo.discount.type === "percentage") {
+      discountAmount = total * (promo.discount.value / 100)
+    } else if (promo.discount.type === "fixed") {
+      discountAmount = promo.discount.value
+    }
+    if (promo.maxDiscount) {
+      discountAmount = Math.min(discountAmount, parseFloat(promo.maxDiscount))
+    }
+    return discountAmount
+  }
+
+  const handleApplyPromo = async () => {
+    if (!promoCode || !quote) return
+    setIsApplyingPromo(true)
+    toast({ title: "Processing", description: "Checking promo code..." })
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promoCode: promoCode, total: quote.total }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Failed to validate promo code")
+
+      const coupon = data
+      if (typeof coupon.discount === "string") {
+        coupon.discount = JSON.parse(coupon.discount)
+      }
+
+      const discount = calculateDiscountedTotal(quote.total, coupon)
+      setDiscountAmount(discount)
+      setAppliedPromo(coupon)
+
+      toast({ title: "Promo Code Applied", description: `Successfully applied promo code ${data.promoCode}` })
+    } catch (error: any) {
+      setAppliedPromo(null)
+      setDiscountAmount(0)
+      toast({ variant: "destructive", title: "Invalid Code", description: error.message || "The promo code is invalid or expired" })
+    } finally {
+      setIsApplyingPromo(false)
+    }
   }
 
   const handleTogglePassword = () => {
@@ -796,16 +889,8 @@ export default function GetQuotePage() {
   const monthInputRef = useRef<HTMLInputElement>(null);
   const yearInputRef = useRef<HTMLInputElement>(null);
 
-  // If redirecting, show loading state
-  if (!registrationFromHome) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirecting to home page...</p>
-        </div>
-      </div>
-    )
+  if (!isClient || !registrationFromHome) {
+    return null;
   }
 
   return (
@@ -1110,9 +1195,44 @@ export default function GetQuotePage() {
                   <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-4 sm:p-6">
                     <div className="text-center">
                       <div className="text-2xl sm:text-3xl font-bold text-teal-600 mb-2">
-                        £{quote?.total.toFixed(2)}
+                        {appliedPromo ? (
+                          <>
+                            <span className="text-gray-400 line-through mr-2">£{quote?.total.toFixed(2)}</span>
+                            <span>£{(quote?.total - discountAmount).toFixed(2)}</span>
+                          </>
+                        ) : (
+                          `£${quote?.total.toFixed(2)}`
+                        )}
                       </div>
                       <div className="text-sm sm:text-base text-gray-700">Calculated Premium</div>
+                      {appliedPromo && (
+                        <div className="text-sm text-green-600 mt-1">
+                          Discount applied: -£{discountAmount.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Promo Code Section */}
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Have a promo code?</label>
+                    <div className="flex space-x-2">
+                      <Input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        placeholder="Enter promo code"
+                        className="flex-1"
+                        disabled={isApplyingPromo || !!appliedPromo}
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleApplyPromo}
+                        variant="outline"
+                        className="px-6"
+                        disabled={isApplyingPromo || !promoCode || !!appliedPromo}
+                      >
+                        {isApplyingPromo ? "Applying..." : appliedPromo ? "Applied" : "Apply"}
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -1562,60 +1682,70 @@ export default function GetQuotePage() {
               </div>
 
               {/* Address Information */}
-              <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200">
-                <div className="flex items-center space-x-3 mb-4 sm:mb-6">
-                  <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" />
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Address Information</h2>
-                </div>
-
-                <div className="space-y-4 sm:space-y-6">
-                  {/* Postcode */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">POSTCODE *</label>
-                    <div className="flex space-x-2 sm:space-x-3">
-                      <Input
-                        type="text"
-                        value={formData.postcode}
-                        onChange={(e) => {
-                          handleInputChange("postcode", e.target.value.toUpperCase())
-                          setPostcodeError("")
-                        }}
-                        className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
-                        placeholder="Enter postcode"
-                        required
-                      />
-                      <Button
-                        type="button"
-                        onClick={handlePostcodeLookup}
-                        className="bg-teal-600 hover:bg-teal-700 text-white px-4 sm:px-6 h-10 sm:h-12 text-sm sm:text-base flex items-center space-x-2"
-                      >
-                        <Search className="w-4 h-4" />
-                        <span className="hidden sm:inline">Search</span>
-                      </Button>
-                    </div>
-                    {postcodeError && <p className="text-red-600 text-sm mt-2">{postcodeError}</p>}
+              <div className="relative">
+                <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200">
+                  <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+                    <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" />
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">Address Information</h2>
                   </div>
 
-                  {/* Address Selection */}
-                  {showAddresses && addresses.length > 0 && (
+                  <div className="space-y-4 sm:space-y-6">
+                    {/* Postcode */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">SELECT ADDRESS *</label>
-                      <select
-                        value={formData.address}
-                        onChange={(e) => handleInputChange("address", e.target.value)}
-                        className="w-full h-10 sm:h-12 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm sm:text-base bg-primary-foreground"
-                        required
-                      >
-                        <option value="">Select an address...</option>
-                        {addresses.map((address: any, index) => (
-                          <option key={index} value={address.address_selector}>
-                            {address.address_selector}
-                          </option>
-                        ))}
-                      </select>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">POSTCODE *</label>
+                      <div className="flex space-x-2 sm:space-x-3">
+                        <Input
+                          type="text"
+                          value={formData.postcode}
+                          onChange={(e) => {
+                            handleInputChange("postcode", e.target.value.toUpperCase())
+                            setPostcodeError("")
+                          }}
+                          className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
+                          placeholder="Enter postcode"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          onClick={handlePostcodeLookup}
+                          className="bg-teal-600 hover:bg-teal-700 text-white px-4 sm:px-6 h-10 sm:h-12 text-sm sm:text-base flex items-center space-x-2"
+                        >
+                          <Search className="w-4 h-4" />
+                          <span className="hidden sm:inline">Search</span>
+                        </Button>
+                      </div>
+                      {postcodeError && <p className="text-red-600 text-sm mt-2">{postcodeError}</p>}
                     </div>
-                  )}
+
+                    {/* Address Selection */}
+                    {showAddresses && addresses.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">SELECT ADDRESS *</label>
+                        <select
+                          value={formData.address}
+                          onChange={(e) => handleInputChange("address", e.target.value)}
+                          className="w-full h-10 sm:h-12 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm sm:text-base bg-primary-foreground"
+                          required
+                        >
+                          <option value="">Select an address...</option>
+                          {addresses.map((address: any, index) => (
+                            <option key={index} value={address.address_selector}>
+                              {address.address_selector}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
+                {isLookingUpPostcode && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-xl z-10">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Looking up postcode...</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* License Information */}
@@ -1725,6 +1855,17 @@ export default function GetQuotePage() {
           )}
         </div>
       </main>
+      <AuthDialog
+        isOpen={isAuthDialogOpen}
+        onClose={() => setIsAuthDialogOpen(false)}
+        title="Sign In to Continue"
+        description="Sign in or create an account to complete your purchase."
+        onSuccess={() => {
+          setIsAuthDialogOpen(false)
+          setIsLoginCompleted(true)
+        }}
+        disableRedirect={true}
+      />
     </div>
   )
 }

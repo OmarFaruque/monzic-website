@@ -1077,6 +1077,17 @@ export function SettingsSection() {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="stripe-webhook-secret">Webhook Secret</Label>
+                <Input
+                  id="stripe-webhook-secret"
+                  type="password"
+                  placeholder="sk_test_... or sk_live_..."
+                  value={settings.stripe.webhookSecret}
+                  onChange={(e) => updateSetting("stripe", "webhookSecret", e.target.value)}
+                />
+              </div>
+
               <Button
                 onClick={() => testConnection("stripe")}
                 disabled={testing.stripe || !settings.stripe.secretKey}

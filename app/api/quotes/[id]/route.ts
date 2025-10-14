@@ -1,90 +1,92 @@
-import { db } from "@/lib/db";
-import { quotes, users } from "@/lib/schema";
-import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
-import { sendEmail, createInsurancePolicyEmail } from "@/lib/email";
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { quotes, users } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
+import { sendEmail, createInsurancePolicyEmail } from '@/lib/email';
+import { generateInvoicePdf } from '@/lib/invoice';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  // Store original toJSON if it exists to avoid side-effects
+  const originalToJSON = (BigInt.prototype as any).toJSON;
+
   try {
-    const { id } = params;
-    const [quote] = await db.select().from(quotes).where(eq(quotes.id, parseInt(id, 10)));
+    // Temporarily modify BigInt serialization for this request
+    (BigInt.prototype as any).toJSON = function () {
+      return Number(this);
+    };
 
-    if (!quote) {
-      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+    const quoteId = params.id;
+    const { PaymentStatus, PaymentMethod, PaymentIntentId } = await req.json();
+
+    if (PaymentStatus !== 'paid') {
+      return NextResponse.json({ success: false, message: 'Payment not successful' }, { status: 400 });
     }
 
-    return NextResponse.json(quote);
-  } catch (error) {
-    console.error("Error fetching quote:", error);
-    return NextResponse.json({ error: "Failed to fetch quote" }, { status: 500 });
-  }
-}
+    // 1. Update the quote status in the database
+    await db.update(quotes).set({
+      status: 'paid',
+      paymentMethod: PaymentMethod,
+      paymentIntentId: PaymentIntentId,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(quotes.id, quoteId));
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params;
-    const body = await request.json();
+    // 2. Fetch the necessary data for email and invoice
+    const quoteRecord = await db.select().from(quotes).where(eq(quotes.id, quoteId)).limit(1);
+    if (!quoteRecord.length) {
+      throw new Error('Quote not found');
+    }
+    const quote = quoteRecord[0];
+    const fullQuoteData = JSON.parse(quote.quoteData as string);
 
-    const { updatePrice, promoCode, PaymentStatus, PaymentMethod, PaymentIntentId, userId } = body;
-
-
-    if (!id) {
-      return NextResponse.json({ error: "Quote ID is required" }, { status: 400 });
+    if (!quote.userId) {
+      throw new Error('User ID not found on quote');
     }
 
-    // If payment is successful, send email before updating the DB
-    if (PaymentStatus === "paid" && userId) {
-      // 1. Fetch user and quote details
-      const [user] = await db.select().from(users).where(eq(users.userId, userId));
-      const [quote] = await db.select().from(quotes).where(eq(quotes.id, parseInt(id, 10)));
-
-      if (user && quote) {
-        // 2. Create email content
-        const policyDocumentLink = `${process.env.NEXT_PUBLIC_BASE_URL}/policy/view/${quote.policyNumber}`;
-        const emailHtml = createInsurancePolicyEmail(
-          `${user.firstName} ${user.lastName}`,
-          quote.policyNumber,
-          `${quote.vehicleMake} ${quote.vehicleModel}`,
-          new Date(quote.startDate).toLocaleString(),
-          new Date(quote.endDate).toLocaleString(),
-          parseFloat(quote.cpw),
-          policyDocumentLink
-        );
-
-        // 3. Send email
-        await sendEmail({
-          to: user.email,
-          subject: `Your Insurance Policy is Confirmed - ${quote.policyNumber}`,
-          html: emailHtml,
-        });
-      }
+    const userRecord = await db.select().from(users).where(eq(users.userId, quote.userId)).limit(1);
+    if (!userRecord.length) {
+      throw new Error('User not found');
     }
+    const user = userRecord[0];
 
-    const [updatedQuote] = await db
-      .update(quotes)
-      .set(body)
-      .where(eq(quotes.id, parseInt(id, 10)))
-      .returning();
+    // Use the discounted price if available, otherwise the original total
+    const effectivePrice = (quote.updatePrice && quote.updatePrice !== 'false') ? quote.updatePrice : quote.cpw;
+    const finalAmount = parseFloat(effectivePrice || fullQuoteData.total);
+    fullQuoteData.total = finalAmount; // Ensure the invoice and email use the final amount
 
-    if (!updatedQuote) {
-      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
-    }
+    // 3. Generate invoice
+    const pdfBytes = await generateInvoicePdf(fullQuoteData, user);
 
-    return NextResponse.json(updatedQuote);
-  } catch (error) {
-    console.error("Error updating quote:", error);
-    return NextResponse.json({ error: "Failed to update quote" }, { status: 500 });
-  }
-}
+    // 4. Send confirmation email
+    const vehicle = fullQuoteData.customerData.vehicle;
+    const emailHtml = createInsurancePolicyEmail(
+      `${user.firstName} ${user.lastName}`,
+      quote.policyNumber,
+      `${fullQuoteData.customerData.vehicle.year} ${fullQuoteData.customerData.vehicle.make} ${fullQuoteData.customerData.vehicle.model}`,
+      fullQuoteData.startTime,
+      fullQuoteData.expiryTime,
+      finalAmount,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`
+    );
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params;
-    await db.delete(quotes).where(eq(quotes.id, parseInt(id, 10)));
+    await sendEmail({
+      to: user.email,
+      subject: 'Your Insurance Policy Confirmation',
+      html: emailHtml,
+      attachments: [
+        {
+          filename: `invoice-${quote.policyNumber}.pdf`,
+          content: Buffer.from(pdfBytes),
+        },
+      ],
+    });
 
-    return NextResponse.json({ message: "Quote deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting quote:", error);
-    return NextResponse.json({ error: "Failed to delete quote" }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Quote updated and email sent.' });
+
+  } catch (error: any) {
+    console.error('Error updating quote and sending email:', error);
+    return NextResponse.json({ success: false, message: error.message || 'An internal error occurred.' }, { status: 500 });
+  } finally {
+    // Restore original toJSON to prevent side-effects
+    (BigInt.prototype as any).toJSON = originalToJSON;
   }
 }

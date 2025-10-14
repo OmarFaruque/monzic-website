@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Mail, User, ArrowRight, Shield, Clock, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useSettings } from "@/context/settings"
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface AuthDialogProps {
   title: string;
   description: string;
   onSuccess: () => void;
+  disableRedirect?: boolean;
 }
 
 export function AuthDialog({
@@ -26,6 +28,7 @@ export function AuthDialog({
   title,
   description,
   onSuccess,
+  disableRedirect = false,
 }: AuthDialogProps) {
   const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
@@ -44,7 +47,9 @@ export function AuthDialog({
   });
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const settings = useSettings()
+  const { toast } = useToast();
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -127,8 +132,20 @@ export function AuthDialog({
         });
 
         if (!response.ok) {
-          // Replace showError with a more appropriate notification for the dialog
-          console.error("Authentication Failed", "Could not request verification code.");
+          if (response.status === 404) {
+            toast({
+              variant: "destructive",
+              title: "Email Not Found",
+              description: "This email is not registered. Please sign up or try a different email.",
+            });
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            toast({
+              variant: "destructive",
+              title: "Authentication Failed",
+              description: errorData.error || "An unknown error occurred. Please try again.",
+            });
+          }
         } else {
           // Replace showInfo with a more appropriate notification for the dialog
           console.info("Verification Required", "Please check your email for a 6-digit verification code to sign in.");
@@ -177,6 +194,8 @@ export function AuthDialog({
       return;
     }
 
+    setIsVerifying(true);
+
     try {
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
@@ -192,7 +211,7 @@ export function AuthDialog({
         setVerificationCode(["", "", "", "", "", ""]);
         document.getElementById("code-0")?.focus();
       } else {
-        login({ user: data.user, token: data.token });
+        login({ user: data.user, token: data.token }, { redirect: !disableRedirect });
         // Replace showSuccess with a more appropriate notification for the dialog
         console.log("Email Verified!", "Your account is now active. Proceeding...");
         onSuccess();
@@ -202,6 +221,8 @@ export function AuthDialog({
       console.error("Verification submission error:", error);
       // Replace showError with a more appropriate notification for the dialog
       console.error("Error", "An error occurred during verification.");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -245,7 +266,7 @@ export function AuthDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="p-0 max-w-md">
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+        <div className="sm:rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-6 text-white text-center">
             <h2 className="text-2xl font-bold mb-2">{isLogin ? "Welcome Back" : `Join ${settings.siteName}`}</h2>
             <p className="text-teal-100 text-sm">
@@ -403,17 +424,7 @@ export function AuthDialog({
                   </div>
                 </div>
 
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <Clock className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-yellow-800">
-                      <p className="font-medium mb-1">Testing Mode</p>
-                      <p>
-                        For testing purposes, use code: <strong>000000</strong>
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                
 
                 <div className="text-center">
                   {canResend ? (
@@ -435,9 +446,17 @@ export function AuthDialog({
 
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white h-12 font-semibold"
+                  disabled={isVerifying}
+                  className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white h-12 font-semibold flex items-center justify-center space-x-2"
                 >
-                  Verify Email
+                  {isVerifying ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    "Verify Email"
+                  )}
                 </Button>
               </form>
 
@@ -451,6 +470,7 @@ export function AuthDialog({
               </div>
             </div>
           )}
+
         </div>
       </DialogContent>
     </Dialog>

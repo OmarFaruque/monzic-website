@@ -49,9 +49,11 @@ export async function POST(req: NextRequest) {
       currency: "gbp",
       customer: stripeCustomerId,
       metadata: {
+        type: 'ai_document',
         document_details: JSON.stringify({
           prompt: limitedPrompt,
           price: docData.price,
+          content: docData.content,
         }),
         user_details: JSON.stringify(user),
       },

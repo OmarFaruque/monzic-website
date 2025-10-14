@@ -6,7 +6,6 @@ import { useState, useEffect, useRef } from "react";
 import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AuthDialog } from "@/components/auth/auth-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import {
@@ -72,23 +71,6 @@ interface QuoteData {
   promoCode?: string;
 }
 
-interface Coupon {
-  id: number;
-  promoCode: string;
-  discount: { type: "percentage" | "fixed"; value: number };
-  minSpent: string | null;
-  maxDiscount: string | null;
-  quotaAvailable: string;
-  usedQuota: string;
-  totalUsage: string;
-  expires: string | null;
-  isActive: boolean;
-  restrictions: any | null;
-  matches: any | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface QuoteCheckoutPageProps {
   paymentProvider: string | null;
   bankPaymentEnabled: boolean;
@@ -151,16 +133,10 @@ function QuoteCheckoutPage({
   const { toast } = useToast();
   const router = useRouter();
   const [showSummary, setShowSummary] = useState(false);
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [sameAsPersonal, setSameAsPersonal] = useState(true);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [quote, setQuote] = useState<any>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [promo, setPromo] = useState<Coupon | null>(null);
-  const [isPromoLoading, setIsPromoLoading] = useState(false);
-  const [discountedTotal, setDiscountedTotal] = useState<number | null>(null);
-  const [isLoginCompleted, setIsLoginCompleted] = useState(false);
-  const [pendingSquareToken, setPendingSquareToken] = useState<any>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
 
   const stripe = paymentProvider === 'stripe' ? useStripe() : null;
@@ -200,13 +176,18 @@ function QuoteCheckoutPage({
   }
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to access this page." });
+      router.push("/");
+      return;
+    }
+
     const storedQuoteData = localStorage.getItem("quoteData");
     if (storedQuoteData) {
       const parsed = JSON.parse(storedQuoteData);
       const data = typeof parsed.quoteData === "string" ? JSON.parse(parsed.quoteData) : parsed.quoteData;
       setQuoteData(data);
       setQuote(parsed);
-      setDiscountedTotal(data.update_price ?? data.total);
     } else {
       router.push("/get-quote");
     }
@@ -214,7 +195,7 @@ function QuoteCheckoutPage({
       const checkboxContent = settings?.checkoutCheckboxContent.split('||');
       setCheckboxContent(checkboxContent);
     }
-  }, [router, settings]);
+  }, [isAuthenticated, router, settings, toast]);
 
   useEffect(() => {
     if (selectedPaymentMethod === "airwallex" && isAuthenticated && quoteData) {
@@ -226,7 +207,7 @@ function QuoteCheckoutPage({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              quoteData: { ...quoteData, total: discountedTotal ?? quoteData?.total },
+              quoteData: { ...quoteData, total: quoteData?.total },
               user: user,
             }),
           });
@@ -243,10 +224,9 @@ function QuoteCheckoutPage({
       };
       initAirwallex();
     }
-  }, [selectedPaymentMethod, isAuthenticated, toast, quoteData, discountedTotal, user]);
+  }, [selectedPaymentMethod, isAuthenticated, toast, quoteData, user]);
 
   const [formData, setFormData] = useState({
-    promoCode: "",
     termsAccepted: false,
     accuracyConfirmed: false,
     billingAddress1: "",
@@ -256,82 +236,11 @@ function QuoteCheckoutPage({
     billingCountry: "United Kingdom",
   });
 
-  useEffect(() => {
-    if (isAuthenticated && isLoginCompleted) {
-      if (pendingSquareToken) {
-        handleSquarePayment(pendingSquareToken);
-        setPendingSquareToken(null);
-      } else {
-        handleCompletePayment();
-      }
-      setIsLoginCompleted(false);
-    }
-  }, [isAuthenticated, isLoginCompleted, pendingSquareToken]);
-
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const calculateDiscountedTotal = (total: number, promo: Coupon) => {
-    let discountAmount = 0;
-    if (promo.discount.type === "percentage") {
-      discountAmount = total * (promo.discount.value / 100);
-    } else if (promo.discount.type === "fixed") {
-      discountAmount = promo.discount.value;
-    }
-    if (promo.maxDiscount) {
-      discountAmount = Math.min(discountAmount, parseFloat(promo.maxDiscount));
-    }
-    const newTotal = total - discountAmount;
-    return newTotal > 0 ? newTotal : 0;
-  };
-
-  const handlePromoCode = async () => {
-    if (!formData.promoCode || !quoteData) return;
-    setIsPromoLoading(true);
-    toast({ title: "Processing", description: "Checking promo code..." });
-    try {
-      const response = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ promoCode: formData.promoCode, total: quoteData.total }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to validate promo code");
-      
-      const coupon: Coupon = data;
-      if (typeof coupon.discount === "string") {
-        coupon.discount = JSON.parse(coupon.discount);
-      }
-      setPromo(coupon);
-      const newTotal = calculateDiscountedTotal(quoteData.total, coupon);
-      setDiscountedTotal(newTotal);
-
-      const newQuoteData = { ...quoteData, promoCode: coupon.promoCode, update_price: newTotal };
-      const updateQuote = { ...quote, quoteData: newQuoteData };
-      localStorage.setItem("quoteData", JSON.stringify(updateQuote));
-      setQuoteData(newQuoteData);
-
-      toast({ title: "Promo Code Applied", description: `Successfully applied promo code ${data.promoCode}` });
-    } catch (error: any) {
-      setPromo(null);
-      if (quoteData) {
-        setDiscountedTotal(quoteData.total);
-        const newQuoteData = { ...quoteData, promoCode: undefined, update_price: undefined };
-        setQuoteData(newQuoteData);
-        localStorage.setItem("quoteData", JSON.stringify({ ...quote, quoteData: newQuoteData }));
-      }
-      toast({ variant: "destructive", title: "Invalid Code", description: error.message || "The promo code is invalid or expired" });
-    } finally {
-      setIsPromoLoading(false);
-    }
-  };
-
   const handleCompletePayment = async () => {
-    if (!isAuthenticated) {
-      setIsAuthDialogOpen(true);
-      return;
-    }
     if (!formData.termsAccepted || !formData.accuracyConfirmed) {
       toast({ variant: "destructive", title: "Missing Information", description: "Please accept the terms and confirm accuracy." });
       return;
@@ -345,7 +254,7 @@ function QuoteCheckoutPage({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    quoteData: { ...quoteData, total: discountedTotal ?? quoteData?.total },
+                    quoteData: { ...quoteData, total: quoteData?.total },
                     user: user,
                 }),
             });
@@ -372,7 +281,7 @@ function QuoteCheckoutPage({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              quoteData: { ...quoteData, total: discountedTotal ?? quoteData?.total },
+              quoteData: { ...quoteData, id: quote.id, total: quoteData?.total },
               user: user,
             }),
           });
@@ -427,15 +336,6 @@ function QuoteCheckoutPage({
     }
   };
 
-  const handleSquarePaymentWithAuth = (token: any) => {
-    if (!isAuthenticated) {
-      setPendingSquareToken(token);
-      setIsAuthDialogOpen(true);
-    } else {
-      handleSquarePayment(token);
-    }
-  };
-
   const handleSquarePayment = async (token: any) => {
     if (!token) return;
     setIsProcessingPayment(true);
@@ -445,7 +345,7 @@ function QuoteCheckoutPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sourceId: token.token,
-          quoteData: { ...quoteData, id: quote.id, total: discountedTotal ?? quoteData?.total },
+          quoteData: { ...quoteData, id: quote.id, total: quoteData?.total },
           user: user,
         }),
       });
@@ -467,7 +367,7 @@ function QuoteCheckoutPage({
     countryCode: "GB",
     currencyCode: "GBP",
     total: {
-      amount: (discountedTotal ?? quoteData?.total ?? 0).toFixed(2),
+      amount: (quoteData?.total ?? 0).toFixed(2),
       label: "Total",
     },
   });
@@ -520,10 +420,7 @@ function QuoteCheckoutPage({
                   <p className="text-gray-700">Logged in as <span className="font-semibold">{user?.email}</span></p>
                 ) : (
                   <p className="text-sm text-gray-600">
-                    Already have an account?{" "}
-                    <button onClick={() => setIsAuthDialogOpen(true)} className="text-teal-600 hover:text-teal-700 font-medium">
-                      Sign in
-                    </button>
+                    You must be logged in to complete the payment.
                   </p>
                 )}
               </div>
@@ -531,22 +428,7 @@ function QuoteCheckoutPage({
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">PAYMENT</h2>
                 <div className="text-2xl font-bold text-gray-900 mb-6">
-                  £{(discountedTotal ?? quoteData.total).toFixed(2)}
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Have a promo code?</label>
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                    <Input type="text" value={formData.promoCode} onChange={(e) => handleInputChange("promoCode", e.target.value)} placeholder="Promo code" className="flex-1" />
-                    <Button onClick={handlePromoCode} variant="outline" className="px-6" disabled={isPromoLoading}>
-                      {isPromoLoading ? "Applying..." : "Apply"}
-                    </Button>
-                  </div>
-                  {promo && discountedTotal !== null && (
-                    <div className="mt-2 text-sm text-green-600">
-                      Discount applied: -£{(quoteData.total - discountedTotal).toFixed(2)}
-                    </div>
-                  )}
+                  £{(quoteData.total).toFixed(2)}
                 </div>
 
                 <div className="mb-6">
@@ -595,7 +477,7 @@ function QuoteCheckoutPage({
                   <PaymentForm
                     applicationId={squareAppId}
                     locationId={squareLocationId}
-                    cardTokenizeResponseReceived={handleSquarePaymentWithAuth}
+                    cardTokenizeResponseReceived={handleSquarePayment}
                     createPaymentRequest={createPaymentRequest}
                   >
                     <div className="space-y-4 my-4">
@@ -663,7 +545,7 @@ function QuoteCheckoutPage({
                     <PaddleCheckoutButton 
                         quoteData={quoteData}
                         user={user}
-                        discountedTotal={discountedTotal ?? quoteData.total}
+                        discountedTotal={quoteData.total}
                         disabled={!formData.termsAccepted || !formData.accuracyConfirmed}
                     />
                 ) : selectedPaymentMethod !== 'square' && (
@@ -672,7 +554,7 @@ function QuoteCheckoutPage({
                       <div className="flex items-center justify-center space-x-2">
                         <Loader2 className="w-5 h-5 animate-spin" /><span>Processing...</span>
                       </div>
-                    ) : `Complete Payment - £${(discountedTotal ?? quoteData.total).toFixed(2)}`}
+                    ) : `Complete Payment - £${(quoteData.total).toFixed(2)}`}
                   </Button>
                 )}
                 <div className="flex items-center justify-center space-x-2 mt-4 text-sm text-gray-600">
@@ -692,7 +574,7 @@ function QuoteCheckoutPage({
                 <div className="bg-white rounded-lg p-6 shadow-sm sticky top-6">
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-base font-medium text-gray-900">Total:</span>
-                    <span className="text-xl font-bold text-teal-600">£{(discountedTotal ?? quoteData.total).toFixed(2)}</span>
+                    <span className="text-xl font-bold text-teal-600">£{(quoteData.total).toFixed(2)}</span>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-gray-600">Vehicle:</span><span className="font-medium">{quoteData.customerData.vehicle.year} {quoteData.customerData.vehicle.make} {quoteData.customerData.vehicle.model}</span></div>
@@ -719,17 +601,6 @@ function QuoteCheckoutPage({
           </div>
         </div>
       </main>
-
-      <AuthDialog
-        isOpen={isAuthDialogOpen}
-        onClose={() => setIsAuthDialogOpen(false)}
-        title="Sign In to Continue"
-        description="Sign in or create an account to complete your purchase."
-        onSuccess={() => {
-          setIsAuthDialogOpen(false);
-          setIsLoginCompleted(true);
-        }}
-      />
     </div>
   );
 }

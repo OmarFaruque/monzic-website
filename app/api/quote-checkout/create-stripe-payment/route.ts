@@ -33,10 +33,12 @@ export async function POST(req: NextRequest) {
 
     let stripeCustomerId = user.stripeCustomerId;
 
+  
+
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({ email: user.email });
       stripeCustomerId = customer.id;
-      await db.update(users).set({ stripeCustomerId }).where(eq(users.userId, user.userId));
+      await db.update(users).set({ stripeCustomerId }).where(eq(users.userId, user.id));
     }
 
     const finalAmount = quoteData.total;
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
       currency: "gbp",
       customer: stripeCustomerId,
       metadata: {
+        type: 'quote',
         quote_id: quoteData.id, // Assuming quoteData has an id
         user_details: JSON.stringify(user),
       },
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     // Here you would typically update the quote in your database with the paymentIntent.id
     // For example:
-    // await db.update(quotes).set({ paymentIntentId: paymentIntent.id }).where(eq(quotes.id, quoteData.id));
+    await db.update(quotes).set({ paymentIntentId: paymentIntent.id }).where(eq(quotes.id, quoteData.id));
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {

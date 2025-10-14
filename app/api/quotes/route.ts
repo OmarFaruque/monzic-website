@@ -5,7 +5,11 @@ import { z } from "zod";
 import { eq, sql } from "drizzle-orm";
 
 const quoteSchema = z.object({
+  userId: z.any().optional(),
   total: z.number(),
+  originalTotal: z.number().optional(),
+  cpw: z.string().optional(),
+  update_price: z.string().optional(),
   startTime: z.string(),
   expiryTime: z.string(),
   breakdown: z.object({
@@ -81,7 +85,7 @@ export async function POST(request: Request) {
   try {
     const { quoteData: rawQuoteData } = await request.json();
 
-    console.log("Incoming Quote Data:", rawQuoteData);
+    
 
     const quoteData = quoteSchema.parse(rawQuoteData);
 
@@ -109,7 +113,9 @@ export async function POST(request: Request) {
       .insert(quotes)
       .values({
         policyNumber: policyNumber,
-        cpw: String(quoteData.total),
+        userId: quoteData.userId,
+        cpw: String(quoteData.cpw || quoteData.originalTotal || quoteData.total),
+        updatePrice: String(quoteData.update_price || quoteData.total),
         regNumber: quoteData.customerData.registration,
         vehicleMake: quoteData.customerData.vehicle.make,
         vehicleModel: quoteData.customerData.vehicle.model,

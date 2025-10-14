@@ -70,6 +70,9 @@ export default function usePaddle() {
                     user = jwtDecode<DecodedToken>(token);
                 }
 
+
+                console.log('Userevent: ', user)
+
                 const customData = event.data.custom_data;
 
 
@@ -110,6 +113,9 @@ export default function usePaddle() {
                     });
                 } else {
                     const storedQuoteData = localStorage.getItem("quoteData");
+
+                 
+
                     if (storedQuoteData) {
                         const quoteData = JSON.parse(storedQuoteData);
                         const quoteId = quoteData.id;
@@ -123,7 +129,7 @@ export default function usePaddle() {
                                 PaymentStatus: "paid", 
                                 PaymentMethod: "paddle",
                                 PaymentIntentId: transactionId, 
-                                userId: user?.userId,
+                                userId: user?.id,
                                 updatePrice: quoteData?.quoteData?.update_price,
                                 promoCode: quoteData?.quoteData?.promoCode
                               }

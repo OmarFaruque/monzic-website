@@ -68,23 +68,34 @@ export async function POST(req: NextRequest) {
       await db.update(quotes).set({
         status: 'paid',
         userId: user.id,
-        transactionId: paymentResult.payment.id,
-        paymentProvider: 'square'
+        spaymentId: paymentResult.payment.id,
+        paymentMethod: 'square'
       }).where(eq(quotes.id, quoteData.id));
 
+      // Fetch the updated quote to get the policy number
+      const quoteRecord = await db.select().from(quotes).where(eq(quotes.id, quoteData.id)).limit(1);
+      if (!quoteRecord.length) {
+        throw new Error('Quote not found after update');
+      }
+      const quote = quoteRecord[0];
+
+      // Use the stored discounted price, fallback to original price (cpw)
+      const effectivePrice = (quote.updatePrice && quote.updatePrice !== 'false') ? quote.updatePrice : quote.cpw;
+      const finalAmount = parseFloat(effectivePrice || quoteData.total);
+
       // Generate invoice
-      const pdfBytes = await generateInvoicePdf(quoteData, user);
+      const pdfBytes = await generateInvoicePdf({ ...quoteData, total: finalAmount }, user);
 
       // Send confirmation email
       const vehicle = quoteData.customerData.vehicle;
       const emailHtml = createInsurancePolicyEmail(
         `${user.firstName} ${user.lastName}`,
-        quoteData.id, // Using quote ID as policy number
+        quote.policyNumber, // Using policyNumber from the database
         `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
         quoteData.startTime,
         quoteData.expiryTime,
-        quoteData.total,
-        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quoteData.id}` // Example link
+        finalAmount, // Use the corrected final amount
+        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}` // Using policyNumber
       );
 
       await sendEmail({
@@ -93,7 +104,7 @@ export async function POST(req: NextRequest) {
         html: emailHtml,
         attachments: [
           {
-            filename: `invoice-${quoteData.id}.pdf`,
+            filename: `invoice-${quote.policyNumber}.pdf`,
             content: Buffer.from(pdfBytes),
           },
         ],

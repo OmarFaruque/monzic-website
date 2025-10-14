@@ -61,7 +61,7 @@ export const quotes = pgTable("quotes", {
 	licencePeriod: varchar("licence_period", { length: 50 }),
 	vehicleType: varchar("vehicle_type", { length: 100 }),
 	promoCode: varchar("promo_code", { length: 100 }),
-	PaymentStatus: varchar("payment_status", { length: 50 }), // e.g., 'pending', 'paid'
+	paymentStatus: varchar("payment_status", { length: 50 }), // e.g., 'pending', 'paid'
 	intentId: varchar("intent_id", { length: 255 }), // Payment intent ID from payment gateway
 	spaymentId: varchar("spayment_id", { length: 255 }), // Square payment ID
 	nameTitle: varchar("name_title", { length: 20 }),
@@ -70,7 +70,7 @@ export const quotes = pgTable("quotes", {
 	town: varchar("town", { length: 100 }),
 	occupation: varchar("occupation", { length: 100 }),
 	coverReason: varchar("cover_reason", { length: 255 }),
-	mail_sent: boolean("mail_sent").default(false),
+	mailSent: boolean("mail_sent").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),	
 	quoteData: text("quote_data"), // Storing as JSON string
