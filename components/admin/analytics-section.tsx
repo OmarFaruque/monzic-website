@@ -208,7 +208,7 @@ export function AnalyticsSection({ analyticsData }: { analyticsData: any }) {
         {/* Sales Chart */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <CardTitle>Sales Overview</CardTitle>
               <div className="flex gap-2">
                 <Select value={timeRange} onValueChange={setTimeRange}>
@@ -228,7 +228,7 @@ export function AnalyticsSection({ analyticsData }: { analyticsData: any }) {
           </CardHeader>
           <CardContent>
             {/* Custom Date Range */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
               <div className="flex-1">
                 <Label htmlFor="start-date" className="text-xs">
                   Start Date

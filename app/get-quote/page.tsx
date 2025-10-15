@@ -180,6 +180,37 @@ export default function GetQuotePage() {
     }
   }, [registrationFromHome, router]);
 
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'review') {
+      const storedData = localStorage.getItem("quoteRestorationData");
+      if (storedData) {
+        try {
+          const { formData, quote, appliedPromo, discountAmount, reviewStartTime, reviewExpiryTime } = JSON.parse(storedData);
+          
+          setFormData(formData);
+          setQuote(quote);
+          setAppliedPromo(appliedPromo);
+          setDiscountAmount(discountAmount);
+          if (appliedPromo) {
+            setPromoCode(appliedPromo.promoCode);
+          }
+          setReviewStartTime(reviewStartTime);
+          setReviewExpiryTime(reviewExpiryTime);
+          
+          setShowReview(true);
+
+          const reg = searchParams.get('reg');
+          router.replace(`/get-quote?reg=${reg}`, undefined, { shallow: true });
+          localStorage.removeItem("quoteRestorationData");
+        } catch (e) {
+          console.error("Failed to restore quote state from localStorage", e);
+          router.push('/');
+        }
+      }
+    }
+  }, [searchParams, router]);
+
   const handleInputChange = (field: string, value: string | boolean) => {
     // Special handling for phone number field
     if (field === "phoneNumber" && typeof value === "string") {
@@ -772,6 +803,17 @@ export default function GetQuotePage() {
         parsedQuoteData.originalTotal = calculatedQuote.total;
       }
       newQuote.quoteData = JSON.stringify(parsedQuoteData);
+
+      // Save data for restoration if user navigates back
+      const restorationData = {
+        formData,
+        quote,
+        appliedPromo,
+        discountAmount,
+        reviewStartTime,
+        reviewExpiryTime,
+      };
+      localStorage.setItem("quoteRestorationData", JSON.stringify(restorationData));
 
       // Save quote data to localStorage
       localStorage.setItem("quoteData", JSON.stringify(newQuote))

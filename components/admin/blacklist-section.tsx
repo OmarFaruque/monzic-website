@@ -167,14 +167,14 @@ export function BlacklistSection({ blacklistData }: { blacklistData: any }) {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="flex items-center justify-between">
-            <TabsList>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <TabsList className="grid grid-cols-3 w-full md:w-auto">
               <TabsTrigger value="users" className="flex items-center gap-2"><Shield className="w-4 h-4" />Users ({blacklistData.users.length})</TabsTrigger>
               <TabsTrigger value="ips" className="flex items-center gap-2"><Globe className="w-4 h-4" />IP Addresses ({blacklistData.ips.length})</TabsTrigger>
               <TabsTrigger value="postcodes" className="flex items-center gap-2"><MapPin className="w-4 h-4" />Postcodes ({blacklistData.postcodes.length})</TabsTrigger>
             </TabsList>
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="relative flex-1 w-full md:max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input placeholder="Search blacklist..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
               </div>

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { users, quotes, tickets, settings, blacklist } from '@/lib/schema';
-import { count, sum, sql } from 'drizzle-orm';
+import { count, sum, sql, gte, lt, and, eq } from 'drizzle-orm';
 
 // Helper function to calculate percentage change
 function calculateChange(current: number, previous: number) {
@@ -37,19 +37,19 @@ export async function getOverviewStats() {
   ] = await Promise.all([
     // Totals
     db.select({ value: count() }).from(users),
-    db.select({ value: count() }).from(users).where(sql`created_at >= ${thirtyDaysAgoISO}`),
-    db.select({ value: count() }).from(users).where(sql`created_at >= ${sixtyDaysAgoISO} AND created_at < ${thirtyDaysAgoISO}`),
+    db.select({ value: count() }).from(users).where(gte(users.createdAt, thirtyDaysAgoISO)),
+    db.select({ value: count() }).from(users).where(and(gte(users.createdAt, sixtyDaysAgoISO), lt(users.createdAt, thirtyDaysAgoISO))),
 
     db.select({ value: count() }).from(quotes),
-    db.select({ value: count() }).from(quotes).where(sql`created_at >= ${thirtyDaysAgoISO}`),
-    db.select({ value: count() }).from(quotes).where(sql`created_at >= ${sixtyDaysAgoISO} AND created_at < ${thirtyDaysAgoISO}`),
+    db.select({ value: count() }).from(quotes).where(gte(quotes.createdAt, thirtyDaysAgoISO)),
+    db.select({ value: count() }).from(quotes).where(and(gte(quotes.createdAt, sixtyDaysAgoISO), lt(quotes.createdAt, thirtyDaysAgoISO))),
 
-    db.select({ value: count() }).from(tickets).where(sql`status = 'open'`),
+    db.select({ value: count() }).from(tickets).where(eq(tickets.status, 'open')),
     db.select({ value: count() }).from(quotes).where(sql`end_date > NOW()`),
 
     // Revenue periods
-    db.select({ value: sum(sql`CASE WHEN update_price IS NOT NULL AND update_price != 'false' THEN CAST(update_price AS numeric) ELSE CAST(cpw AS numeric) END`) }).from(quotes).where(sql`status = 'completed' AND created_at >= ${thirtyDaysAgoISO}`),
-    db.select({ value: sum(sql`CASE WHEN update_price IS NOT NULL AND update_price != 'false' THEN CAST(update_price AS numeric) ELSE CAST(cpw AS numeric) END`) }).from(quotes).where(sql`status = 'completed' AND created_at >= ${sixtyDaysAgoISO} AND created_at < ${thirtyDaysAgoISO}`),
+    db.select({ value: sum(sql`CASE WHEN update_price IS NOT NULL AND update_price != 'false' THEN CAST(update_price AS numeric) ELSE CAST(cpw AS numeric) END`) }).from(quotes).where(and(eq(quotes.status, 'completed'), gte(quotes.createdAt, thirtyDaysAgoISO))),
+    db.select({ value: sum(sql`CASE WHEN update_price IS NOT NULL AND update_price != 'false' THEN CAST(update_price AS numeric) ELSE CAST(cpw AS numeric) END`) }).from(quotes).where(and(eq(quotes.status, 'completed'), gte(quotes.createdAt, sixtyDaysAgoISO), lt(quotes.createdAt, thirtyDaysAgoISO))),
   ]);
 
   // Extract values and calculate changes

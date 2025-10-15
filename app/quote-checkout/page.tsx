@@ -317,6 +317,7 @@ function QuoteCheckoutPage({
             element: airwallexElement,
             id: airwallexElement.intent.id,
             client_secret: airwallexElement.intent.client_secret,
+          });
           // toast({ title: "Payment Successful", description: "Your payment has been processed." });
           // window.location.href = "/payment-confirmation";
 
@@ -404,7 +405,17 @@ function QuoteCheckoutPage({
       <main className="flex-1 px-4 sm:px-6 py-4 sm:py-8 overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="mb-4 sm:mb-6">
-            <Button onClick={() => router.push("/get-quote")} variant="outline" className="flex items-center space-x-2 text-sm sm:text-base">
+            <Button 
+              onClick={() => {
+                if (quoteData?.customerData?.registration) {
+                  router.push(`/get-quote?reg=${quoteData.customerData.registration}&view=review`);
+                } else {
+                  router.push('/'); // Fallback to home if reg is not found
+                }
+              }} 
+              variant="outline" 
+              className="flex items-center space-x-2 text-sm sm:text-base"
+            >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Quote</span>
             </Button>

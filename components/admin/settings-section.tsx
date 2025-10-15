@@ -766,7 +766,7 @@ export function SettingsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Settings & Configuration</h2>
           <p className="text-gray-600">Manage API keys, integrations, and system settings</p>
@@ -1804,10 +1804,12 @@ export function SettingsSection() {
 
       {hasChanges && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            <span className="text-yellow-800 font-medium">You have unsaved changes</span>
-            <Button onClick={saveSettings} size="sm" className="ml-auto bg-yellow-600 hover:bg-yellow-700" disabled={isSaving}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <span className="text-yellow-800 font-medium">You have unsaved changes</span>
+            </div>
+            <Button onClick={saveSettings} size="sm" className="bg-yellow-600 hover:bg-yellow-700 w-full sm:w-auto" disabled={isSaving}>
               {isSaving ? 'Saving...' : 'Save Now'}
             </Button>
           </div>
