@@ -21,7 +21,7 @@ function createVerificationCodeEmail(code: string): string {
       <title>Your Verification Code</title>
     </head>
     <body>
-      <h1>Your MONZIC Verification Code</h1>
+      <h1>Your TEMPNOW Verification Code</h1>
       <p>Use the following code to log in to your account:</p>
       <h2>${code}</h2>
       <p>This code will expire in 10 minutes.</p>
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     await sendEmail({
       to: email,
-      subject: 'Your MONZIC Verification Code',
+      subject: 'Your TEMPNOW Verification Code',
       html: createVerificationCodeEmail(verificationCode),
     });
 

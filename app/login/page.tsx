@@ -245,7 +245,7 @@ export default function LoginPage() {
       <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-md relative">
         <div className="flex items-center">
           <Link href="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            {settings?.siteName || "MONZIC"}
+            {settings?.siteName || "TEMPNOW"}
           </Link>
         </div>
 
@@ -545,7 +545,7 @@ export default function LoginPage() {
             </Link>
           </div>
           <div className="text-center mt-2 text-xs text-teal-100">
-            © 2025 {settings?.siteName || "Monzic Solutions Ltd."}. All rights reserved.
+            © 2025 {settings?.siteName || "Tempnow Solutions Ltd."}. All rights reserved.
           </div>
         </div>
       </footer>

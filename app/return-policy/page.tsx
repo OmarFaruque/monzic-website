@@ -15,7 +15,7 @@ export default function ReturnPolicyPage() {
         <div className="flex items-center">
           <Link href="/">
             <h1 className="text-xl sm:text-2xl font-bold text-white cursor-pointer hover:text-teal-100 transition-colors">
-              MONZIC
+              TEMPNOW
             </h1>
           </Link>
         </div>
@@ -103,7 +103,7 @@ export default function ReturnPolicyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-red-100">Monzic Solutions Ltd</p>
+                    <p className="text-red-100">Temwpno Solutions Ltd</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
@@ -132,7 +132,7 @@ export default function ReturnPolicyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p>
-                          <strong>Legal Name:</strong> Monzic Solutions Ltd
+                          <strong>Legal Name:</strong> Tempnow Solutions Ltd
                         </p>
                         <p>
                           <strong>Company Number:</strong> 16414928
@@ -152,8 +152,8 @@ export default function ReturnPolicyPage() {
                     </div>
                   </div>
                   <p>
-                    This Return Policy ("Policy") governs the return and refund procedures for Monzic Solutions Ltd's
-                    ("Monzic," "we," "us," or "our") artificial intelligence-powered document generation services. Due
+                    This Return Policy ("Policy") governs the return and refund procedures for Tempnow Solutions Ltd's
+                    ("Tempnow," "we," "us," or "our") artificial intelligence-powered document generation services. Due
                     to the digital nature of our services and immediate delivery model, this Policy establishes our
                     approach to customer satisfaction and goodwill refunds.
                   </p>
@@ -181,7 +181,7 @@ export default function ReturnPolicyPage() {
                         <h3 className="text-lg font-bold text-amber-900 mb-2">Important Notice: No Returns Accepted</h3>
                         <p className="text-amber-800 text-sm mb-3">
                           <strong>
-                            Monzic Solutions Ltd does not accept returns for our digital AI document generation
+                            Tempnow Solutions Ltd does not accept returns for our digital AI document generation
                             services.
                           </strong>
                           Once a document has been generated and delivered, the service has been fully performed and
@@ -206,7 +206,7 @@ export default function ReturnPolicyPage() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
                     <h3 className="text-lg font-semibold text-blue-900 mb-3">Exceptional Circumstances Refund</h3>
                     <p className="text-sm text-blue-800 mb-4">
-                      While we do not accept returns, Monzic Solutions Ltd may, at our sole discretion, offer a
+                      While we do not accept returns, Tempnow Solutions Ltd may, at our sole discretion, offer a
                       <strong> one-time goodwill refund</strong> in exceptional circumstances where a customer
                       experiences genuine dissatisfaction with our service.
                     </p>
@@ -214,7 +214,7 @@ export default function ReturnPolicyPage() {
                       <h4 className="font-semibold text-blue-900 mb-2">Key Conditions:</h4>
                       <ul className="space-y-1 text-sm text-blue-800">
                         <li>• Available only once per customer account</li>
-                        <li>• Entirely at Monzic's discretion</li>
+                        <li>• Entirely at Tempnow's discretion</li>
                         <li>• Must be requested within 24 hours of purchase</li>
                         <li>• Requires detailed explanation of dissatisfaction</li>
                         <li>• Subject to verification and review process</li>
@@ -238,7 +238,7 @@ export default function ReturnPolicyPage() {
                         <h4 className="font-semibold text-red-900 mb-2">Service Access Termination</h4>
                         <p className="text-sm text-red-800">
                           <strong>
-                            If a goodwill refund is granted, you will permanently lose access to all Monzic Solutions
+                            If a goodwill refund is granted, you will permanently lose access to all Tempnow Solutions
                             Ltd services.
                           </strong>
                           This includes the inability to create new accounts, access existing accounts, or use any of
@@ -445,7 +445,7 @@ export default function ReturnPolicyPage() {
               <div className="flex flex-col sm:flex-row justify-between items-center">
                 <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-0 text-center sm:text-left">
                   <p>
-                    <strong>Monzic Solutions Ltd</strong> • Company Registration: 16414928 • Registered in England and
+                    <strong>Tempnow Solutions Ltd</strong> • Company Registration: 16414928 • Registered in England and
                     Wales
                   </p>
                 </div>
@@ -471,7 +471,7 @@ export default function ReturnPolicyPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © 2025 Monzic Solutions Ltd. All rights reserved.
+            © 2025 Tempnow Solutions Ltd. All rights reserved.
           </div>
         </div>
       </footer>

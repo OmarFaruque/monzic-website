@@ -35,7 +35,7 @@ function EmailTemplatesTab() {
       subject: "Your Policy Confirmation - {{policyNumber}}",
       content: `Dear {{firstName}} {{lastName}},
 
-Thank you for choosing Monzic! Your policy has been successfully created.
+Thank you for choosing Tempnow! Your policy has been successfully created.
 
 Policy Details:
 - Policy Number: {{policyNumber}}
@@ -54,10 +54,10 @@ You can view your policy details anytime by visiting our customer portal.
 If you have any questions, please don't hesitate to contact us.
 
 Best regards,
-The Monzic Team`,
+The Tempnow Team`,
     },
     verificationCode: {
-      subject: "Your Verification Code - Monzic",
+      subject: "Your Verification Code - Tempnow",
       content: `Dear {{firstName}},
 
 Your verification code is: {{code}}
@@ -67,13 +67,13 @@ This code will expire in {{expiryMinutes}} minutes.
 If you did not request this code, please ignore this email.
 
 Best regards,
-The Monzic Team`,
+The Tempnow Team`,
     },
     passwordReset: {
-      subject: "Password Reset Request - Monzic",
+      subject: "Password Reset Request - Tempnow",
       content: `Dear {{firstName}},
 
-We received a request to reset your password for your Monzic account.
+We received a request to reset your password for your Tempnow account.
 
 Click the link below to reset your password:
 {{resetLink}}
@@ -83,13 +83,13 @@ This link will expire in {{expiryMinutes}} minutes.
 If you did not request this password reset, please ignore this email and your password will remain unchanged.
 
 Best regards,
-The Monzic Team`,
+The Tempnow Team`,
     },
     documentPurchase: {
-      subject: "Your AI Document Purchase - Monzic",
+      subject: "Your AI Document Purchase - Tempnow",
       content: `Dear {{firstName}} {{lastName}},
 
-Thank you for purchasing an AI-generated document from Monzic.
+Thank you for purchasing an AI-generated document from Tempnow.
 
 Order Details:
 - Order ID: {{orderId}}
@@ -105,7 +105,7 @@ This link will expire in 7 days.
 If you have any questions, please don't hesitate to contact our support team.
 
 Best regards,
-The Monzic Team`,
+The Tempnow Team`,
     },
     policyExpiry: {
       subject: "Your Policy is About to Expire - {{policyNumber}}",
@@ -125,7 +125,7 @@ To ensure continuous coverage, please renew your policy by clicking the link bel
 If you have any questions, please don't hesitate to contact our support team.
 
 Best regards,
-The Monzic Team`,
+The Tempnow Team`,
     },
   })
   const [activeTemplate, setActiveTemplate] = useState("policyConfirmation")
@@ -543,11 +543,12 @@ export function SettingsSection() {
     },
     general: {
       siteName: "MONZIC",
-      supportEmail: "support@monzic.co.uk",
-      adminEmail: "admin@monzic.co.uk",
+      supportEmail: "support@tempnow.uk",
+      adminEmail: "admin@tempnow.uk",
       timezone: "Europe/London",
       currency: "GBP",
       policyScheduleVisible: true,
+      carSearchApiProvider: "dayinsure",
     },
     bank: {
       show: false,
@@ -1086,6 +1087,7 @@ export function SettingsSection() {
                   value={settings.stripe.webhookSecret}
                   onChange={(e) => updateSetting("stripe", "webhookSecret", e.target.value)}
                 />
+                <small> This is used to verify webhook events from Stripe. <i>Webhook URL: {process.env.NEXT_PUBLIC_BASE_URL}/api/stripe-webhook</i></small>
               </div>
 
               <Button
@@ -1169,6 +1171,18 @@ export function SettingsSection() {
                   value={settings?.airwallex?.apikey}
                   onChange={(e) => updateSetting("airwallex", "apikey", e.target.value)}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="airwallex-webhook-secret">Webhook Secret</Label>
+                <Input
+                  id="airwallex-webhook-secret"
+                  type="password"
+                  placeholder="webhook secret..."
+                  value={settings?.airwallex?.webhookSecret}
+                  onChange={(e) => updateSetting("airwallex", "webhookSecret", e.target.value)}
+                />
+                <small> This is used to verify webhook events from Airwallex. <i>Webhook URL: {process.env.NEXT_PUBLIC_BASE_URL}/api/airwallex-webhook</i></small>
               </div>
 
               <Button
@@ -1694,6 +1708,25 @@ export function SettingsSection() {
                 </Select>
                 <p className="text-xs text-gray-500 mt-1">
                   Control whether the Policy Schedule document appears in customer policy documents
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="car-search-provider">Car Search API Provider</Label>
+                <Select
+                  value={settings.general.carSearchApiProvider}
+                  onValueChange={(value) => updateSetting("general", "carSearchApiProvider", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dayinsure">Dayinsure</SelectItem>
+                    <SelectItem value="mot">MOT</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select the provider for vehicle registration lookups.
                 </p>
               </div>
 

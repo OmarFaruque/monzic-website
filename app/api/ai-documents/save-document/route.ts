@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { aiDocuments } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from 'uuid';
-import { sendEmail, createAIDocumentPurchaseEmail, createAdminNotificationEmail } from "@/lib/email";
+import { sendEmail, createAIDocumentPurchaseEmail, createAdminNotificationEmail, getAdminEmail } from "@/lib/email";
 import { uuid } from "drizzle-orm/pg-core";
 
 export async function POST(req: Request) {
@@ -42,12 +42,13 @@ export async function POST(req: Request) {
 
         await sendEmail({
           to: userDetails.email,
-          subject: "Your AI Document is Ready - MONZIC",
+          subject: "Your AI Document is Ready - TEMPNOW",
           html: emailHtml,
         });
 
+        const adminEmail = await getAdminEmail();
         await sendEmail({
-          to: process.env.ADMIN_EMAIL || "admin@monzic.com",
+          to: adminEmail,
           subject: `New Purchase Alert - AI Document`,
           html: adminNotificationHtml,
         });

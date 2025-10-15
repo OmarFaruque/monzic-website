@@ -194,16 +194,18 @@ export function useTickets() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulate API call
     const fetchTickets = async () => {
       try {
         setLoading(true)
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        setData(mockTickets)
+        const response = await fetch("/api/admin/tickets");
+        if (!response.ok) {
+          throw new Error("Failed to fetch tickets");
+        }
+        const data = await response.json();
+        setData(data)
         setError(null)
       } catch (err) {
-        setError("Failed to fetch tickets")
+        setError(err.message)
       } finally {
         setLoading(false)
       }

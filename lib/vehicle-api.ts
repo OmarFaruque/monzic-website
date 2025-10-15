@@ -16,6 +16,7 @@ export interface VehicleApiResponse {
 export type VehicleApiType = "dayinsure" | "mot"
 
 // Get the current API setting from localStorage or default to 'dayinsure'
+// DEPRECATED: API provider is now configured on the server. This has no effect.
 export const getVehicleApiSetting = (): VehicleApiType => {
   if (typeof window !== "undefined") {
     return (localStorage.getItem("vehicleApiSetting") as VehicleApiType) || "dayinsure"
@@ -24,6 +25,7 @@ export const getVehicleApiSetting = (): VehicleApiType => {
 }
 
 // Set the API setting in localStorage
+// DEPRECATED: API provider is now configured on the server. This has no effect.
 export const setVehicleApiSetting = (apiType: VehicleApiType) => {
   if (typeof window !== "undefined") {
     localStorage.setItem("vehicleApiSetting", apiType)
@@ -36,19 +38,33 @@ export async function lookupVehicleByRegistration(registration: string): Promise
     // Clean the registration number (remove spaces)
     const cleanReg = registration.replace(/\s+/g, "").trim().toUpperCase()
 
-    // Get the current API setting
-    const apiType = getVehicleApiSetting()
+    const response = await fetch("/api/check-vehicle", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ registration: cleanReg }),
+    })
 
-    // Choose API based on setting
-    if (apiType === "dayinsure") {
-      return await lookupVehicleDayinsure(cleanReg)
-    } else {
-      return await lookupVehicleMOT(cleanReg)
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: "Unknown error" }))
+      throw new Error(errorData.message || `API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    return {
+      registration: data.registration || null,
+      make: data.make || null,
+      model: data.model || null,
+      engineCapacity: data.engineCapacity || null,
+      year: data.year || null,
+      color: data.color || null,
     }
   } catch (error) {
     console.error("Vehicle lookup error:", error)
     return {
-      registration: null,
+      registration: registration,
       make: null,
       model: null,
       engineCapacity: null,
@@ -60,69 +76,12 @@ export async function lookupVehicleByRegistration(registration: string): Promise
 
 // Dayinsure API implementation
 async function lookupVehicleDayinsure(registration: string): Promise<VehicleApiResponse> {
-  const url = `https://web-api.dayinsure.com/api/v1/vehicle/${registration}`
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ errorMessage: "Unknown error" }))
-    throw new Error(errorData.errorMessage || `API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  const detail = data.detail || {}
-
-  return {
-    registration: detail.registration || null,
-    make: detail.make || null,
-    model: detail.model || null,
-    engineCapacity: detail.engineSize || null,
-    year: detail.year || null,
-    color: detail.colour || null,
-  }
+  throw new Error("This function is deprecated. Use lookupVehicleByRegistration which now calls the backend API.");
 }
 
 // MOT API implementation
 async function lookupVehicleMOT(registration: string): Promise<VehicleApiResponse> {
-  // Get access token (you'll need to implement this based on your auth system)
-  const accessToken = await getAccessToken()
-  const apiKey = process.env.MOT_API_KEY
-
-  if (!apiKey) {
-    throw new Error("MOT API key not configured")
-  }
-
-  const url = `https://history.mot.api.gov.uk/v1/trade/vehicles/registration/${encodeURIComponent(registration)}`
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "X-API-Key": apiKey,
-      Accept: "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ errorMessage: "Unknown error" }))
-    throw new Error(errorData.errorMessage || `API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-
-  return {
-    registration: data.registration || null,
-    make: data.make || null,
-    model: data.model || null,
-    engineCapacity: data.engineSize || null,
-    year: data.yearOfManufacture || null,
-    color: data.primaryColour || null,
-  }
+  throw new Error("This function is deprecated. Use lookupVehicleByRegistration which now calls the backend API.");
 }
 
 // For development/testing when APIs are not available

@@ -575,11 +575,10 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
           });
           // Handle success
           toast({
-            title: "Payment Successful",
-            description: "Your payment has been processed successfully.",
+            title: "Payment Processing",
+            description: "Your payment is processing. You will receive an email with your document shortly.",
           });
-          // ... save document and redirect
-        } catch (error) {
+        } catch (error: any) {
           toast({
             variant: "destructive",
             title: "Payment Error",

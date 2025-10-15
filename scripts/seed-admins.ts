@@ -4,8 +4,8 @@ import { admins } from '../lib/schema.ts';
 import bcrypt from 'bcryptjs';
 
 async function main() {
-  const passwordAdmin = await bcrypt.hash('MonzicAdmin2024!', 10);
-  const passwordManager = await bcrypt.hash('MonzicManager2024!', 10);
+  const passwordAdmin = await bcrypt.hash('TempnowAdmin2024!', 10);
+  const passwordManager = await bcrypt.hash('TempnowManager2024!', 10);
 
   await db.insert(admins).values([
     {

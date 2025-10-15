@@ -3,7 +3,7 @@ import { getMollieClient } from "@/lib/mollie";
 import { db } from "@/lib/db";
 import { aiDocuments, quotes } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
-import { sendEmail, createAIDocumentPurchaseEmail, createAdminNotificationEmail } from "@/lib/email";
+import { sendEmail, createAIDocumentPurchaseEmail, createAdminNotificationEmail, getAdminEmail } from "@/lib/email";
 
 interface PaymentMetadata {
   type: 'ai-document' | 'quote';
@@ -56,12 +56,13 @@ export async function POST(request: NextRequest) {
         
                 await sendEmail({
                   to: doc.email,
-                  subject: "Your AI Document is Ready - MONZIC",
+                  subject: "Your AI Document is Ready - TEMPNOW",
                   html: emailHtml,
                 });
         
+                const adminEmail = await getAdminEmail();
                 await sendEmail({
-                  to: process.env.ADMIN_EMAIL || "admin@monzic.com",
+                  to: adminEmail,
                   subject: `New Purchase Alert - AI Document`,
                   html: adminNotificationHtml,
                 });
@@ -72,13 +73,28 @@ export async function POST(request: NextRequest) {
           }
 
       } else if (metadata.type === 'quote') {
-        await db.update(quotes)
+        const updatedQuotes = await db.update(quotes)
           .set({
-            PaymentStatus: 'paid',
+            paymentStatus: 'paid',
+            status: 'completed',
+            mailSent: false, // Will be set to true by the confirmation sender
             paymentMethod: 'mollie',
             paymentIntentId: payment.id,
           })
-          .where(eq(quotes.policyNumber, metadata.policyNumber));
+          .where(eq(quotes.policyNumber, metadata.policyNumber))
+          .returning({ id: quotes.id });
+
+        if (updatedQuotes.length > 0) {
+          const quoteId = updatedQuotes[0].id;
+          // Trigger the email sending API without awaiting the response (fire-and-forget)
+          fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-confirmation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quoteId }),
+          });
+        } else {
+          console.error(`Webhook Error: Could not find quote with policy number ${metadata.policyNumber} to update.`);
+        }
       }
     }
 

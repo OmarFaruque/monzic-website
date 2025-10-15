@@ -1,52 +1,58 @@
+
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { db } from '@/lib/db';
 import { quotes, users, aiDocuments, settings } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 import { sendEmail, createAIDocumentPurchaseEmail, createAdminNotificationEmail, getAdminEmail } from '@/lib/email';
-
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
-  
-  const stripeSettingsRecord = await db.select().from(settings).where(eq(settings.param, 'stripe')).limit(1);
+  const airwallexSettingsRecord = await db.select().from(settings).where(eq(settings.param, 'airwallex')).limit(1);
 
-  if (!stripeSettingsRecord || stripeSettingsRecord.length === 0 || !stripeSettingsRecord[0].value) {
-    console.error('Stripe settings not found in database.');
-    return NextResponse.json({ error: 'Stripe settings not configured.' }, { status: 500 });
+  if (!airwallexSettingsRecord || airwallexSettingsRecord.length === 0 || !airwallexSettingsRecord[0].value) {
+    console.error('Airwallex settings not found in database.');
+    return NextResponse.json({ error: 'Airwallex settings not configured.' }, { status: 500 });
   }
 
-  const stripeConfig = JSON.parse(stripeSettingsRecord[0].value);
-  const secretKey = stripeConfig.secretKey;
-  const webhookSecret = stripeConfig.webhookSecret;
+  const airwallexConfig = JSON.parse(airwallexSettingsRecord[0].value);
+  const webhookSecret = airwallexConfig.webhookSecret;
 
-  if (!secretKey || !webhookSecret) {
-    console.error('Stripe secretKey or webhookSecret is missing from database settings.');
-    return NextResponse.json({ error: 'Stripe credentials not fully configured.' }, { status: 500 });
+  if (!webhookSecret) {
+    console.error('Airwallex webhookSecret is missing from database settings.');
+    return NextResponse.json({ error: 'Airwallex credentials not fully configured.' }, { status: 500 });
   }
 
-  const stripe = new Stripe(secretKey, {
-    apiVersion: '2024-04-10',
-  });
-
-  const signature = req.headers.get('stripe-signature');
+  const signature = req.headers.get('x-signature');
+  const timestamp = req.headers.get('x-timestamp');
   const body = await req.text();
 
-  let event: Stripe.Event;
-
-  try {
-    event = stripe.webhooks.constructEvent(body, signature!, webhookSecret);
-  } catch (err: any) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+  if (!signature || !timestamp || !body) {
+    return NextResponse.json({ error: 'Missing required headers or body.' }, { status: 400 });
   }
 
-  // Handle the event
-  if (event.type === 'payment_intent.succeeded') {
-    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+  try {
+    const valueToDigest = `${timestamp}${body}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(valueToDigest)
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      console.warn('Webhook signature verification failed.');
+      return NextResponse.json({ error: 'Failed to verify webhook signature.' }, { status: 403 });
+    }
+  } catch (error) {
+    console.error('Error verifying webhook signature:', error);
+    return NextResponse.json({ error: 'Internal server error during signature verification.' }, { status: 500 });
+  }
+
+  const event = JSON.parse(body);
+
+  if (event.name === 'payment_intent.succeeded') {
+    const paymentIntent = event.data.object;
     const metadata = paymentIntent.metadata;
 
-    // Process the event in the background to avoid timeouts
     (async () => {
       try {
         if (metadata.type === 'quote') {
@@ -56,17 +62,15 @@ export async function POST(req: NextRequest) {
             return;
           }
 
-          // 1. Update the quote with payment details (fast operation)
           await db.update(quotes).set({
               status: 'completed',
               paymentStatus: 'paid',
-              paymentMethod: 'stripe',
-              mailSent: false, // Mark as not sent yet, the next step will handle it
+              paymentMethod: 'airwallex',
+              mailSent: true,
               paymentIntentId: paymentIntent.id,
               updatedAt: new Date().toISOString(),
           }).where(eq(quotes.id, quoteId));
 
-          // 2. Trigger the email sending API without awaiting the response (fire-and-forget)
           fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-confirmation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -74,7 +78,6 @@ export async function POST(req: NextRequest) {
           });
 
         } else if (metadata.type === 'ai_document') {
-          // This logic can also be moved to a separate endpoint if it proves to be slow
           const docDetails = JSON.parse(metadata.document_details);
           const userDetails = JSON.parse(metadata.user_details);
 
@@ -95,12 +98,12 @@ export async function POST(req: NextRequest) {
           
           await sendEmail({
               to: userDetails.email,
-              subject: "Your AI Document is Ready - TEMPNOW",
+              subject: 'Your AI Document is Ready - TEMPNOW',
               html: emailHtml,
           });
 
           const adminNotificationHtml = createAdminNotificationEmail(
-              "ai_document",
+              'ai_document',
               userDetails.firstName,
               userDetails.email,
               docDetails.price,
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
           });
         }
       } catch (error) {
-        console.error("Error processing webhook in background:", error);
+        console.error('Error processing webhook in background:', error);
       }
     })();
   }

@@ -131,6 +131,9 @@ export async function POST(request: Request) {
         quoteData: JSON.stringify(quoteData),
         postCode: quoteData.customerData.post_code,
         address: quoteData.customerData.address,
+        occupation: quoteData.customerData.occupation,
+        vehicleType: quoteData.customerData.vehicle.make + " " + quoteData.customerData.vehicle.model,
+        engineCC: quoteData.customerData.vehicle.engineCC,
         status: 'pending',
         promoCode: quoteData.promoCode,
       })

@@ -27,14 +27,7 @@ import { useAuth } from "@/context/auth"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import { useToast } from "@/hooks/use-toast"
 
-// Mock data for the demo registration
-const vehicleData = {
-  LX61JYE: {
-    make: "Volkswagen",
-    model: "Golf",
-    year: "2017",
-  },
-}
+
 
 import { occupation_list } from "@/lib/occupation";
 
@@ -163,11 +156,29 @@ export default function GetQuotePage() {
   }, [isAuthenticated, isLoginCompleted, quote])
 
   useEffect(() => {
-    // Look up vehicle data
-    if (registrationFromHome && vehicleData[registrationFromHome]) {
-      setVehicle(vehicleData[registrationFromHome])
+    if (registrationFromHome) {
+      const fetchVehicleData = async () => {
+        try {
+          const response = await fetch('/api/check-vehicle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ registration: registrationFromHome }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setVehicle(data);
+          } else {
+            console.error("Failed to fetch vehicle data on get-quote page, redirecting to home.");
+            router.push("/");
+          }
+        } catch (error) {
+          console.error("Error fetching vehicle data on get-quote page:", error);
+          router.push("/");
+        }
+      };
+      fetchVehicleData();
     }
-  }, [registrationFromHome])
+  }, [registrationFromHome, router]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     // Special handling for phone number field

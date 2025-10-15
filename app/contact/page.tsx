@@ -381,7 +381,7 @@ export default function ContactPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © 2025 Monzic Solutions Ltd. All rights reserved.
+            © 2025 Tempnow Solutions Ltd. All rights reserved.
           </div>
         </div>
       </footer>

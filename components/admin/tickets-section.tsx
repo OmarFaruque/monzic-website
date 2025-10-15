@@ -58,9 +58,13 @@ type Ticket = {
   messages: Message[]
 }
 
+import { useTickets } from "@/hooks/use-tickets";
+
+// ... (rest of the imports)
+
 export function TicketsSection() {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
+  const { data: tickets, loading, error: ticketsError } = useTickets();
+  const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("latest")
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
@@ -84,19 +88,6 @@ export function TicketsSection() {
   const [users, setUsers] = useState<any[]>([])
 
   useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        const response = await fetch("/api/admin/tickets")
-        if (!response.ok) {
-          throw new Error("Failed to fetch tickets")
-        }
-        const data = await response.json()
-        setTickets(data)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
     const fetchUsers = async () => {
       try {
         const response = await fetch("/api/admin/users")
@@ -110,9 +101,16 @@ export function TicketsSection() {
       }
     }
 
-    fetchTickets()
     fetchUsers()
   }, [])
+
+  if (loading) {
+    return <div>Loading tickets...</div>;
+  }
+
+  if (ticketsError) {
+    return <div>Error: {ticketsError}</div>;
+  }
 
   const handleUserSearch = (searchTerm: string) => {
     setUserSearch(searchTerm)

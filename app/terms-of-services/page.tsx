@@ -109,7 +109,7 @@ export default function TermsOfServicesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-slate-200">Monzic Solutions Ltd</p>
+                    <p className="text-slate-200">Tempnow Solutions Ltd</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
@@ -138,7 +138,7 @@ export default function TermsOfServicesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p>
-                          <strong>Legal Name:</strong> Monzic Solutions Ltd
+                          <strong>Legal Name:</strong> Tempnow Solutions Ltd
                         </p>
                         <p>
                           <strong>Company Number:</strong> 16414928
@@ -162,8 +162,8 @@ export default function TermsOfServicesPage() {
                   </div>
                   <p>
                     These Terms of Services ("Terms") constitute a legally binding agreement between you ("User,"
-                    "Customer," "you," or "your") and Monzic Solutions Ltd (Company Registration Number: 16414928), a
-                    company incorporated in England and Wales ("Monzic," "Company," "we," "us," or "our").
+                    "Customer," "you," or "your") and Tempnow Solutions Ltd (Company Registration Number: 16414928), a
+                    company incorporated in England and Wales ("Tempnow," "Company," "we," "us," or "our").
                   </p>
                   <p>
                     By accessing, browsing, or using our artificial intelligence-powered document generation services,
@@ -316,7 +316,7 @@ export default function TermsOfServicesPage() {
                   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Monzic Solutions Ltd Owns</h4>
+                        <h4 className="font-semibold text-gray-900 mb-3">Tempnow Solutions Ltd Owns</h4>
                         <ul className="space-y-2 text-sm text-gray-700">
                           <li>• AI algorithms and technology</li>
                           <li>• Platform software and infrastructure</li>
@@ -421,7 +421,7 @@ export default function TermsOfServicesPage() {
                         <h4 className="font-semibold text-gray-900 mb-3">Company Information</h4>
                         <div className="text-sm text-gray-600 space-y-1">
                           <p>
-                            <strong>Monzic Solutions Ltd</strong>
+                            <strong>Tempnow Solutions Ltd</strong>
                           </p>
                           <p>Company Registration: 16414928</p>
                           <p>Registered in England and Wales</p>
@@ -439,7 +439,7 @@ export default function TermsOfServicesPage() {
               <div className="flex flex-col sm:flex-row justify-between items-center">
                 <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-0 text-center sm:text-left">
                   <p>
-                    <strong>Monzic Solutions Ltd</strong> • Company Registration: 16414928 • Registered in England and
+                    <strong>Tempnow Solutions Ltd</strong> • Company Registration: 16414928 • Registered in England and
                     Wales
                   </p>
                 </div>
@@ -465,7 +465,7 @@ export default function TermsOfServicesPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © 2025 Monzic Solutions Ltd. All rights reserved.
+            © 2025 Tempnow Solutions Ltd. All rights reserved.
           </div>
         </div>
       </footer>

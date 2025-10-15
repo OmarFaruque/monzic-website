@@ -1,5 +1,8 @@
 import { Resend } from "resend"
 import nodemailer from "nodemailer"
+import { db } from '@/lib/db';
+import { settings } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
 
 export interface EmailTemplate {
   to: string
@@ -16,7 +19,7 @@ const resend = process.env.RESEND_API_KEY
 // export async function sendEmail({ to, subject, html }: EmailTemplate) {
 //   try {
 //     const data = await resend.emails.send({
-//       from: "Monzic <noreply@monzic.co.uk>",
+//       from: "Tempnow <noreply@monzic.co.uk>",
 //       to: [to],
 //       subject,
 //       html,
@@ -35,7 +38,7 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailTe
   try {
     if (process.env.MAIL_DRIVER === "resend" && resend) {
       // 👉 Production (Resend)
-      const fromAddress = process.env.EMAIL_FROM || "Monzic <onboarding@resend.dev>";
+      const fromAddress = process.env.EMAIL_FROM || "Tempnow <onboarding@resend.dev>";
       const data = await resend.emails.send({
         from: fromAddress,
         to: [to],
@@ -55,7 +58,7 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailTe
       })
 
       const info = await transporter.sendMail({
-        from: "Monzic <noreply@local.dev>",
+        from: "Tempnow <noreply@local.dev>",
         to,
         subject,
         html,
@@ -92,7 +95,7 @@ export function createAIDocumentPurchaseEmail(customerName: string, documentType
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">Monzic</div>
+          <div class="logo">Tempnow</div>
           <h1>Your AI Document is Ready!</h1>
         </div>
         <div class="content">
@@ -121,13 +124,13 @@ export function createAIDocumentPurchaseEmail(customerName: string, documentType
             <li>Contact us if you need any modifications</li>
           </ul>
 
-          <p>If you have any questions or need support, please don't hesitate to contact us at <a href="mailto:support@monzic.co.uk">support@monzic.co.uk</a>.</p>
+          <p>If you have any questions or need support, please don't hesitate to contact us at <a href="mailto:support@tempnow.uk">support@tempnow.uk</a>.</p>
           
-          <p>Best regards,<br>The Monzic Team</p>
+          <p>Best regards,<br>The Tempnow Team</p>
         </div>
         <div class="footer">
-          <p>&copy; 2025 Monzic Solutions Ltd. All rights reserved.</p>
-          <p>You received this email because you purchased a document from Monzic.</p>
+          <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
+          <p>You received this email because you purchased a document from Tempnow.</p>
         </div>
       </div>
     </body>
@@ -167,7 +170,7 @@ export function createInsurancePolicyEmail(
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">Monzic</div>
+          <div class="logo">Tempnow</div>
           <h1>Insurance Policy Confirmed</h1>
         </div>
         <div class="content">
@@ -214,15 +217,15 @@ export function createInsurancePolicyEmail(
           <h3>Need Help?</h3>
           <p>If you need to make a claim or have questions about your policy:</p>
           <ul>
-            <li><strong>Email:</strong> <a href="mailto:support@monzic.co.uk">support@monzic.co.uk</a></li>
+            <li><strong>Email:</strong> <a href="mailto:support@tempnow.uk">support@tempnow.uk</a></li>
             <li><strong>Phone:</strong> +44 20 1234 5678</li>
             <li><strong>Emergency Claims:</strong> +44 20 1234 5679 (24/7)</li>
           </ul>
           
-          <p>Best regards,<br>The Monzic Team</p>
+          <p>Best regards,<br>The Tempnow Team</p>
         </div>
         <div class="footer">
-          <p>&copy; 2025 Monzic Solutions Ltd. All rights reserved.</p>
+          <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
           <p>This email contains important policy information. Please save it for your records.</p>
         </div>
       </div>
@@ -264,7 +267,7 @@ export function createAdminNotificationEmail(
           <h1>New ${typeLabel} Purchase</h1>
         </div>
         <div class="content">
-          <p>A new ${typeLabel.toLowerCase()} has been purchased on Monzic.</p>
+          <p>A new ${typeLabel.toLowerCase()} has been purchased on Tempnow.</p>
           
           <div class="info-box">
             <h3>Purchase Details</h3>
@@ -317,7 +320,7 @@ export async function sendTicketConfirmationEmail({
         <body>
             <div class="container">
             <div class="header">
-                <div class="logo">Monzic</div>
+                <div class="logo">Tempnow</div>
                 <h1>Support Ticket Received</h1>
             </div>
             <div class="content">
@@ -335,10 +338,10 @@ export async function sendTicketConfirmationEmail({
 
                 <p>You can reference this ticket ID in any future communication with us regarding this matter. We aim to respond to all inquiries within 24 hours.</p>
                 
-                <p>Best regards,<br>The Monzic Team</p>
+                <p>Best regards,<br>The Tempnow Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 Monzic Solutions Ltd. All rights reserved.</p>
+                <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
                 <p>You are receiving this email because you submitted a contact form on our website.</p>
             </div>
             </div>
@@ -389,7 +392,7 @@ export async function sendTicketReplyEmail({
         <body>
             <div class="container">
             <div class="header">
-                <div class="logo">Monzic</div>
+                <div class="logo">Tempnow</div>
                 <h1>New Reply to Your Ticket</h1>
             </div>
             <div class="content">
@@ -403,10 +406,10 @@ export async function sendTicketReplyEmail({
 
                 <p>Please contact us if you have further questions. We appreciate your patience.</p>
                 
-                <p>Best regards,<br>The Monzic Team</p>
+                <p>Best regards,<br>The Tempnow Team</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 Monzic Solutions Ltd. All rights reserved.</p>
+                <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
                 <p>You are receiving this email because you have an active support ticket with us.</p>
             </div>
             </div>
@@ -472,17 +475,30 @@ export function createDirectEmail(subject: string, message: string): string {
 <body>
     <div class="container">
         <div class="header">
-            <img src="${process.env.NEXT_PUBLIC_BASE_URL}/tempnow-logo-horizontal.png" alt="Monzic Logo">
+            <img src="${process.env.NEXT_PUBLIC_BASE_URL}/tempnow-logo-horizontal.png" alt="Tempnow Logo">
         </div>
         <div class="content">
             ${message.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Monzic. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Tempnow. All rights reserved.</p>
             <p>This is an automated message. Please do not reply directly to this email.</p>
         </div>
     </div>
 </body>
 </html>
 `
+}
+
+export async function getAdminEmail(): Promise<string> {
+  try {
+    const settingsFromDb = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    const generalSettings = settingsFromDb?.value ? JSON.parse(settingsFromDb.value) : {};
+    return generalSettings.adminEmail || 'admin@tempnow.uk';
+  } catch (error) {
+    console.error("Failed to fetch admin email from settings:", error);
+    return 'admin@tempnow.uk';
+  }
 }

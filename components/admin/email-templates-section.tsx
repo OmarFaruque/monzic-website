@@ -55,7 +55,7 @@ Best regards,
 The MONZIC Team`,
   },
   verificationCode: {
-    subject: "Your Verification Code - MONZIC",
+    subject: "Your Verification Code - TEMPNOW",
     content: `Dear {{firstName}},
 
 Your verification code is: {{code}}

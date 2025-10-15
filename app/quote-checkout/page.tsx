@@ -254,7 +254,7 @@ function QuoteCheckoutPage({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    quoteData: { ...quoteData, total: quoteData?.total },
+                    quoteData: { ...quoteData, id: quote.id, policyNumber: quote.policyNumber, total: quoteData?.total },
                     user: user,
                 }),
             });
@@ -317,9 +317,12 @@ function QuoteCheckoutPage({
             element: airwallexElement,
             id: airwallexElement.intent.id,
             client_secret: airwallexElement.intent.client_secret,
-          });
-          toast({ title: "Payment Successful", description: "Your payment has been processed." });
-          window.location.href = "/payment-confirmation";
+          // toast({ title: "Payment Successful", description: "Your payment has been processed." });
+          // window.location.href = "/payment-confirmation";
+
+          toast({ title: "Payment Processing", description: "Your payment is processing. You will receive an email confirmation shortly." });
+
+
         } catch (error: any) {
           toast({ variant: "destructive", title: "Payment Error", description: error.message });
           setIsProcessingPayment(false);
@@ -385,7 +388,7 @@ function QuoteCheckoutPage({
         <div className="flex justify-between items-center">
           <Link href="/">
             <h1 className="text-xl sm:text-2xl font-bold text-white cursor-pointer hover:text-teal-100 transition-colors">
-              {settings?.siteName || "MONZIC"}
+              {settings?.siteName || "TEMPNOW"}
             </h1>
           </Link>
           {isAuthenticated && (

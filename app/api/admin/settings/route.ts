@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (logData.mollie?.apiKey) logData.mollie.apiKey = "[REDACTED]";
 
 
-    console.log("Settings updated:", logData);
+
 
     return NextResponse.json({
       success: true,

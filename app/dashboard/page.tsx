@@ -63,7 +63,7 @@ export default function DashboardPage() {
         <div className="flex items-center">
           <Link href="/">
             <h1 className="text-2xl font-bold text-white cursor-pointer hover:text-teal-100 transition-colors">
-              MONZIC
+              TEMPNOW
             </h1>
           </Link>
         </div>

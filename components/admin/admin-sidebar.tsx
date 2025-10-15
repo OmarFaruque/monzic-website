@@ -60,7 +60,7 @@ export function AdminSidebar({ items, selectedItem, onSelectItem }: AdminSidebar
         <div className="p-4 lg:p-6 border-b flex justify-between items-center">
           <div>
             <h1 className="text-lg lg:text-xl font-bold text-gray-900">Admin Panel</h1>
-            <p className="text-xs lg:text-sm text-gray-500 mt-1">Monzic Insurance</p>
+            <p className="text-xs lg:text-sm text-gray-500 mt-1">Tempnow Insurance</p>
           </div>
 
           {/* Mobile Close Button */}

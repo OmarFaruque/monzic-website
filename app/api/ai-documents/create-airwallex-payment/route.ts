@@ -60,8 +60,10 @@ export async function POST(req: NextRequest) {
         currency: "GBP",
         merchant_order_id: crypto.randomUUID(),
         metadata: {
+          type: 'ai_document',
           document_details: JSON.stringify({
             prompt: limitedPrompt,
+            content: docData.content, // Add content to metadata
             price: docData.price,
           }),
           user_details: JSON.stringify(user),

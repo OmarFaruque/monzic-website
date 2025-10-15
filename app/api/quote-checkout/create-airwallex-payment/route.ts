@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
         currency: "GBP",
         merchant_order_id: crypto.randomUUID(),
         metadata: {
+          type: 'quote',
           quote_id: quoteData.id,
           user_details: JSON.stringify(user),
         },

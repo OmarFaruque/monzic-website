@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,36 +16,45 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Plus, Trash2, Shield, AlertTriangle, Clock } from "lucide-react"
+import { Search, Plus, Trash2, Shield, AlertTriangle, Clock, Loader2 } from "lucide-react"
 import { validateInput, adminUserSchema } from "@/lib/validation"
 
-// Mock data for admins (admin only)
-const mockAdmins = [
-  {
-    id: 1,
-    name: "Admin User",
-    email: "admin@monzic.com",
-    role: "Admin",
-    lastLogin: "2025-01-04 10:30",
-    status: "Active",
-    addedAt: "2024-12-01",
-    sessionTimeout: "30 minutes",
-  },
-]
-
 export function AdminsSection() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedAdmin, setSelectedAdmin] = useState<any>(null)
-  const [newAdmin, setNewAdmin] = useState({ name: "", email: "", role: "Admin" })
-  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
+  const [newAdmin, setNewAdmin] = useState({ name: "", email: "", role: "Admin", password: "" });
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);;
 
-  const filteredAdmins = mockAdmins.filter(
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  const fetchAdmins = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/admin/admins');
+      if (response.ok) {
+        const data = await response.json();
+        setAdmins(data);
+      } else {
+        console.error('Failed to fetch admins');
+      }
+    } catch (error) {
+      console.error('Error fetching admins:', error);
+    } finally {
+      setLoading(false);
+    }
+  };;
+
+  const filteredAdmins = admins.filter(
     (admin) =>
-      admin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (admin.fname + ' ' + admin.lname).toLowerCase().includes(searchTerm.toLowerCase()) ||
       admin.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  );
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -67,31 +76,47 @@ export function AdminsSection() {
     }
   }
 
-  const handleAddAdmin = () => {
-    // Validate input
-    const validation = validateInput(adminUserSchema, newAdmin)
+  const handleAddAdmin = async () => {
+    // Basic validation can be done here or rely on server validation
+    setValidationErrors([]);
+    try {
+      const response = await fetch('/api/admin/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAdmin),
+      });
 
-    if (!validation.success) {
-      setValidationErrors(validation.errors)
-      return
+      if (response.ok) {
+        fetchAdmins(); // Refresh list
+        setIsAddDialogOpen(false);
+        setNewAdmin({ name: "", email: "", role: "Admin", password: "" });
+      } else {
+        const errorData = await response.json();
+        setValidationErrors([errorData.error || 'Failed to add admin.']);
+      }
+    } catch (error) {
+      setValidationErrors(['An unexpected error occurred.']);
     }
-
-    setValidationErrors([])
-
-    // TODO: Add audit logging here
-    console.log("Admin added:", validation.data)
-
-    // Reset form and close dialog
-    setNewAdmin({ name: "", email: "", role: "Admin" })
-    setIsAddDialogOpen(false)
   }
 
-  const handleDeleteAdmin = () => {
+  const handleDeleteAdmin = async () => {
     if (selectedAdmin) {
-      // TODO: Add audit logging here
-      console.log("Admin deleted:", selectedAdmin)
-      setIsDeleteDialogOpen(false)
-      setSelectedAdmin(null)
+      try {
+        const response = await fetch(`/api/admin/admins/${selectedAdmin.adminId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          fetchAdmins(); // Refresh list
+          setIsDeleteDialogOpen(false);
+          setSelectedAdmin(null);
+        } else {
+          // Handle error
+          console.error('Failed to delete admin');
+        }
+      } catch (error) {
+        console.error('Error deleting admin:', error);
+      }
     }
   }
 
@@ -104,6 +129,15 @@ export function AdminsSection() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="relative">
+          {loading && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
+              <div className="flex items-center space-x-2 text-gray-600">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span>Loading...</span>
+              </div>
+            </div>
+          )}
         <div className="flex items-center justify-between mb-6">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -145,37 +179,37 @@ export function AdminsSection() {
                 <TableHead>Status</TableHead>
                 <TableHead>Last Login</TableHead>
                 <TableHead>Session Timeout</TableHead>
-                <TableHead>Added Date</TableHead>
+                <TableHead>Added At</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAdmins.map((admin) => (
-                <TableRow key={admin.id}>
+                <TableRow key={admin.adminId}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Shield className="h-4 w-4 text-blue-500" />
                       <div>
-                        <div className="font-medium">{admin.name}</div>
+                        <div className="font-medium">{admin.fname} {admin.lname}</div>
                         <div className="text-sm text-gray-500">{admin.email}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>{getRoleBadge(admin.role)}</TableCell>
-                  <TableCell>{getStatusBadge(admin.status)}</TableCell>
+                  <TableCell>{getStatusBadge("Active")}</TableCell> {/* Status is static for now */}
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm">
                       <Clock className="h-3 w-3 text-gray-400" />
-                      {admin.lastLogin}
+                      N/A
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm text-orange-600">
                       <AlertTriangle className="h-3 w-3" />
-                      {admin.sessionTimeout}
+                      30 minutes
                     </div>
                   </TableCell>
-                  <TableCell>{admin.addedAt}</TableCell>
+                  <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Button
                       variant="outline"
@@ -184,7 +218,6 @@ export function AdminsSection() {
                         setSelectedAdmin(admin)
                         setIsDeleteDialogOpen(true)
                       }}
-                      disabled={admin.role === "Admin"}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -247,6 +280,16 @@ export function AdminsSection() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label htmlFor="admin-password">Password</Label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  placeholder="Enter password"
+                  value={newAdmin.password}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                />
+              </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <div className="flex items-start space-x-2">
@@ -297,6 +340,7 @@ export function AdminsSection() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </CardContent>
     </Card>
   )

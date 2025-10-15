@@ -84,7 +84,13 @@ export async function POST(request: Request) {
     }
 
     const cleanReg = registration.trim().replace(/\s/g, '');
-    const apiProvider = process.env.CAR_SEARCH_API_PROVIDER || 'dayinsure';
+
+    const settingsFromDb = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+
+    const generalSettings = settingsFromDb?.value ? JSON.parse(settingsFromDb.value) : {};
+    const apiProvider = generalSettings.carSearchApiProvider || 'dayinsure';
 
     let carDetails;
 
@@ -113,11 +119,15 @@ export async function POST(request: Request) {
       }
 
       const data = await apiResponse.json();
+
+      
       carDetails = {
         registration: data.registration,
         make: data.make,
         model: data.model,
         engineCapacity: data.engineSize,
+        year: data.yearOfManufacture,
+        color: data.primaryColour,
       };
 
     } else {
@@ -148,6 +158,8 @@ export async function POST(request: Request) {
         make: vehicleDetail.make,
         model: vehicleDetail.model,
         engineCapacity: vehicleDetail.engineSize,
+        year: vehicleDetail.year,
+        color: vehicleDetail.colour,
       };
     }
 

@@ -72,7 +72,7 @@ export default function AdminLoginPage() {
           <div>
             <CardTitle className="text-2xl font-bold">Admin Access</CardTitle>
             <CardDescription className="text-blue-100">
-              Sign in to access the MONZIC administrator dashboard
+              Sign in to access the TEMPNOW administrator dashboard
             </CardDescription>
           </div>
         </CardHeader>
@@ -97,7 +97,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@monzic.co.uk"
+                  placeholder="admin@tempnow.uk"
                   className="pl-10 h-11 border-2 focus:border-blue-500"
                   required
                   disabled={isLoading}

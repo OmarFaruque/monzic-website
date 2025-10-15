@@ -28,7 +28,7 @@ export async function sendVerificationEmail(email: string, token: string) {
   // If you switch to a token, you can build the link as originally requested.
 
   const mailOptions = {
-    from: `"Monzic" <no-reply@monzic.com>`, // Sender address
+    from: `"Tempnow" <no-reply@tempnow.uk>`, // Sender address
     to: email, // Recipient
     subject: "Verify your account", // Subject line
     html: `

@@ -17,7 +17,7 @@ import { Loader2 } from "lucide-react"
 
 import { useSettings } from "@/context/settings"
 
-export default function MonzicHomepage() {
+export default function TempnowHomepage() {
   const [message, setMessage] = useState("")
   const [mainInput, setMainInput] = useState("")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -58,7 +58,7 @@ export default function MonzicHomepage() {
         if (blacklistCheck.isBlacklisted) {
           showError(
             "Access Restricted",
-            `Your access has been restricted. Reason: ${blacklistCheck.reason}. Please contact support@monzic.co.uk for assistance.`,
+            `Your access has been restricted. Reason: ${blacklistCheck.reason}. Please contact support@tempnow.uk for assistance.`,
           )
           return
         }
@@ -148,7 +148,7 @@ export default function MonzicHomepage() {
         <div className="flex justify-between items-center">
           <div className="flex items-center">
             <Link href="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            {settings?.siteName || 'MONZIC'}
+            {settings?.siteName || 'TEMPNOW'}
           </Link>
           </div>
 
@@ -239,13 +239,13 @@ export default function MonzicHomepage() {
                 style={{ objectFit: "contain" }}
               />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-teal-600">{settings?.siteName || 'MONZIC'}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-teal-600">{settings?.siteName || 'TEMPNOW'}</h1>
           </div>
 
           {/* Main Heading */}
           <div className="space-y-2">
             <h2 className="text-lg sm:text-xl font-medium text-teal-700 px-2">Affordable, Lightning-Fast Delivery</h2>
-            <p className="text-base sm:text-lg text-teal-500">Only at {settings?.siteName || 'Monzic'}</p>
+            <p className="text-base sm:text-lg text-teal-500">Only at {settings?.siteName || 'Tempnow'}</p>
           </div>
 
           {/* Message Display */}
@@ -337,7 +337,7 @@ export default function MonzicHomepage() {
               Return Policy
             </Link>
           </div>
-          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 {settings?.siteName || 'MONZIC'}. All rights reserved.</div>
+          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 {settings?.siteName || 'TEMPNOW'}. All rights reserved.</div>
         </div>
       </footer>
 

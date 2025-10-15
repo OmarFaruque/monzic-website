@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              name: docData ? "AI Document" : "Monzic Insurance Policy",
+              name: docData ? "AI Document" : "Tempnow Insurance Policy",
               tax_category: "standard",
             }),
           });

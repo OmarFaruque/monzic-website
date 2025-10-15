@@ -5,6 +5,7 @@ import {
   createInsurancePolicyEmail,
   createAdminNotificationEmail,
   createDirectEmail,
+  getAdminEmail,
 } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
 
       switch (type) {
         case "ai_document":
-          subject = "Your AI Document is Ready - MONZIC";
+          subject = "Your AI Document is Ready - TEMPNOW";
           emailHtml = createAIDocumentPurchaseEmail(
             customerData.name,
             purchaseData.documentType,
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
           break;
 
         case "insurance_policy":
-          subject = "Insurance Policy Confirmation - MONZIC";
+          subject = "Insurance Policy Confirmation - TEMPNOW";
           emailHtml = createInsurancePolicyEmail(
             customerData.name,
             purchaseData.policyNumber,
@@ -69,8 +70,9 @@ export async function POST(request: NextRequest) {
       });
 
       // Send admin notification
+      const adminEmail = await getAdminEmail();
       await sendEmail({
-        to: process.env.ADMIN_EMAIL || "admin@monzic.com",
+        to: adminEmail,
         subject: `New Purchase Alert - ${type === "ai_document" ? "AI Document" : "Insurance Policy"}`,
         html: adminNotificationHtml,
       });
