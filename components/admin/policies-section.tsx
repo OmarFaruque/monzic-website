@@ -18,6 +18,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Search,
   Edit,
   Trash2,
@@ -30,9 +36,20 @@ import {
   Car,
   CheckCircle,
   RefreshCw,
+  Check,
 } from "lucide-react"
+import { isValidUKRegistration } from "@/lib/utils"
+import { lookupVehicle } from "@/lib/vehicle-lookup"
 
 
+interface VehicleData {
+  make: string;
+  model: string;
+  year: string;
+  engineSize: string;
+  fuelType: string;
+  colour: string;
+}
 
 
 // Function to determine policy status based on dates and times
@@ -49,6 +66,33 @@ const calculatePolicyStatus = (startDate: string, startTime: string, endDate: st
     return "Expired"
   }
 }
+
+const formatShortDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+};
+
+const formatPaymentMethod = (method: string) => {
+  if (!method) return 'N/A';
+  switch (method) {
+    case 'bank_transfer':
+      return 'Bank';
+    case 'stripe':
+      return 'Stripe';
+    case 'mollie':
+      return 'Mollie';
+    case 'airwallex':
+      return 'Airwallex';
+    case 'square':
+      return 'Square';
+    default:
+      return method.charAt(0).toUpperCase() + method.slice(1);
+  }
+};
 
 
 
@@ -136,6 +180,7 @@ export function PoliciesSection() {
   const [editAddresses, setEditAddresses] = useState<string[]>([])
   const [showEditAddresses, setShowEditAddresses] = useState(false)
   const [editPostcodeError, setEditPostcodeError] = useState("")
+  const [isApproving, setIsApproving] = useState(false);
 
   // Get data
   const [policies, setPolicies] = useState<any[]>([])
@@ -149,10 +194,20 @@ export function PoliciesSection() {
       try {
         setLoading(true);
         const response = await fetch("/api/admin/policies");
+        if (!response.ok) {
+          throw new Error('Failed to fetch policies');
+        }
         const data = await response.json();
-        setPolicies(data);
+        if (Array.isArray(data)) {
+          setPolicies(data);
+        } else {
+          // Handle cases where the API returns a non-array response
+          console.error("API returned non-array data:", data);
+          setPolicies([]); // Set to empty array to avoid iteration errors
+        }
       } catch (err) {
         setError("Failed to fetch policies");
+        setPolicies([]); // Also set to empty array on error
       } finally {
         setLoading(false);
       }
@@ -232,18 +287,18 @@ export function PoliciesSection() {
     window.open(`/policy/view?number=${policy.policyNumber}`, "_blank")
   }
 
-  const handleViewCustomer = (policy: any) => {
-    const customer = customers.find(
-      (c) =>
-        c.firstName === policy.firstName &&
-        c.lastName === policy.lastName &&
-        c.dateOfBirth === policy.dateOfBirth,
-    )
-    if (customer) {
-      setSelectedCustomer(customer)
-      setIsCustomerDialogOpen(true)
-    }
-  }
+  // const handleViewCustomer = (policy: any) => {
+  //   const customer = customers.find(
+  //     (c) =>
+  //       c.firstName === policy.firstName &&
+  //       c.lastName === policy.lastName &&
+  //       c.dateOfBirth === policy.dateOfBirth,
+  //   )
+  //   if (customer) {
+  //     setSelectedCustomer(customer)
+  //     setIsCustomerDialogOpen(true)
+  //   }
+  // }
 
   // Add these functions after handleEditVehicleLookup:
 
@@ -577,6 +632,33 @@ export function PoliciesSection() {
     }
   }
 
+  const handleApprovePolicy = async (policyId: number) => {
+    setIsApproving(true);
+    try {
+        const response = await fetch('/api/admin/policies/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ policyId }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to approve policy');
+        }
+
+        // Update the local state to reflect the change
+        setPolicies(prevPolicies =>
+            prevPolicies.map(p =>
+                p.id === policyId ? { ...p, status: 'completed', paymentStatus: 'paid' } : p
+            )
+        );
+
+    } catch (error) {
+        console.error('Error approving policy:', error);
+    } finally {
+        setIsApproving(false);
+    }
+  };
+
 
   if (loading) {
     return <div>Loading...</div>;
@@ -646,6 +728,7 @@ export function PoliciesSection() {
                     <TableHead>Vehicle</TableHead>
                     <TableHead>Registration</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Payment</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead>Actions</TableHead>
@@ -668,11 +751,12 @@ export function PoliciesSection() {
                       </TableCell>
                       <TableCell className="font-mono">{policy.regNumber}</TableCell>
                       <TableCell>£{Number(policy.cpw || 0).toFixed(2)}</TableCell>
+                      <TableCell>{formatPaymentMethod(policy.paymentMethod)}</TableCell>
                       <TableCell>{getStatusBadge(policy)}</TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{formatDateTime(policy.startDate, '00:00')}</div>
-                          <div className="text-gray-500">to {formatDateTime(policy.endDate, '23:59')}</div>
+                          <div>{formatShortDate(policy.startDate)}</div>
+                          <div className="text-gray-500">to {formatShortDate(policy.endDate)}</div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -734,9 +818,32 @@ export function PoliciesSection() {
                           <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
+                          {/* <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
                             <User className="h-4 w-4" />
-                          </Button>
+                          </Button> */}
+                          {policy.paymentMethod === 'bank_transfer' && policy.status !== 'completed' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleApprovePolicy(policy.id)}
+                                    disabled={isApproving}
+                                  >
+                                    {isApproving ? (
+                                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <Check className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Approve</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -755,6 +862,7 @@ export function PoliciesSection() {
                     <TableHead>Vehicle</TableHead>
                     <TableHead>Registration</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Payment</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead>Actions</TableHead>
@@ -777,11 +885,12 @@ export function PoliciesSection() {
                       </TableCell>
                       <TableCell className="font-mono">{policy.regNumber}</TableCell>
                       <TableCell>£{Number(policy.cpw || 0).toFixed(2)}</TableCell>
+                      <TableCell>{formatPaymentMethod(policy.paymentMethod)}</TableCell>
                       <TableCell>{getStatusBadge(policy)}</TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{formatDateTime(policy.startDate, '00:00')}</div>
-                          <div className="text-gray-500">to {formatDateTime(policy.endDate, '23:59')}</div>
+                          <div>{formatShortDate(policy.startDate)}</div>
+                          <div className="text-gray-500">to {formatShortDate(policy.endDate)}</div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -843,9 +952,32 @@ export function PoliciesSection() {
                           <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
+                          {/* <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
                             <User className="h-4 w-4" />
-                          </Button>
+                          </Button> */}
+                          {policy.paymentMethod === 'bank_transfer' && policy.status !== 'completed' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleApprovePolicy(policy.id)}
+                                    disabled={isApproving}
+                                  >
+                                    {isApproving ? (
+                                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <Check className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Approve</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

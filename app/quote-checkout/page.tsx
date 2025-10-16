@@ -331,7 +331,31 @@ function QuoteCheckoutPage({
         break;
 
       case "bank":
-        router.push(`/bank-payment-details?quoteId=${quote?.id}`);
+        try {
+          const response = await fetch('/api/quote-checkout/update-payment-method', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              policyNumber: quote?.policyNumber,
+              paymentMethod: 'bank_transfer',
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to update payment method');
+          }
+
+          router.push(`/bank-payment-details?policynumber=${quote?.policyNumber}`);
+        } catch (error) {
+          console.error('Error updating payment method:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'There was an error updating the payment method. Please try again.',
+          });
+        } finally {
+          setIsProcessingPayment(false);
+        }
         break;
 
       default:

@@ -20,7 +20,7 @@ interface BankSettings {
 
 function BankPaymentDetailsContent() {
   const searchParams = useSearchParams();
-  const quoteId = searchParams.get('quoteId');
+  const policyNumber = searchParams.get('policynumber');
   const [bankDetails, setBankDetails] = useState<BankSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -114,14 +114,14 @@ function BankPaymentDetailsContent() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-yellow-800">
-                  You must use your <strong>Quote ID</strong> as the payment reference to avoid delays.
+                  You must use your <strong>Policy Number</strong> as the payment reference to avoid delays.
                 </p>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <DetailRow label="Payment Reference" value={quoteId || 'N/A'} />
+            <DetailRow label="Payment Reference" value={policyNumber || 'N/A'} />
             <DetailRow label="Account Name" value={bankDetails.name} />
             <DetailRow label="Sort Code" value={bankDetails.sortCode} />
             <DetailRow label="Account Number" value={bankDetails.accountNumber} />
