@@ -24,10 +24,12 @@ import {
   RefreshCw,
   FileText,
   Clock,
+  DollarSign,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { QuoteFormulaSettings } from "./quote-formula-settings"
 
 function EmailTemplatesTab() {
   const [templates, setTemplates] = useState({
@@ -608,6 +610,22 @@ export function SettingsSection() {
       apikey: "",
       environment: "test",
     },
+    quoteFormula: {
+      baseHourlyRate: 15,
+      baseDailyRate: 50,
+      multiDayDiscountPercentage: 10,
+      multiWeekDiscountPercentage: 20,
+      ageDiscounts: [
+        { age: 17, discount: 0 },
+        { age: 25, discount: 10 },
+        { age: 30, discount: 15 },
+      ],
+      licenseHeldDiscounts: [
+        { months: 6, discount: 0 },
+        { months: 12, discount: 5 },
+        { months: 24, discount: 10 },
+      ],
+    },
   })
 
   const [loading, setLoading] = useState(true)
@@ -894,6 +912,10 @@ export function SettingsSection() {
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
             <span className="hidden sm:inline">General</span>
+          </TabsTrigger>
+          <TabsTrigger value="quote-formula" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Quote Formula</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1841,6 +1863,9 @@ export function SettingsSection() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="quote-formula">
+          <QuoteFormulaSettings settings={settings.quoteFormula} updateSetting={updateSetting} />
         </TabsContent>
       </Tabs>
 

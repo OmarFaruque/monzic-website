@@ -142,8 +142,25 @@ export default function GetQuotePage() {
   const [sameBillingAddress, setSameBillingAddress] = useState(true)
   const [reviewStartTime, setReviewStartTime] = useState(null);
   const [reviewExpiryTime, setReviewExpiryTime] = useState(null);
+  const [quoteSettings, setQuoteSettings] = useState(null);
   // 1. Add a new state for showing time selection:
   const [showTimeSelection, setShowTimeSelection] = useState(false)
+
+  useEffect(() => {
+    const fetchQuoteSettings = async () => {
+      try {
+        const response = await fetch('/api/quote-settings');
+        const data = await response.json();
+        if (data.success) {
+          setQuoteSettings(data.quoteFormula);
+        }
+      } catch (error) {
+        console.error("Failed to fetch quote settings:", error);
+      }
+    };
+
+    fetchQuoteSettings();
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && isLoginCompleted) {
@@ -389,57 +406,51 @@ export default function GetQuotePage() {
   }
 
   const calculateQuote = () => {
+    if (!quoteSettings) return null;
+
     // Base price calculation
-    const basePrice = 15.0
+    const basePrice = formData.durationType === "Hours" ? quoteSettings.baseHourlyRate : quoteSettings.baseDailyRate;
 
     // Duration multiplier
     const durationValue = Number.parseInt(formData.duration.split(" ")[0])
     let durationMultiplier = 1
 
     if (formData.durationType === "Hours") {
-      durationMultiplier = durationValue * 0.8
+      if (durationValue > 1) {
+        const additionalHourRate = (quoteSettings.baseDailyRate - quoteSettings.baseHourlyRate) / 23;
+        durationMultiplier = (quoteSettings.baseHourlyRate + (durationValue - 1) * additionalHourRate) / basePrice;
+      }
     } else if (formData.durationType === "Days") {
-      durationMultiplier = durationValue * 1.2
+      durationMultiplier = (durationValue * quoteSettings.baseDailyRate * (1 - quoteSettings.multiDayDiscountPercentage / 100)) / basePrice;
     } else if (formData.durationType === "Weeks") {
-      durationMultiplier = durationValue * 5.5
+      durationMultiplier = (durationValue * 7 * quoteSettings.baseDailyRate * (1 - quoteSettings.multiWeekDiscountPercentage / 100)) / basePrice;
     }
 
     // Age factor (calculate age from DOB)
     const currentYear = new Date().getFullYear()
     const birthYear = Number.parseInt(formData.dateOfBirthYear)
-    const age = currentYear - birthYear
-    let ageFactor = 1.0
-
-    if (age < 25) {
-      ageFactor = 1.8
-    } else if (age < 30) {
-      ageFactor = 1.4
-    } else if (age < 50) {
-      ageFactor = 1.0
-    } else {
-      ageFactor = 1.1
-    }
-
-    // License experience factor
-    let licenseFactor = 1.0
-    switch (formData.licenseHeld) {
-      case "Under 1 Year":
-        licenseFactor = 2.0
-        break
-      case "1-2 Years":
-        licenseFactor = 1.6
-        break
-      case "2-4 Years":
-        licenseFactor = 1.2
-        break
-      case "5-10 Years":
-        licenseFactor = 1.0
-        break
-      case "10+ Years":
-        licenseFactor = 0.9
-        break
-    }
-
+        const age = currentYear - birthYear
+        let ageFactor = 1.0
+    
+        const sortedAgeDiscounts = [...quoteSettings.ageDiscounts].sort((a, b) => b.age - a.age);
+        const ageDiscount = sortedAgeDiscounts.find((d) => age >= d.age);
+        if (ageDiscount) {
+          ageFactor = 1 - ageDiscount.discount / 100;
+        }
+    
+        // License experience factor
+        let licenseFactor = 1.0
+        const licenseHeldMonths = formData.licenseHeld === "Under 1 Year" ? 6 :
+                                formData.licenseHeld === "1-2 Years" ? 18 :
+                                formData.licenseHeld === "2-4 Years" ? 36 :
+                                formData.licenseHeld === "5-10 Years" ? 84 :
+                                120;
+    
+        const sortedLicenseDiscounts = [...quoteSettings.licenseHeldDiscounts].sort((a, b) => b.months - a.months);
+        const licenseDiscount = sortedLicenseDiscounts.find((d) => licenseHeldMonths >= d.months);
+        if (licenseDiscount) {
+          licenseFactor = 1 - licenseDiscount.discount / 100;
+        }
     // Vehicle value factor
     let vehicleValueFactor = 1.0
     switch (formData.vehicleValue) {
