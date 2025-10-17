@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     // Generate a temporary policy number
-    const policyNumber = `P-${Date.now().toString(36).toUpperCase()}`;
+    const policyNumber = `P-${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 10)}`;;
 
 
     const newQuote = await db

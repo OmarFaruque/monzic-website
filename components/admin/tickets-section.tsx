@@ -459,7 +459,7 @@ export function TicketsSection() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{`${ticket.first_name} ${ticket.last_name}`}</div>
+                        <div className="font-medium">{`${ticket.firstName} ${ticket.lastName}`}</div>
                         <div className="text-sm text-gray-500">{ticket.email}</div>
                       </div>
                     </TableCell>
@@ -468,7 +468,7 @@ export function TicketsSection() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-gray-400" />
-                        <span>{formatDate(ticket.updated_at)}</span>
+                        <span>{formatDate(ticket.updatedAt)}</span>
                       </div>
                     </TableCell>
                     <TableCell>

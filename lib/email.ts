@@ -11,10 +11,7 @@ export interface EmailTemplate {
   attachments?:any
 }
 
-// Initialize Resend (only if API key is present)
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null
+
 
 // export async function sendEmail({ to, subject, html }: EmailTemplate) {
 //   try {
@@ -33,22 +30,50 @@ const resend = process.env.RESEND_API_KEY
 // }
 
 
+async function getResendSettings() {
+  try {
+    
+    const resendSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'resend')
+    });
+    
+    if (resendSettings && resendSettings.value) {
+      const parsedSettings = JSON.parse(resendSettings.value);
+      
+      return parsedSettings;
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to fetch Resend settings:", error);
+    return null;
+  }
+}
+
 // Reusable function
 export async function sendEmail({ to, subject, html, attachments = [] }: EmailTemplate) {
   try {
-    if (process.env.MAIL_DRIVER === "resend" && resend) {
-      // 👉 Production (Resend)
-      const fromAddress = process.env.EMAIL_FROM || "Tempnow <onboarding@resend.dev>";
+    const resendSettings = await getResendSettings();
+    const mailDriver = process.env.MAIL_DRIVER;
+    console.log(`Mail driver: ${mailDriver}`);
+    console.log("Resend settings available:", !!resendSettings);
+    console.log("Resend API key available:", !!resendSettings?.apiKey);
+
+    if (mailDriver === "resend" && resendSettings && resendSettings.apiKey) {
+      console.log("Using Resend to send email.");
+      const resend = new Resend(resendSettings.apiKey);
+      const fromAddress = resendSettings.fromEmail || "Tempnow <onboarding@resend.dev>";
+      
       const data = await resend.emails.send({
         from: fromAddress,
         to: [to],
         subject,
         html,
         attachments,
-      })
+      });
 
-      return { success: true, data }
+      return { success: true, data };
     } else {
+      console.log("Falling back to local SMTP (MailHog).");
       // 👉 Local dev (MailHog via SMTP)
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || "localhost",
@@ -73,15 +98,38 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailTe
   }
 }
 
-// AI Document Purchase Email Template
-export function createAIDocumentPurchaseEmail(customerName: string, documentType: string, downloadLink: string) {
+export async function getEmailTemplates() {
+  try {
+    const emailTemplatesSetting = await db.query.settings.findFirst({
+      where: eq(settings.param, 'email_templates')
+    });
+    if (emailTemplatesSetting && emailTemplatesSetting.value) {
+      return JSON.parse(emailTemplatesSetting.value);
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to fetch email templates:", error);
+    return null;
+  }
+}
+
+export async function createAIDocumentPurchaseEmail(customerName: string, documentType: string, downloadLink: string) {
+  const templates = await getEmailTemplates();
+  const template = templates?.documentPurchase;
+  if (!template) return "<body><p>Email template not found</p></body>";
+
+  let content = template.content;
+  content = content.replace(/{{customerName}}/g, customerName);
+  content = content.replace(/{{documentType}}/g, documentType);
+  content = content.replace(/{{downloadLink}}/g, downloadLink);
+
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Your AI Document is Ready</title>
+      <title>${template.subject}</title>
       <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -99,34 +147,7 @@ export function createAIDocumentPurchaseEmail(customerName: string, documentType
           <h1>Your AI Document is Ready!</h1>
         </div>
         <div class="content">
-          <h2>Hello ${customerName},</h2>
-          <p>Thank you for your purchase! Your AI-generated document is now ready for download.</p>
-          
-          <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
-            <h3>Document Details:</h3>
-            <ul>
-              <li><strong>Document Type:</strong> ${documentType}</li>
-              <li><strong>Generated:</strong> ${new Date().toLocaleDateString()}</li>
-              <li><strong>Format:</strong> PDF</li>
-            </ul>
-          </div>
-
-          <div style="text-align: center;">
-            <a href="${downloadLink}" class="button">Download Your Document</a>
-          </div>
-
-          <p><strong>Important:</strong> This download link will expire in 7 days for security reasons.</p>
-          
-          <h3>What's Next?</h3>
-          <ul>
-            <li>Download your document using the link above</li>
-            <li>Save it to your preferred location</li>
-            <li>Contact us if you need any modifications</li>
-          </ul>
-
-          <p>If you have any questions or need support, please don't hesitate to contact us at <a href="mailto:support@tempnow.uk">support@tempnow.uk</a>.</p>
-          
-          <p>Best regards,<br>The Tempnow Team</p>
+          ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
           <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
@@ -139,7 +160,7 @@ export function createAIDocumentPurchaseEmail(customerName: string, documentType
 }
 
 // Insurance Policy Email Template
-export function createInsurancePolicyEmail(
+export async function createInsurancePolicyEmail(
   customerName: string,
   policyNumber: string,
   vehicleDetails: string,
@@ -148,13 +169,26 @@ export function createInsurancePolicyEmail(
   amount: number,
   policyDocumentLink: string,
 ) {
+  const templates = await getEmailTemplates();
+  const template = templates?.policyConfirmation;
+  if (!template) return "<body><p>Email template not found</p></body>";
+
+  let content = template.content;
+  content = content.replace(/{{customerName}}/g, customerName);
+  content = content.replace(/{{policyNumber}}/g, policyNumber);
+  content = content.replace(/{{vehicleDetails}}/g, vehicleDetails);
+  content = content.replace(/{{startDate}}/g, startDate);
+  content = content.replace(/{{endDate}}/g, endDate);
+  content = content.replace(/{{amount}}/g, amount.toFixed(2));
+  content = content.replace(/{{policyDocumentLink}}/g, policyDocumentLink);
+
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Your Insurance Policy Confirmation</title>
+      <title>${template.subject.replace(/{{policyNumber}}/g, policyNumber)}</title>
       <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -174,55 +208,7 @@ export function createInsurancePolicyEmail(
           <h1>Insurance Policy Confirmed</h1>
         </div>
         <div class="content">
-          <h2>Hello ${customerName},</h2>
-          <p>Your insurance policy has been successfully purchased and is now active!</p>
-          
-          <div class="policy-box">
-            <h3>Policy Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>Policy Number:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${policyNumber}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>Vehicle:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${vehicleDetails}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>Coverage Period:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${startDate} to ${endDate}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0;"><strong>Premium Paid:</strong></td>
-                <td style="padding: 8px 0;">£${amount.toFixed(2)}</td>
-              </tr>
-            </table>
-          </div>
-
-          <div class="alert">
-            <strong>Important:</strong> Your policy is now active. Please keep this email and your policy document for your records.
-          </div>
-
-          <div style="text-align: center;">
-            <a href="${policyDocumentLink}" class="button">Download Policy Document</a>
-          </div>
-
-          <h3>What's Covered?</h3>
-          <ul>
-            <li>Third-party liability coverage</li>
-            <li>Temporary driving permissions</li>
-            <li>24/7 emergency support</li>
-          </ul>
-
-          <h3>Need Help?</h3>
-          <p>If you need to make a claim or have questions about your policy:</p>
-          <ul>
-            <li><strong>Email:</strong> <a href="mailto:support@tempnow.uk">support@tempnow.uk</a></li>
-            <li><strong>Phone:</strong> +44 20 1234 5678</li>
-            <li><strong>Emergency Claims:</strong> +44 20 1234 5679 (24/7)</li>
-          </ul>
-          
-          <p>Best regards,<br>The Tempnow Team</p>
+          ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
           <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
@@ -237,14 +223,26 @@ export function createInsurancePolicyEmail(
 
 
 // Admin Notification Email Template
-export function createAdminNotificationEmail(
+export async function createAdminNotificationEmail(
   type: "ai_document" | "insurance_policy",
   customerName: string,
   customerEmail: string,
   amount: number,
   details: string,
 ) {
+  const templates = await getEmailTemplates();
+  const template = templates?.adminNotification;
+  if (!template) return "<body><p>Email template not found</p></body>";
+
   const typeLabel = type === "ai_document" ? "AI Document" : "Insurance Policy"
+
+  let content = template.content;
+  content = content.replace(/{{typeLabel}}/g, typeLabel);
+  content = content.replace(/{{customerName}}/g, customerName);
+  content = content.replace(/{{customerEmail}}/g, customerEmail);
+  content = content.replace(/{{amount}}/g, amount.toFixed(2));
+  content = content.replace(/{{details}}/g, details);
+  content = content.replace(/{{time}}/g, new Date().toLocaleString());
 
   return `
     <!DOCTYPE html>
@@ -252,7 +250,7 @@ export function createAdminNotificationEmail(
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>New ${typeLabel} Purchase</title>
+      <title>${template.subject.replace(/{{typeLabel}}/g, typeLabel)}</title>
       <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -267,21 +265,7 @@ export function createAdminNotificationEmail(
           <h1>New ${typeLabel} Purchase</h1>
         </div>
         <div class="content">
-          <p>A new ${typeLabel.toLowerCase()} has been purchased on Tempnow.</p>
-          
-          <div class="info-box">
-            <h3>Purchase Details</h3>
-            <ul>
-              <li><strong>Customer:</strong> ${customerName}</li>
-              <li><strong>Email:</strong> ${customerEmail}</li>
-              <li><strong>Amount:</strong> £${amount.toFixed(2)}</li>
-              <li><strong>Type:</strong> ${typeLabel}</li>
-              <li><strong>Time:</strong> ${new Date().toLocaleString()}</li>
-            </ul>
-            <p><strong>Details:</strong> ${details}</p>
-          </div>
-
-          <p>Please review this purchase in the admin dashboard if needed.</p>
+          ${content.replace(/\n/g, '<br>')}
         </div>
       </div>
     </body>
@@ -300,13 +284,21 @@ export async function sendTicketConfirmationEmail({
     name: string
     ticketId: string
     }) {
-    const emailHtml = `
+    const templates = await getEmailTemplates();
+    const template = templates?.ticketConfirmation;
+    if (!template) return;
+
+    let emailHtml = template.content;
+    emailHtml = emailHtml.replace(/{{name}}/g, name);
+    emailHtml = emailHtml.replace(/{{ticketId}}/g, ticketId);
+
+    const emailWrapper = `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Support Ticket Confirmation</title>
+            <title>${template.subject.replace(/{{ticketId}}/g, ticketId)}</title>
             <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -324,21 +316,7 @@ export async function sendTicketConfirmationEmail({
                 <h1>Support Ticket Received</h1>
             </div>
             <div class="content">
-                <h2>Hello ${name},</h2>
-                <p>Thank you for contacting us. We have successfully received your support request and a ticket has been created for you.</p>
-                
-                <div class="ticket-info">
-                <h3>Your Ticket Details:</h3>
-                <ul>
-                    <li><strong>Ticket ID:</strong> ${ticketId}</li>
-                    <li><strong>Status:</strong> Open</li>
-                    <li><strong>Next Step:</strong> Our team will review your request and get back to you shortly.</li>
-                </ul>
-                </div>
-
-                <p>You can reference this ticket ID in any future communication with us regarding this matter. We aim to respond to all inquiries within 24 hours.</p>
-                
-                <p>Best regards,<br>The Tempnow Team</p>
+                ${emailHtml.replace(/\n/g, '<br>')}
             </div>
             <div class="footer">
                 <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
@@ -347,12 +325,12 @@ export async function sendTicketConfirmationEmail({
             </div>
         </body>
         </html>
-    `
+    `;
 
     return sendEmail({
         to,
-        subject,
-        html: emailHtml,
+        subject: template.subject.replace(/{{ticketId}}/g, ticketId),
+        html: emailWrapper,
         attachments: [],
     })
 }
@@ -372,13 +350,22 @@ export async function sendTicketReplyEmail({
     message: string
     attachments?: any[]
     }) {
-    const emailHtml = `
+    const templates = await getEmailTemplates();
+    const template = templates?.ticketReply;
+    if (!template) return;
+
+    let emailHtml = template.content;
+    emailHtml = emailHtml.replace(/{{name}}/g, name);
+    emailHtml = emailHtml.replace(/{{ticketId}}/g, ticketId);
+    emailHtml = emailHtml.replace(/{{message}}/g, message);
+
+    const emailWrapper = `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>New Reply to Your Support Ticket</title>
+            <title>${template.subject.replace(/{{ticketId}}/g, ticketId)}</title>
             <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -396,17 +383,7 @@ export async function sendTicketReplyEmail({
                 <h1>New Reply to Your Ticket</h1>
             </div>
             <div class="content">
-                <h2>Hello ${name},</h2>
-                <p>A support agent has replied to your ticket with the ID: <strong>${ticketId}</strong>.</p>
-                
-                <div class="message-box">
-                <h3>Reply:</h3>
-                <p>${message}</p>
-                </div>
-
-                <p>Please contact us if you have further questions. We appreciate your patience.</p>
-                
-                <p>Best regards,<br>The Tempnow Team</p>
+                ${emailHtml.replace(/\n/g, '<br>')}
             </div>
             <div class="footer">
                 <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
@@ -415,17 +392,25 @@ export async function sendTicketReplyEmail({
             </div>
         </body>
         </html>
-    `
+    `;
 
     return sendEmail({
         to,
-        subject,
-        html: emailHtml,
+        subject: template.subject.replace(/{{ticketId}}/g, ticketId),
+        html: emailWrapper,
         attachments
     })
 }
 
-export function createDirectEmail(subject: string, message: string): string {
+export async function createDirectEmail(subject: string, message: string): Promise<string> {
+  const templates = await getEmailTemplates();
+  const template = templates?.directEmail;
+  if (!template) return "<body><p>Email template not found</p></body>";
+
+  let content = template.content;
+  content = content.replace(/{{subject}}/g, subject);
+  content = content.replace(/{{message}}/g, message);
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -478,7 +463,7 @@ export function createDirectEmail(subject: string, message: string): string {
             <img src="${process.env.NEXT_PUBLIC_BASE_URL}/tempnow-logo-horizontal.png" alt="Tempnow Logo">
         </div>
         <div class="content">
-            ${message.replace(/\n/g, '<br>')}
+            ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
             <p>&copy; ${new Date().getFullYear()} Tempnow. All rights reserved.</p>

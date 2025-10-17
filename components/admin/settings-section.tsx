@@ -127,6 +127,22 @@ If you have any questions, please don't hesitate to contact our support team.
 Best regards,
 The Tempnow Team`,
     },
+    adminNotification: {
+      subject: "New Purchase Notification - {{typeLabel}}",
+      content: `A new {{typeLabel}} has been purchased on Tempnow.\n\nPurchase Details:\n- Customer: {{customerName}}\n- Email: {{customerEmail}}\n- Amount: £{{amount}}\n- Type: {{typeLabel}}\n- Time: {{time}}\n- Details: {{details}}\n\nPlease review this purchase in the admin dashboard if needed.`
+    },
+    ticketConfirmation: {
+      subject: "Support Ticket Confirmation - {{ticketId}}",
+      content: `Hello {{name}},\n\nThank you for contacting us. We have successfully received your support request and a ticket has been created for you.\n\nYour Ticket Details:\n- Ticket ID: {{ticketId}}\n- Status: Open\n- Next Step: Our team will review your request and get back to you shortly.\n\nYou can reference this ticket ID in any future communication with us regarding this matter. We aim to respond to all inquiries within 24 hours.\n\nBest regards,\nThe Tempnow Team`
+    },
+    ticketReply: {
+      subject: "New Reply to Your Support Ticket - {{ticketId}}",
+      content: `Hello {{name}},\n\nA support agent has replied to your ticket with the ID: {{ticketId}}.\n\nReply:\n{{message}}\n\nPlease contact us if you have further questions. We appreciate your patience.\n\nBest regards,\nThe Tempnow Team`
+    },
+    directEmail: {
+      subject: "{{subject}}",
+      content: `{{message}}`
+    }
   })
   const [activeTemplate, setActiveTemplate] = useState("policyConfirmation")
   const [showPreview, setShowPreview] = useState(false)
@@ -271,6 +287,14 @@ The Tempnow Team`,
         return ["firstName", "lastName", "orderId", "documentType", "orderDate", "amount", "downloadLink"]
       case "policyExpiry":
         return ["firstName", "lastName", "policyNumber", "coverageType", "expiryDate", "expiryTime", "renewalLink"]
+      case "adminNotification":
+        return ["typeLabel", "customerName", "customerEmail", "amount", "time", "details"]
+      case "ticketConfirmation":
+        return ["name", "ticketId"]
+      case "ticketReply":
+        return ["name", "ticketId", "message"]
+      case "directEmail":
+        return ["subject", "message"]
       default:
         return []
     }
@@ -288,6 +312,14 @@ The Tempnow Team`,
         return <CreditCard className="h-4 w-4" />
       case "policyExpiry":
         return <Clock className="h-4 w-4" />
+      case "adminNotification":
+        return <AlertTriangle className="h-4 w-4" />
+      case "ticketConfirmation":
+        return <CheckCircle className="h-4 w-4" />
+      case "ticketReply":
+        return <Mail className="h-4 w-4" />
+      case "directEmail":
+        return <Mail className="h-4 w-4" />
       default:
         return <Mail className="h-4 w-4" />
     }
@@ -305,6 +337,14 @@ The Tempnow Team`,
         return "Document Purchase"
       case "policyExpiry":
         return "Policy Expiry"
+      case "adminNotification":
+        return "Admin Notification"
+      case "ticketConfirmation":
+        return "Ticket Confirmation"
+      case "ticketReply":
+        return "Ticket Reply"
+      case "directEmail":
+        return "Direct Email"
       default:
         return templateKey
     }
@@ -366,6 +406,10 @@ The Tempnow Team`,
                           {templateKey === "passwordReset" && "Sent when user requests password reset"}
                           {templateKey === "documentPurchase" && "Sent after AI document purchase"}
                           {templateKey === "policyExpiry" && "Sent 10 minutes before policy expires"}
+                          {templateKey === "adminNotification" && "Sent to admin on new purchase"}
+                          {templateKey === "ticketConfirmation" && "Sent to user on new ticket"}
+                          {templateKey === "ticketReply" && "Sent to user on ticket reply"}
+                          {templateKey === "directEmail" && "Used for sending direct emails"}
                         </p>
                       </div>
                     </div>

@@ -180,7 +180,7 @@ export function PoliciesSection() {
   const [editAddresses, setEditAddresses] = useState<string[]>([])
   const [showEditAddresses, setShowEditAddresses] = useState(false)
   const [editPostcodeError, setEditPostcodeError] = useState("")
-  const [isApproving, setIsApproving] = useState(false);
+  const [approvingPolicyId, setApprovingPolicyId] = useState<number | null>(null);
 
   // Get data
   const [policies, setPolicies] = useState<any[]>([])
@@ -633,7 +633,7 @@ export function PoliciesSection() {
   }
 
   const handleApprovePolicy = async (policyId: number) => {
-    setIsApproving(true);
+    setApprovingPolicyId(policyId);
     try {
         const response = await fetch('/api/admin/policies/approve', {
             method: 'POST',
@@ -655,7 +655,7 @@ export function PoliciesSection() {
     } catch (error) {
         console.error('Error approving policy:', error);
     } finally {
-        setIsApproving(false);
+        setApprovingPolicyId(null);
     }
   };
 
@@ -736,7 +736,12 @@ export function PoliciesSection() {
                 </TableHeader>
                 <TableBody>
                   {paidPolicies.map((policy) => (
-                    <TableRow key={policy.id}>
+                    <TableRow key={policy.id} className="relative">
+                      {approvingPolicyId === policy.id && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 backdrop-blur-sm z-10 rounded-md">
+                          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
                       <TableCell className="font-medium">{policy.policyNumber}</TableCell>
                       <TableCell>
                         <div>
@@ -829,9 +834,9 @@ export function PoliciesSection() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleApprovePolicy(policy.id)}
-                                    disabled={isApproving}
+                                    disabled={approvingPolicyId !== null}
                                   >
-                                    {isApproving ? (
+                                    {approvingPolicyId === policy.id ? (
                                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                       <Check className="h-4 w-4" />
@@ -870,7 +875,12 @@ export function PoliciesSection() {
                 </TableHeader>
                 <TableBody>
                   {unconfirmedPolicies.map((policy) => (
-                    <TableRow key={policy.id}>
+                    <TableRow key={policy.id} className="relative">
+                      {approvingPolicyId === policy.id && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 backdrop-blur-sm z-10 rounded-md">
+                          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
                       <TableCell className="font-medium">{policy.policyNumber}</TableCell>
                       <TableCell>
                         <div>
@@ -963,9 +973,9 @@ export function PoliciesSection() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleApprovePolicy(policy.id)}
-                                    disabled={isApproving}
+                                    disabled={approvingPolicyId !== null}
                                   >
-                                    {isApproving ? (
+                                    {approvingPolicyId === policy.id ? (
                                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                       <Check className="h-4 w-4" />
