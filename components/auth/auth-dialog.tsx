@@ -265,7 +265,7 @@ export function AuthDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="p-0 max-w-md">
+      <DialogContent className={`p-0 max-w-md ${isVerifying ? 'backdrop-blur-sm' : ''}`}>
         <div className="sm:rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-6 text-white text-center">
             <h2 className="text-2xl font-bold mb-2">{isLogin ? "Welcome Back" : `Join ${settings.siteName}`}</h2>

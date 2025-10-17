@@ -32,15 +32,11 @@ export interface EmailTemplate {
 
 async function getResendSettings() {
   try {
-    
     const resendSettings = await db.query.settings.findFirst({
       where: eq(settings.param, 'resend')
     });
-    
     if (resendSettings && resendSettings.value) {
-      const parsedSettings = JSON.parse(resendSettings.value);
-      
-      return parsedSettings;
+      return JSON.parse(resendSettings.value);
     }
     return null;
   } catch (error) {
@@ -54,12 +50,8 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailTe
   try {
     const resendSettings = await getResendSettings();
     const mailDriver = process.env.MAIL_DRIVER;
-    console.log(`Mail driver: ${mailDriver}`);
-    console.log("Resend settings available:", !!resendSettings);
-    console.log("Resend API key available:", !!resendSettings?.apiKey);
 
     if (mailDriver === "resend" && resendSettings && resendSettings.apiKey) {
-      console.log("Using Resend to send email.");
       const resend = new Resend(resendSettings.apiKey);
       const fromAddress = resendSettings.fromEmail || "Tempnow <onboarding@resend.dev>";
       
@@ -73,7 +65,6 @@ export async function sendEmail({ to, subject, html, attachments = [] }: EmailTe
 
       return { success: true, data };
     } else {
-      console.log("Falling back to local SMTP (MailHog).");
       // 👉 Local dev (MailHog via SMTP)
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || "localhost",

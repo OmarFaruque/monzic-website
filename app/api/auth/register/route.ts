@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     console.log(`Verification code for ${email} expires at: ${verificationCodeExpiresAt.toISOString()}`);
 
     // Add actual email sending logic here
-    await sendVerificationEmail(email, verificationCode); 
+    await sendVerificationEmail(email, verificationCode, firstName); 
 
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, email.toLowerCase()),
