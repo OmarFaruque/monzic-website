@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Banknote, Copy, CheckCircle, ArrowLeft, Info, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+import { useSettings } from '@/context/settings';
+
 interface BankSettings {
   name: string;
   sortCode: string;
@@ -21,36 +23,9 @@ interface BankSettings {
 function BankPaymentDetailsContent() {
   const searchParams = useSearchParams();
   const policyNumber = searchParams.get('policynumber');
-  const [bankDetails, setBankDetails] = useState<BankSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchBankDetails = async () => {
-      try {
-        const response = await fetch('/api/settings/bank');
-        if (!response.ok) {
-          throw new Error('Failed to fetch bank details');
-        }
-        const data = await response.json();
-        if (data.success && data.settings) {
-          setBankDetails(data.settings);
-        } else {
-          throw new Error(data.error || 'Could not load bank details.');
-        }
-      } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error.message,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBankDetails();
-  }, [toast]);
+  const settings = useSettings();
+  const bankDetails = settings?.bank;
 
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -75,7 +50,7 @@ function BankPaymentDetailsContent() {
     );
   };
 
-  if (loading) {
+  if (!settings) { // Use settings to determine loading state
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4">
         <Loader2 className="h-8 w-8 animate-spin text-teal-600" />

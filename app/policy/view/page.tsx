@@ -16,6 +16,7 @@ export default function PolicyViewPage() {
   const router = useRouter()
   const { notifications, addNotification, removeNotification } = useNotifications()
   const policyNumber = searchParams.get("number")
+  const [isMounted, setIsMounted] = useState(false)
 
   const [formData, setFormData] = useState({
     surname: "",
@@ -39,12 +40,20 @@ export default function PolicyViewPage() {
   const monthRef = useRef<HTMLInputElement>(null)
   const yearRef = useRef<HTMLInputElement>(null)
 
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   // If no policy number is provided, redirect to home
   useEffect(() => {
-    if (!policyNumber) {
+    if (isMounted && !policyNumber) {
       router.push("/")
     }
-  }, [policyNumber, router])
+  }, [policyNumber, router, isMounted])
+
+  if (!isMounted) {
+    return null
+  }
 
   const handleInputChange = (field: string, value: string) => {
     // Clear error for this field when user starts typing

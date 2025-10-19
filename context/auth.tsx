@@ -1,30 +1,10 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 
-interface User {
-  id: string;
-  email: string;
-  isAdmin: boolean;
-  firstName: string;
-  lastName: string;
-  stripeCustomerId: string | null;
-}
-interface LoginArgs {
-  user: { id: number|string; email: string; role: string; firstName: string; lastName: string; stripeCustomerId: string | null; };
-  token: string;
-}
-interface AuthContextType {
-  isAuthenticated: boolean
-  isAdmin: boolean
-  user: User | null
-  login: (args: LoginArgs, options?: { redirect?: boolean }) => void;
-  logout: () => void
-  loading: boolean
-}
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 

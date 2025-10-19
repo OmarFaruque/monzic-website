@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { useState } from "react"
 
+import { useSettings } from "@/context/settings";
+
 export default function PrivacyPolicyPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const settings = useSettings();
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -15,7 +18,7 @@ export default function PrivacyPolicyPage() {
         <div className="flex items-center">
           <Link href="/">
             <h1 className="text-xl sm:text-2xl font-bold text-white cursor-pointer hover:text-teal-100 transition-colors">
-              MONZIC
+              {settings?.siteName}
             </h1>
           </Link>
         </div>
@@ -107,15 +110,15 @@ export default function PrivacyPolicyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-teal-100">Tempnow Solutions Ltd</p>
+                    <p className="text-teal-100">{settings?.companyName}</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
-                    <p className="text-teal-100">16414928</p>
+                    <p className="text-teal-100">{settings?.companyRegistration}</p>
                   </div>
                   <div>
                     <p className="font-medium">Effective Date</p>
-                    <p className="text-teal-100">January 6, 2025</p>
+                    <p className="text-teal-100">{settings?.effectiveDate ? new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ""}</p>
                   </div>
                 </div>
               </div>
@@ -136,10 +139,10 @@ export default function PrivacyPolicyPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                       <div>
                         <p>
-                          <strong>Company Name:</strong> Tempnow Solutions Ltd
+                          <strong>Company Name:</strong> {settings?.companyName}
                         </p>
                         <p>
-                          <strong>Registration Number:</strong> 16414928
+                          <strong>Registration Number:</strong> {settings?.companyRegistration}
                         </p>
                         <p>
                           <strong>Registered in:</strong> England and Wales
@@ -156,7 +159,7 @@ export default function PrivacyPolicyPage() {
                     </div>
                   </div>
                   <p className="text-sm sm:text-base leading-relaxed">
-                    Tempnow Solutions Ltd ("Tempnow," "we," "us," or "our") is committed to protecting and respecting your
+                    {settings?.companyName} ({settings?.aliases}) is committed to protecting and respecting your
                     privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your personal
                     information when you access or use our artificial intelligence-powered document generation services
                     (the "Services") through our website and platform.
@@ -405,7 +408,7 @@ export default function PrivacyPolicyPage() {
                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Contact Tempnow Solutions Ltd</h4>
+                        <h4 className="font-semibold text-gray-900 mb-3">Contact {settings.companyName}</h4>
                         <p className="text-sm text-gray-600 mb-2">
                           For privacy-related inquiries, please use our contact form and mark your message as "Data
                           Protection" or "Privacy Inquiry".
@@ -433,11 +436,11 @@ export default function PrivacyPolicyPage() {
               <div className="flex flex-col sm:flex-row justify-between items-center">
                 <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-0 text-center sm:text-left">
                   <p>
-                    <strong>TEMPNOW Solutions Ltd</strong> • Company Registration: 16414928 • Registered in England and
+                    <strong>{settings?.companyName}</strong> • Company Registration: {settings?.companyRegistration} • Registered in England and
                     Wales
                   </p>
                 </div>
-                <div className="text-xs sm:text-sm text-gray-500">Last updated: January 6, 2025</div>
+                <div className="text-xs sm:text-sm text-gray-500">Last updated: {settings?.effectiveDate ? new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ""}</div>
               </div>
             </div>
           </div>
@@ -459,7 +462,7 @@ export default function PrivacyPolicyPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © 2025 Tempnow Solutions Ltd. All rights reserved.
+            © {new Date().getFullYear()} {settings?.companyName}. All rights reserved.
           </div>
         </div>
       </footer>

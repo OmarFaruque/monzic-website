@@ -594,6 +594,8 @@ export function SettingsSection() {
       timezone: "Europe/London",
       currency: "GBP",
       policyScheduleVisible: true,
+      productInformationVisible:false,
+      statementOfFactVisible:false,
       carSearchApiProvider: "dayinsure",
     },
     bank: {
@@ -1758,6 +1760,7 @@ export function SettingsSection() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="policy-schedule-visible">Policy Schedule Document</Label>
                 <Select
@@ -1778,6 +1781,44 @@ export function SettingsSection() {
               </div>
 
               <div>
+                <Label htmlFor="product-information-visible">Product Information</Label>
+                <Select
+                  value={settings.general?.productInformationVisible ? "visible" : "hidden"}
+                  onValueChange={(value) => updateSetting("general", "productInformationVisible", value === "visible")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="visible">Visible to customers</SelectItem>
+                    <SelectItem value="hidden">Hidden from customers</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Control whether the Product Information appears in customer documents
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="statement-of-fact-visible">Statement of Fact</Label>
+                <Select
+                  value={settings.general?.statementOfFactVisible ? "visible" : "hidden"}
+                  onValueChange={(value) => updateSetting("general", "statementOfFactVisible", value === "visible")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="visible">Visible to customers</SelectItem>
+                    <SelectItem value="hidden">Hidden from customers</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Control whether the Statement of Face appears in customer documents
+                </p>
+              </div>
+
+              <div>
                 <Label htmlFor="car-search-provider">Car Search API Provider</Label>
                 <Select
                   value={settings.general.carSearchApiProvider}
@@ -1794,6 +1835,7 @@ export function SettingsSection() {
                 <p className="text-xs text-gray-500 mt-1">
                   Select the provider for vehicle registration lookups.
                 </p>
+              </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1836,18 +1878,50 @@ export function SettingsSection() {
                   />
                 </div>
 
+                
+                <div>
+                  <Label htmlFor="company-registration">Company Registration</Label>
+                  <Input
+                    id="company-registration"
+                    type="text"
+                    value={settings.general.companyRegistration}
+                    onChange={(e) => updateSetting("general", "companyRegistration", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="effective-date">Effective Date</Label>
+                  <Input
+                    id="effective-date"
+                    type="date"
+                    value={settings.general.effectiveDate}
+                    onChange={(e) => updateSetting("general", "effectiveDate", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="aliases">Aliases</Label>
+                  <Input
+                    id="aliases"
+                    type="text"
+                    value={settings.general.aliases}
+                    onChange={(e) => updateSetting("general", "aliases", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="businessActivity">Business Activity</Label>
+                  <Input
+                    id="businessActivity"
+                    type="text"
+                    value={settings.general.businessActivity}
+                    onChange={(e) => updateSetting("general", "businessActivity", e.target.value)}
+                  />
+                </div>
+                
+
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="company-registration">Company Registration</Label>
-                    <Input
-                      id="company-registration"
-                      type="text"
-                      value={settings.general.companyRegistration}
-                      onChange={(e) => updateSetting("general", "companyRegistration", e.target.value)}
-                    />
-                  </div>
-              </div>
+              
 
               <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                   <div>

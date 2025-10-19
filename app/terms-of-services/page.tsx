@@ -4,9 +4,11 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { useState } from "react"
+import { useSettings } from "@/context/settings";
 
 export default function TermsOfServicesPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const settings = useSettings();
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -138,10 +140,10 @@ export default function TermsOfServicesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p>
-                          <strong>Legal Name:</strong> Tempnow Solutions Ltd
+                          <strong>Legal Name:</strong> {settings?.companyName}
                         </p>
                         <p>
-                          <strong>Company Number:</strong> 16414928
+                          <strong>Company Number:</strong> {settings?.companyRegistration}
                         </p>
                         <p>
                           <strong>Jurisdiction:</strong> England and Wales
@@ -149,10 +151,11 @@ export default function TermsOfServicesPage() {
                       </div>
                       <div>
                         <p>
-                          <strong>Business Activity:</strong> AI Document Generation Services
+                          <strong>Business Activity:</strong> {settings?.businessActivity} 
+                          {/* AI Document Generation Services */}
                         </p>
                         <p>
-                          <strong>Service Brand:</strong> MONZIC
+                          <strong>Service Brand:</strong> {settings?.siteName}
                         </p>
                         <p>
                           <strong>Contact Method:</strong> Website contact form
@@ -162,8 +165,8 @@ export default function TermsOfServicesPage() {
                   </div>
                   <p>
                     These Terms of Services ("Terms") constitute a legally binding agreement between you ("User,"
-                    "Customer," "you," or "your") and Tempnow Solutions Ltd (Company Registration Number: 16414928), a
-                    company incorporated in England and Wales ("Tempnow," "Company," "we," "us," or "our").
+                    "Customer," "you," or "your") and Tempnow Solutions Ltd (Company Registration Number: {settings.companyRegistration}), a
+                    company incorporated in England and Wales ({settings.aliases}).
                   </p>
                   <p>
                     By accessing, browsing, or using our artificial intelligence-powered document generation services,
@@ -320,7 +323,7 @@ export default function TermsOfServicesPage() {
                         <ul className="space-y-2 text-sm text-gray-700">
                           <li>• AI algorithms and technology</li>
                           <li>• Platform software and infrastructure</li>
-                          <li>• MONZIC brand and trademarks</li>
+                          <li>• {settings.siteName} brand and trademarks</li>
                           <li>• Website design and content</li>
                         </ul>
                       </div>

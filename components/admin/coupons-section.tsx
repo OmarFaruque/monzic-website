@@ -68,6 +68,8 @@ export function CouponsSection() {
   } as Coupon)
   const [isLoading, setIsLoading] = useState(true);
 
+  const [isUpdating, setIsUpdating] = useState(false)
+
   useEffect(() => {
     fetchCoupons()
   }, [])
@@ -107,6 +109,7 @@ export function CouponsSection() {
 
   const updateCoupon = async () => {
     if (!selectedCoupon) return
+    setIsUpdating(true)
 
     const formattedSelectedCoupon = {
       ...selectedCoupon,
@@ -124,6 +127,8 @@ export function CouponsSection() {
       setSelectedCoupon(null)
     } catch (error) {
       console.error("Error updating coupon:", error)
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -545,6 +550,54 @@ export function CouponsSection() {
                     />
                   </div>
 
+                  <div>
+                    <Label className="text-base font-medium">Matches:</Label>
+                    <div className="space-y-3 mt-2">
+                      <div>
+                        <Label htmlFor="edit-last-name">Last Name:</Label>
+                        <Input
+                          id="edit-last-name"
+                          placeholder="Enter last name"
+                          value={selectedCoupon.matches?.lastName || ""}
+                          onChange={(e) =>
+                            setSelectedCoupon({
+                              ...selectedCoupon,
+                              matches: { ...selectedCoupon.matches, lastName: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-date-of-birth">Date of Birth:</Label>
+                        <Input
+                          id="edit-date-of-birth"
+                          placeholder="YYYY or YYYY-mm or YYYY-mm-dd"
+                          value={selectedCoupon.matches?.dateOfBirth || ""}
+                          onChange={(e) =>
+                            setSelectedCoupon({
+                              ...selectedCoupon,
+                              matches: { ...selectedCoupon.matches, dateOfBirth: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-registrations">Registrations (Comma separated):</Label>
+                        <Input
+                          id="edit-registrations"
+                          placeholder="GL69 RZB, GL88 RZB"
+                          value={selectedCoupon.matches?.registrations || ""}
+                          onChange={(e) =>
+                            setSelectedCoupon({
+                              ...selectedCoupon,
+                              matches: { ...selectedCoupon.matches, registrations: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-3">
                     <Label className="text-base font-medium">Restrictions:</Label>
 
@@ -576,7 +629,16 @@ export function CouponsSection() {
                   <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={updateCoupon}>Save Changes</Button>
+                  <Button onClick={updateCoupon} disabled={isUpdating}>
+                    {isUpdating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

@@ -17,6 +17,10 @@ import { useRouter } from "next/navigation"
 import { useSettings } from "@/context/settings"
 
 export default function LoginPage() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const { isAuthenticated, login, user } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [showVerification, setShowVerification] = useState(false)
@@ -27,6 +31,7 @@ export default function LoginPage() {
   const [timeLeft, setTimeLeft] = useState(60)
   const [canResend, setCanResend] = useState(false)
   const [userEmail, setUserEmail] = useState("")
+  const [isVerifying, setIsVerifying] = useState(false)
 
 
 
@@ -45,7 +50,6 @@ export default function LoginPage() {
 
   // Timer for verification resend
   useEffect(() => {
-    
     let interval: NodeJS.Timeout
     if (showVerification && timeLeft > 0) {
       interval = setInterval(() => {
@@ -175,8 +179,7 @@ export default function LoginPage() {
       return;
     }
 
-
-
+    setIsVerifying(true);
 
     try {
       const response = await fetch("/api/auth/verify-email", {
@@ -201,6 +204,8 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Verification submission error:", error);
       showError("Error", "An error occurred during verification.");
+    } finally {
+      setIsVerifying(false);
     }
   }
 
@@ -237,6 +242,10 @@ export default function LoginPage() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  if (!isMounted) {
+    return null;
   }
 
   return (
@@ -498,9 +507,17 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white h-12 font-semibold"
+                disabled={isVerifying}
+                className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white h-12 font-semibold flex items-center justify-center space-x-2"
               >
-                Verify Email
+                {isVerifying ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  "Verify Email"
+                )}
               </Button>
             </form>
 

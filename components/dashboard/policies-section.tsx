@@ -339,9 +339,9 @@ const PoliciesSection = () => {
                   <p className="text-sm text-gray-600">Complete policy information</p>
                 </div>
               </div>
-              <button onClick={closeModal} className="rounded-lg p-2 hover:bg-gray-100 transition-colors">
+              {/* <button onClick={closeModal} className="rounded-lg p-2 hover:bg-gray-100 transition-colors">
                 <X className="w-5 h-5 text-gray-500" />
-              </button>
+              </button> */}
             </div>
           </DialogHeader>
 
@@ -396,7 +396,7 @@ const PoliciesSection = () => {
                       <Phone className="w-4 h-4 text-gray-600" />
                       <div>
                         <p className="text-sm text-gray-600">Phone Number</p>
-                        <p className="font-medium text-gray-900">{user?.phone || "N/A"}</p>
+                        <p className="font-medium text-gray-900">{selectedPolicy?.phone || "N/A"}</p>
                       </div>
                     </div>
 
@@ -404,7 +404,7 @@ const PoliciesSection = () => {
                       <MapPin className="w-4 h-4 text-gray-600 mt-1" />
                       <div>
                         <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium text-gray-900">{user?.address || "N/A"}</p>
+                        <p className="font-medium text-gray-900">{selectedPolicy?.address || "N/A"}</p>
                       </div>
                     </div>
                   </CardContent>

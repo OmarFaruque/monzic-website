@@ -9,11 +9,14 @@ import { useNotifications } from "@/hooks/use-notifications"
 import { getPolicyByNumber } from "@/lib/policy-server"
 import { FileText, Download, User, Car, Calendar, X, MessageSquare, ArrowLeft, Shield } from "lucide-react"
 
+import { useSettings } from "@/context/settings";
+
 export default function PolicyDetailsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { addNotification } = useNotifications()
   const policyNumber = searchParams.get("number")
+  const settings = useSettings();
 
   const [isVerified, setIsVerified] = useState(false)
   const [showCertificate, setShowCertificate] = useState(false)
@@ -21,24 +24,6 @@ export default function PolicyDetailsPage() {
   const [isDownloading, setIsDownloading] = useState(false)
   const [policyData, setPolicyData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [policyScheduleVisible, setPolicyScheduleVisible] = useState(true)
-
-  // Add this useEffect to fetch the visibility setting
-  useEffect(() => {
-    const fetchPolicyScheduleVisibility = async () => {
-      try {
-        const response = await fetch("/api/admin/policy-schedule-visibility")
-        const result = await response.json()
-        if (result.success) {
-          setPolicyScheduleVisible(result.visible)
-        }
-      } catch (error) {
-        console.error("Error fetching policy schedule visibility:", error)
-      }
-    }
-
-    fetchPolicyScheduleVisibility()
-  }, [])
 
   // Check if user is verified and load policy data
   useEffect(() => {
@@ -548,14 +533,17 @@ export default function PolicyDetailsPage() {
                         <span className="hidden sm:inline">View</span>
                       </Button>
                     </div>
-                    {policyScheduleVisible && (
-                      <div
-                        className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => {
-                          /* Add policy schedule view logic */
-                        }}
-                      >
-                        <div className="flex items-center flex-1 min-w-0">
+                    {settings?.policyScheduleVisible && (
+                                              <div
+                                                className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                                                onClick={() =>
+                                                  window.open(
+                                                    `/api/generate-policy-schedule?number=${policyNumber}`,
+                                                    "_blank"
+                                                  )
+                                                }
+                                              >                        
+                          <div className="flex items-center flex-1 min-w-0">
                           <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mr-2 sm:mr-3 flex-shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm sm:text-base truncate">Policy Schedule</p>
@@ -563,6 +551,56 @@ export default function PolicyDetailsPage() {
                           </div>
                         </div>
                         <Button size="sm" variant="ghost" className="text-blue-600 ml-2 flex-shrink-0">
+                          <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          <span className="hidden sm:inline">View</span>
+                        </Button>
+                      </div>
+                    )}
+
+
+
+                    {settings?.productInformationVisible && (
+                      <div className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                          onClick={() =>
+                            window.open(
+                              `${process.env.NEXT_PUBLIC_BASE_URL}/.pdf/monzit.pdf`,
+                              "_blank"
+                            )
+                          }
+                                              >                        
+                          <div className="flex items-center flex-1 min-w-0">
+                          <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600 mr-2 sm:mr-3 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm sm:text-base truncate">Product Information</p>
+                            <p className="text-xs text-gray-500">Detailed product information</p>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="ghost" className="text-pink-600 ml-2 flex-shrink-0">
+                          <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          <span className="hidden sm:inline">View</span>
+                        </Button>
+                      </div>
+                    )}
+
+
+                    {settings?.statementOfFactVisible && (
+                      <div
+                        className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                        onClick={() =>
+                          window.open(
+                            `/api/generate-statement-of-fact?number=${policyNumber}`,
+                            "_blank"
+                          )
+                        }
+                      >
+                        <div className="flex items-center flex-1 min-w-0">
+                          <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 mr-2 sm:mr-3 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm sm:text-base truncate">Statement of Fact</p>
+                            <p className="text-xs text-gray-500">View your statement of fact document</p>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="ghost" className="text-purple-600 ml-2 flex-shrink-0">
                           <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                           <span className="hidden sm:inline">View</span>
                         </Button>

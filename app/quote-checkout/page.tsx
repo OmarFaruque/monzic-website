@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import React from "react";
 import DOMPurify from "dompurify";
 import { useState, useEffect, useRef } from "react";
 import dynamic from 'next/dynamic';
@@ -71,13 +71,6 @@ interface QuoteData {
   promoCode?: string;
 }
 
-interface QuoteCheckoutPageProps {
-  paymentProvider: string | null;
-  bankPaymentEnabled: boolean;
-  squareAppId: string | null;
-  squareLocationId: string | null;
-}
-
 // Dedicated Paddle button to conditionally load the usePaddle hook
 const PaddleCheckoutButton = ({ quoteData, user, discountedTotal, disabled }) => {
   const { paddle, loading: isPaddleLoading } = usePaddle();
@@ -123,15 +116,65 @@ const PaddleCheckoutButton = ({ quoteData, user, discountedTotal, disabled }) =>
   );
 };
 
-function QuoteCheckoutPage({
-  paymentProvider,
-  bankPaymentEnabled,
-  squareAppId,
-  squareLocationId,
-}: QuoteCheckoutPageProps) {
-  const { isAuthenticated, user } = useAuth();
+
+const StripePayment = React.forwardRef(({ quoteData, user, quote, onProcessingChange }, ref) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+
+  React.useImperativeHandle(ref, () => ({
+    async handlePayment() {
+      if (!stripe || !elements) {
+        toast({ variant: "destructive", title: "Payment Error", description: "Stripe is not available." });
+        onProcessingChange(false);
+        return;
+      }
+      onProcessingChange(true);
+      try {
+        const response = await fetch("/api/quote-checkout/create-stripe-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quoteData: { ...quoteData, id: quote.id, total: quoteData?.total },
+            user: user,
+          }),
+        });
+        const { clientSecret, error: clientSecretError } = await response.json();
+        if (clientSecretError) throw new Error(clientSecretError.message || "Could not initiate Stripe payment.");
+        
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) throw new Error("Card element not found.");
+
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: { card: cardElement },
+        });
+        if (error) throw error;
+        if (paymentIntent.status === "succeeded") {
+          toast({ title: "Payment Successful", description: "Your payment has been processed." });
+          window.location.href = "/payment-confirmation";
+        }
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Payment Error", description: error.message });
+        onProcessingChange(false);
+      }
+    }
+  }));
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 mb-6">
+      <CardElement options={{ style: { base: { fontSize: "16px", color: "#424770", "::placeholder": { color: "#aab7c4" } }, invalid: { color: "#9e2146" } } }} />
+    </div>
+  );
+});
+StripePayment.displayName = 'StripePayment';
+
+interface QuoteCheckoutPageProps {}
+
+function QuoteCheckoutPage() {
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const settings = useSettings();
   const [showSummary, setShowSummary] = useState(false);
   const [sameAsPersonal, setSameAsPersonal] = useState(true);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
@@ -139,11 +182,14 @@ function QuoteCheckoutPage({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
 
-  const stripe = paymentProvider === 'stripe' ? useStripe() : null;
-  const elements = paymentProvider === 'stripe' ? useElements() : null;
+  const paymentProvider = settings?.paymentProvider?.activeProcessor;
+  const bankPaymentEnabled = settings?.bank?.show;
+  const squareAppId = settings?.square?.appId;
+  const squareLocationId = settings?.square?.appLocationId;
+
   const airwallexCardRef = useRef(null);
+  const stripePaymentRef = useRef<{ handlePayment: () => Promise<void> }>(null);
   const [airwallexElement, setAirwallexElement] = useState<any>(null);
-  const settings = useSettings();
   const [checkboxContent, setCheckboxContent] = useState<any>([]);
 
   useEffect(() => {
@@ -176,6 +222,10 @@ function QuoteCheckoutPage({
   }
 
   useEffect(() => {
+    if (authLoading) {
+      return; // Wait for authentication to be determined
+    }
+
     if (!isAuthenticated) {
       toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to access this page." });
       router.push("/");
@@ -195,7 +245,7 @@ function QuoteCheckoutPage({
       const checkboxContent = settings?.checkoutCheckboxContent.split('||');
       setCheckboxContent(checkboxContent);
     }
-  }, [isAuthenticated, router, settings, toast]);
+  }, [isAuthenticated, authLoading, router, settings, toast]);
 
   useEffect(() => {
     if (selectedPaymentMethod === "airwallex" && isAuthenticated && quoteData) {
@@ -271,37 +321,11 @@ function QuoteCheckoutPage({
         break;
 
       case "stripe":
-        if (!stripe || !elements) {
-          toast({ variant: "destructive", title: "Payment Error", description: "Stripe is not available." });
-          setIsProcessingPayment(false);
-          return;
-        }
-        try {
-          const response = await fetch("/api/quote-checkout/create-stripe-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              quoteData: { ...quoteData, id: quote.id, total: quoteData?.total },
-              user: user,
-            }),
-          });
-          const { clientSecret, error: clientSecretError } = await response.json();
-          if (clientSecretError) throw new Error(clientSecretError.message || "Could not initiate Stripe payment.");
-          
-          const cardElement = elements.getElement(CardElement);
-          if (!cardElement) throw new Error("Card element not found.");
-
-          const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-            payment_method: { card: cardElement },
-          });
-          if (error) throw error;
-          if (paymentIntent.status === "succeeded") {
-            toast({ title: "Payment Successful", description: "Your payment has been processed." });
-            window.location.href = "/payment-confirmation";
-          }
-        } catch (error: any) {
-          toast({ variant: "destructive", title: "Payment Error", description: error.message });
-          setIsProcessingPayment(false);
+        if (stripePaymentRef.current) {
+          await stripePaymentRef.current.handlePayment();
+        } else {
+            toast({ variant: "destructive", title: "Payment Error", description: "Stripe component not ready." });
+            setIsProcessingPayment(false);
         }
         break;
 
@@ -506,7 +530,13 @@ function QuoteCheckoutPage({
                 </div>
 
                 {selectedPaymentMethod === "stripe" && (
-                  <div className="border border-gray-200 rounded-lg p-4 mb-6"><CardElement options={{ style: { base: { fontSize: "16px", color: "#424770", "::placeholder": { color: "#aab7c4" } }, invalid: { color: "#9e2146" } } }} /></div>
+                  <StripePayment
+                    ref={stripePaymentRef}
+                    quoteData={quoteData}
+                    user={user}
+                    quote={quote}
+                    onProcessingChange={setIsProcessingPayment}
+                  />
                 )}
                 {selectedPaymentMethod === "airwallex" && (
                   <div id="airwallex-card-element" ref={airwallexCardRef} className="border border-gray-200 rounded-lg p-4 mb-6"></div>
@@ -644,79 +674,22 @@ function QuoteCheckoutPage({
 }
 
 export default function QuoteCheckoutPageWrapper() {
-  const [loading, setLoading] = useState(true);
-  const [paymentProvider, setPaymentProvider] = useState<string | null>(null);
+  const settings = useSettings();
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
-  const [squareAppId, setSquareAppId] = useState<string | null>(null);
-  const [squareLocationId, setSquareLocationId] = useState<string | null>(null);
-  const [bankPaymentEnabled, setBankPaymentEnabled] = useState(false);
+
+  const paymentProvider = settings?.paymentProvider?.activeProcessor;
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const [paymentRes, bankRes] = await Promise.all([
-          fetch("/api/settings/payment"),
-          fetch("/api/settings/bank"),
-        ]);
+    if (paymentProvider === "stripe" && settings?.stripe?.publishableKey) {
+      setStripePromise(loadStripe(settings.stripe.publishableKey));
+    }
+  }, [paymentProvider, settings]);
 
-        const paymentData = await paymentRes.json();
-
-        if (paymentRes.ok) {
-          const provider = paymentData.paymentProvider;
-          const activeProvider = provider?.activeProcessor || null;
-          setPaymentProvider(activeProvider);
-
-          if (activeProvider === 'stripe') {
-            const stripeKeyRes = await fetch("/api/settings/stripe");
-            const stripeKeyData = await stripeKeyRes.json();
-            if (stripeKeyRes.ok) {
-              setStripePromise(loadStripe(stripeKeyData.publishableKey));
-            }
-          } else if (activeProvider === 'square') {
-            const squareRes = await fetch("/api/settings/square");
-            const squareData = await squareRes.json();
-            if (squareRes.ok) {
-              setSquareAppId(squareData.appId);
-              setSquareLocationId(squareData.appLocationId);
-            }
-          }
-        }
-
-        const bankData = await bankRes.json();
-
-        // console.log("Bank settings:", bankData);
-
-        if (bankRes.ok && bankData.settings?.show) {
-          setBankPaymentEnabled(true);
-        }
-      } catch (error) {
-        console.log(error);
-        console.error("Error fetching settings:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSettings(); // Initial fetch
-
-    // Cleanup listener when the component unmounts
-    return () => {
-      // No-op
-    };
-  }, []);
-
-  if (loading) {
+  if (!settings) {
     return <Loading />;
   }
 
-  const page = (
-    <QuoteCheckoutPage
-      paymentProvider={paymentProvider}
-      bankPaymentEnabled={bankPaymentEnabled}
-      squareAppId={squareAppId}
-      squareLocationId={squareLocationId}
-    />
-  );
+  const page = <QuoteCheckoutPage />;
 
   if (paymentProvider === "stripe" && stripePromise) {
     return <Elements stripe={stripePromise}>{page}</Elements>;

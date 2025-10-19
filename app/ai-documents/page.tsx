@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import React from "react";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,166 @@ import { PaymentForm, CreditCard as SquareCreditCard } from 'react-square-web-pa
 
 import { useSettings } from "@/context/settings";
 
+const StripePayment = React.forwardRef(
+  ({ docData, user, tip, discount, totalWithTip, onProcessingChange }, ref) => {
+    const stripe = useStripe();
+    const elements = useElements();
+    const { toast } = useToast();
+
+    React.useImperativeHandle(ref, () => ({
+      async handlePayment() {
+        if (!stripe || !elements) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: "Stripe is not available. Please try again later.",
+          });
+          onProcessingChange(false);
+          return;
+        }
+        onProcessingChange(true);
+
+        try {
+          const response = await fetch(
+            "/api/ai-documents/create-stripe-payment",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                docData,
+                user,
+                tip,
+                discount,
+              }),
+            }
+          );
+
+          const { clientSecret, error: clientSecretError } =
+            await response.json();
+
+          if (clientSecretError) {
+            toast({
+              variant: "destructive",
+              title: "Payment Error",
+              description:
+                clientSecretError.message ||
+                "Could not initiate payment. Please try again.",
+            });
+            onProcessingChange(false);
+            return;
+          }
+
+          const cardElement = elements.getElement(CardElement);
+
+          if (!cardElement) {
+            toast({
+              variant: "destructive",
+              title: "Payment Error",
+              description: "Card element not found. Please try again later.",
+            });
+            onProcessingChange(false);
+            return;
+          }
+
+          const { error, paymentIntent } = await stripe.confirmCardPayment(
+            clientSecret,
+            {
+              payment_method: {
+                card: cardElement,
+              },
+            }
+          );
+
+          if (error) {
+            toast({
+              variant: "destructive",
+              title: "Payment Error",
+              description:
+                error.message ||
+                "An unexpected error occurred. Please try again.",
+            });
+          } else if (paymentIntent.status === "succeeded") {
+            toast({
+              title: "Payment Successful",
+              description: "Your payment has been processed successfully.",
+            });
+
+            fetch("/api/ai-documents/save-document", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Cookies.get("auth_token")}`,
+              },
+              body: JSON.stringify({
+                docDetails: {
+                  prompt: docData.prompt,
+                  content: docData.content,
+                  price: totalWithTip,
+                },
+                userDetails: user,
+                transaction: paymentIntent,
+              }),
+            })
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error("Failed to save document");
+                }
+                return response.json();
+              })
+              .then((data) => {
+                localStorage.setItem("aiDocumentContent", docData.content);
+                localStorage.setItem(
+                  "aiDocumentType",
+                  docData.prompt.substring(0, 100) + "..."
+                );
+                window.location.href = "/ai-payment-confirmation";
+              })
+              .catch((error) => {
+                console.error("Error saving AI document:", error);
+                toast({
+                  variant: "destructive",
+                  title: "Document Save Failed",
+                  description:
+                    "An error occurred while saving the document. Please try again.",
+                });
+              });
+          }
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Payment Error",
+            description: "An unexpected error occurred. Please try again.",
+          });
+        } finally {
+          onProcessingChange(false);
+        }
+      },
+    }));
+
+    return (
+      <div className="border border-gray-200 rounded-xl p-4">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: "16px",
+                color: "#424770",
+                "::placeholder": {
+                  color: "#aab7c4",
+                },
+              },
+              invalid: {
+                color: "#9e2146",
+              },
+            },
+          }}
+        />
+      </div>
+    );
+  }
+);
+StripePayment.displayName = "StripePayment";
+
 function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }) {
   const [documentRequest, setDocumentRequest] = useState("");
   const [generatedText, setGeneratedText] = useState("");
@@ -63,19 +223,16 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
   const { isAuthenticated, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [squareAppId, setSquareAppId] = useState<string | null>(null);
-  const [squareLocationId, setSquareLocationId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { paddle, loading: isPaddleLoading } = usePaddle();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const airwallexCardRef = useRef(null);
   const [airwallexElement, setAirwallexElement] = useState(null);
+  const stripePaymentRef = useRef<{ handlePayment: () => Promise<void> }>(null);
 
-  const stripe = paymentProvider === 'stripe' ? useStripe() : null;
-  const elements = paymentProvider === 'stripe' ? useElements() : null;
 
-  const documentPrice = 10;
+  const documentPrice = settings?.openai?.price ?? 10;
 
   const getDiscountAmount = useCallback(() => {
     if (!appliedDiscount || appliedDiscount.error) return 0;
@@ -128,24 +285,6 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
         }
       };
       initAirwallex();
-    } else if (paymentProvider === 'square' && showPaymentPopup) {
-        const fetchSquareSettings = async () => {
-            try {
-                const squareSettingsResponse = await fetch("/api/settings/square");
-                const squareSettingsData = await squareSettingsResponse.json();
-                if (squareSettingsResponse.ok) {
-                    setSquareAppId(squareSettingsData.appId);
-                    setSquareLocationId(squareSettingsData.appLocationId);
-                } else {
-                    console.error("Failed to fetch square settings:", squareSettingsData.error);
-                    toast({ variant: "destructive", title: "Error", description: "Could not load Square settings." });
-                }
-            } catch (error) {
-                console.error("Error fetching square settings:", error);
-                toast({ variant: "destructive", title: "Error", description: "Could not load Square settings." });
-            }
-        };
-        fetchSquareSettings();
     }
   }, [paymentProvider, showPaymentPopup, documentRequest, generatedText, documentPrice, user, tipAmount, appliedDiscount, getDiscountAmount, toast]);
 
@@ -427,136 +566,17 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
         }
         break;
       case 'stripe':
-        console.log("inside stripe payment");
-        if (!stripe || !elements) {
+        if (stripePaymentRef.current) {
+          await stripePaymentRef.current.handlePayment();
+        } else {
           toast({
             variant: "destructive",
             title: "Payment Error",
-            description: "Stripe is not available. Please try again later.",
-          });
-          return;
-        }
-
-        setIsSubmitting(true);
-
-        try {
-          const response = await fetch(
-            "/api/ai-documents/create-stripe-payment",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                docData: {
-                  prompt: documentRequest,
-                  content: generatedText,
-                  price: documentPrice,
-                },
-                user: user,
-                tip: tipAmount,
-                discount: appliedDiscount ? getDiscountAmount() : 0,
-              }),
-            }
-          );
-
-          const { clientSecret, error: clientSecretError } =
-            await response.json();
-
-        if (clientSecretError) {
-          toast({
-            variant: "destructive",
-            title: "Payment Error",
-            description:
-              clientSecretError.message ||
-              "Could not initiate payment. Please try again.",
+            description: "Stripe component not ready.",
           });
           setIsSubmitting(false);
-          return;
         }
-
-        const cardElement = elements.getElement(CardElement);
-
-        if (!cardElement) {
-          toast({
-            variant: "destructive",
-            title: "Payment Error",
-            description: "Card element not found. Please try again later.",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        const { error, paymentIntent } = await stripe.confirmCardPayment(
-          clientSecret,
-          {
-            payment_method: {
-              card: cardElement,
-            },
-          }
-        );
-
-        if (error) {
-          toast({
-            variant: "destructive",
-            title: "Payment Error",
-            description:
-              error.message || "An unexpected error occurred. Please try again.",
-          });
-        } else if (paymentIntent.status === "succeeded") {
-          toast({
-            title: "Payment Successful",
-            description: "Your payment has been processed successfully.",
-          });
-
-          fetch("/api/ai-documents/save-document", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${Cookies.get("auth_token")}`,
-            },
-            body: JSON.stringify({
-              docDetails: {
-                prompt: documentRequest,
-                content: generatedText,
-                price: totalWithTip,
-              },
-              userDetails: user,
-              transaction: paymentIntent,
-            }),
-          })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error("Failed to save document");
-              }
-              return response.json();
-            })
-            .then((data) => {
-              localStorage.setItem("aiDocumentContent", generatedText);
-              localStorage.setItem(
-                "aiDocumentType",
-                documentRequest.substring(0, 100) + "..."
-              );
-              window.location.href = "/ai-payment-confirmation";
-            })
-            .catch((error) => {
-              console.error("Error saving AI document:", error);
-              toast({
-                variant: "destructive",
-                title: "Document Save Failed",
-                description:
-                  "An error occurred while saving the document. Please try again.",
-              });
-            });
-        }
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Payment Error",
-          description: "An unexpected error occurred. Please try again.",
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-      break;
+        break;
       case 'airwallex':
         if (!airwallexElement) {
           toast({
@@ -590,7 +610,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
         }
         break;
     }
-  }, [paddle, documentRequest, generatedText, documentPrice, user, tipAmount, appliedDiscount, toast, paymentProvider, stripe, elements, airwallexElement]);
+  }, [paddle, documentRequest, generatedText, documentPrice, user, tipAmount, appliedDiscount, toast, paymentProvider, airwallexElement, getDiscountAmount, totalWithTip]);
 
   const onPayClick = async () => {
       if (paymentProvider !== 'square') {
@@ -866,7 +886,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                 <div className="bg-teal-50 rounded-lg p-4 border border-teal-200 relative">
                   <div className="absolute -top-2 left-4">
                     <span className="bg-teal-600 text-white text-xs font-bold px-2 py-1 rounded">
-                      £10
+                      £{documentPrice}
                     </span>
                   </div>
                   <div className="pt-2">
@@ -1035,7 +1055,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                     className="bg-white text-teal-700 hover:bg-gray-50 flex items-center justify-center space-x-2 font-semibold text-sm sm:text-base h-12 touch-manipulation"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download PDF - £10</span>
+                    <span>{`Download PDF - £${documentPrice}`}</span>
                   </Button>
                 </div>
               </div>
@@ -1062,6 +1082,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
               // we need to trigger document generation again
               generateDocument();
             }}
+            disableRedirect={true}
           />
 
           {/* Payment Popup */}
@@ -1081,10 +1102,10 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                   </p>
                 </div>
 
-                {paymentProvider === 'square' && squareAppId && squareLocationId ? (
+                {paymentProvider === 'square' && settings?.square?.appId && settings?.square?.appLocationId ? (
                     <PaymentForm
-                        applicationId={squareAppId}
-                        locationId={squareLocationId}
+                        applicationId={settings.square.appId}
+                        locationId={settings.square.appLocationId}
                         cardTokenizeResponseReceived={async (token) => {
                             handlePayment(token);
                         }}
@@ -1350,24 +1371,19 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                             </div>
 
                             {paymentProvider === "stripe" && (
-                                <div className="border border-gray-200 rounded-xl p-4">
-                                <CardElement
-                                    options={{
-                                    style: {
-                                        base: {
-                                        fontSize: "16px",
-                                        color: "#424770",
-                                        "::placeholder": {
-                                        color: "#aab7c4",
-                                        },
-                                    },
-                                    invalid: {
-                                        color: "#9e2146",
-                                    },
-                                    },
-                                    }}
-                                />
-                                </div>
+                              <StripePayment
+                                ref={stripePaymentRef}
+                                docData={{
+                                  prompt: documentRequest,
+                                  content: generatedText,
+                                  price: documentPrice,
+                                }}
+                                user={user}
+                                tip={tipAmount}
+                                discount={appliedDiscount ? getDiscountAmount() : 0}
+                                totalWithTip={totalWithTip}
+                                onProcessingChange={setIsSubmitting}
+                              />
                             )}
 
                             {paymentProvider === "airwallex" && (
@@ -1483,49 +1499,16 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
 
 export default function AIDocumentsPageWrapper() {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
-  const [paymentProvider, setPaymentProvider] = useState<string | null>(null);
-  const [loadingSettings, setLoadingSettings] = useState(true);
+  const settings = useSettings();
+  const paymentProvider = settings?.paymentProvider?.activeProcessor;
 
   useEffect(() => {
-    const fetchPaymentProvider = async () => {
-      try {
-        const response = await fetch("/api/settings/payment");
-        const data = await response.json();
-        if (response.ok) {
-          let paymentProvider = data.paymentProvider;
-          setPaymentProvider(paymentProvider.activeProcessor);
-        } else {
-          console.error("Failed to fetch payment provider");
-        }
-      } catch (error) {
-        console.error("Error fetching payment provider:", error);
-      } finally {
-        setLoadingSettings(false);
-      }
-    };
-
-    fetchPaymentProvider();
-  }, []);
-
-  useEffect(() => {
-    if (paymentProvider === 'stripe') {
-      const fetchStripeKey = async () => {
-        try {
-          const stripeKeyResponse = await fetch("/api/settings/stripe");
-          const stripeKeyData = await stripeKeyResponse.json();
-          if (stripeKeyResponse.ok) {
-            setStripePromise(loadStripe(stripeKeyData.publishableKey));
-          }
-        } catch (error) {
-          console.error("Error fetching stripe key:", error);
-        }
-      };
-
-      fetchStripeKey();
+    if (paymentProvider === 'stripe' && settings?.stripe?.publishableKey) {
+      setStripePromise(loadStripe(settings.stripe.publishableKey));
     }
-  }, [paymentProvider]);
+  }, [paymentProvider, settings]);
 
-  if (loadingSettings) {
+  if (!settings) { // Check if settings are loaded
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
