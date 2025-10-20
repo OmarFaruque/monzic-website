@@ -1,10 +1,10 @@
 import { db } from "./db"
 import { quotes, users, settings } from "./schema"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 import type { Quote, User } from "./definitions"
 
 export async function getPoliciesByUserId(userId: string): Promise<any[]> {
-  const userPolicies = await db.select().from(quotes).where(eq(quotes.userId, userId))
+  const userPolicies = await db.select().from(quotes).where(and(eq(quotes.userId, userId), eq(quotes.paymentStatus, 'paid')))
   return userPolicies
 }
 

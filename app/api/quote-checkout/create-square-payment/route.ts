@@ -66,10 +66,12 @@ export async function POST(req: NextRequest) {
     if (paymentResult.payment) {
       // Update database
       await db.update(quotes).set({
-        status: 'paid',
+        paymentStatus: 'paid',
+        status: 'completed',
         userId: user.id,
         spaymentId: paymentResult.payment.id,
-        paymentMethod: 'square'
+        paymentMethod: 'square',
+        paymentDate: new Date()
       }).where(eq(quotes.id, quoteData.id));
 
       // Fetch the updated quote to get the policy number
@@ -84,7 +86,7 @@ export async function POST(req: NextRequest) {
       const finalAmount = parseFloat(effectivePrice || quoteData.total);
 
       // Generate invoice
-      const pdfBytes = await generateInvoicePdf({ ...quoteData, total: finalAmount }, user);
+      const pdfBytes = await generateInvoicePdf({ ...quoteData, total: finalAmount, paymentDate: quote.paymentDate }, user);
 
       // Send confirmation email
       const vehicle = quoteData.customerData.vehicle;

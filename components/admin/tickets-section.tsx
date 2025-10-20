@@ -159,7 +159,7 @@ export function TicketsSection() {
       const formData = new FormData();
       formData.append('to', recipient);
       formData.append('subject', emailData.subject);
-      formData.append('message', emailData.message);
+      formData.append('html', emailData.message);
       emailData.attachments.forEach(file => {
         formData.append('attachments', file);
       });
@@ -480,7 +480,7 @@ export function TicketsSection() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => copyTicketLink(`https://monzic.co.uk/ticket/${ticket.token}`)}
+                          onClick={() => copyTicketLink(`${process.env.NEXT_PUBLIC_BASE_URL}/ticket/${ticket.token}`)}
                         >
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Copy Link
@@ -517,7 +517,7 @@ export function TicketsSection() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => copyTicketLink(`https://monzic.co.uk/ticket/${selectedTicket.token}`)}
+                    onClick={() => copyTicketLink(`${process.env.NEXT_PUBLIC_BASE_URL}/ticket/${selectedTicket.token}`)}
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Copy Link
@@ -532,7 +532,7 @@ export function TicketsSection() {
                   <div>Created: {selectedTicket && formatDate(selectedTicket.createdAt)}</div>
                 </div>
                 <div className="text-sm text-blue-600 mt-1">
-                  Customer Link: {selectedTicket && `https://monzic.co.uk/ticket/${selectedTicket.token}`}
+                  Customer Link: {selectedTicket && `${process.env.NEXT_PUBLIC_BASE_URL}/ticket/${selectedTicket.token}`}
                 </div>
               </DialogDescription>
             </DialogHeader>

@@ -2,7 +2,7 @@
 
 
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
@@ -22,10 +22,16 @@ import {
   Shield,
   AlertTriangle,
   Tag,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react"
 import { useAuth } from "@/context/auth"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useQuoteExpiration } from "@/hooks/use-quote-expiration.tsx";
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 
 
 
@@ -102,10 +108,10 @@ export default function GetQuotePage() {
   const [vehicle, setVehicle] = useState(null)
   const [addresses, setAddresses] = useState([])
   const [showAddresses, setShowAddresses] = useState(false)
-  const [filteredOccupations, setFilteredOccupations] = useState(occupation_list)
-  const [showOccupationDropdown, setShowOccupationDropdown] = useState(false)
+  const [isOccupationOpen, setIsOccupationOpen] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [quote, setQuote] = useState(null)
+  const { ExpirationDialog } = useQuoteExpiration(quote);
   const [isCalculating, setIsCalculating] = useState(false)
   const [postcodeError, setPostcodeError] = useState("")
   const [showReview, setShowReview] = useState(false)
@@ -316,13 +322,6 @@ export default function GetQuotePage() {
       ...prev,
       [field]: processedValue,
     }))
-
-    // Filter occupations when typing in occupation field
-    if (field === "occupation") {
-      const filtered = occupation_list.filter((job) => job.desc.toLowerCase().includes(value.toString().toLowerCase()))
-      setFilteredOccupations(filtered)
-      setShowOccupationDropdown(true)
-    }
   }
 
   const handleCardDetailsChange = (field: string, value: string) => {
@@ -543,6 +542,7 @@ export default function GetQuotePage() {
     e.preventDefault()
     const calculatedQuote = calculateQuote();
     setQuote(calculatedQuote);
+    localStorage.setItem('quoteCreationTimestamp', Date.now().toString());
 
     const startTime = getNext5MinuteTime();
     const expiryTime = new Date(startTime);
@@ -567,11 +567,6 @@ export default function GetQuotePage() {
     setQuote(null)
     // Scroll to top of form
     window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  const selectOccupation = (occupation: any) => {
-    handleInputChange("occupation", occupation.desc)
-    setShowOccupationDropdown(false)
   }
 
   const handleDurationTypeChange = (type: string) => {
@@ -722,23 +717,6 @@ export default function GetQuotePage() {
 
     return options
   }
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element
-      if (!target.closest(".occupation-dropdown-container")) {
-        setShowOccupationDropdown(false)
-      }
-    }
-
-    if (showOccupationDropdown) {
-      document.addEventListener("mousedown", handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [showOccupationDropdown])
 
   const handleChangeDetails = () => {
     setShowReview(false)
@@ -959,6 +937,7 @@ export default function GetQuotePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-teal-50 flex flex-col">
+      <ExpirationDialog />
       {/* Header */}
       <Header />
 
@@ -1610,7 +1589,7 @@ export default function GetQuotePage() {
                       type="text"
                       value={formData.firstName}
                       onChange={(e) => handleInputChange("firstName", e.target.value)}
-                      className="w-full h-10 sm:h-12 text-sm sm:text-base"
+                      className="w-full h-10 sm:h-12 text-base"
                       required
                     />
                   </div>
@@ -1622,7 +1601,7 @@ export default function GetQuotePage() {
                       type="text"
                       value={formData.middleName}
                       onChange={(e) => handleInputChange("middleName", e.target.value)}
-                      className="w-full h-10 sm:h-12 text-sm sm:text-base"
+                      className="w-full h-10 sm:h-12 text-base"
                     />
                   </div>
 
@@ -1633,7 +1612,7 @@ export default function GetQuotePage() {
                       type="text"
                       value={formData.lastName}
                       onChange={(e) => handleInputChange("lastName", e.target.value)}
-                      className="w-full h-10 sm:h-12 text-sm sm:text-base"
+                      className="w-full h-10 sm:h-12 text-base"
                       required
                     />
                   </div>
@@ -1645,7 +1624,7 @@ export default function GetQuotePage() {
                       type="tel"
                       value={formData.phoneNumber}
                       onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-                      className="w-full h-10 sm:h-12 text-sm sm:text-base"
+                      className="w-full h-10 sm:h-12 text-base"
                       placeholder="07123456789"
                       required
                     />
@@ -1658,6 +1637,8 @@ export default function GetQuotePage() {
                       <div>
                         <Input
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           value={formData.dateOfBirthDay}
                           onChange={(e) => {
                             const value = e.target.value.replace(/\D/g, "").slice(0, 2)
@@ -1667,7 +1648,7 @@ export default function GetQuotePage() {
                               monthInputRef.current?.focus()
                             }
                           }}
-                          className="w-full h-10 sm:h-12 text-sm sm:text-base"
+                          className="w-full h-10 sm:h-12 text-base"
                           placeholder="DD"
                           maxLength={2}
                           required
@@ -1677,6 +1658,8 @@ export default function GetQuotePage() {
                         <Input
                           ref={monthInputRef}
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           value={formData.dateOfBirthMonth}
                           onChange={(e) => {
                             let value = e.target.value.replace(/\D/g, "").slice(0, 2)
@@ -1689,7 +1672,7 @@ export default function GetQuotePage() {
                               yearInputRef.current?.focus()
                             }
                           }}
-                          className="w-full h-10 sm:h-12 text-sm sm:text-base"
+                          className="w-full h-10 sm:h-12 text-base"
                           placeholder="MM"
                           maxLength={2}
                           required
@@ -1699,13 +1682,15 @@ export default function GetQuotePage() {
                         <Input
                           ref={yearInputRef}
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           value={formData.dateOfBirthYear}
                           onChange={(e) => {
                             const value = e.target.value.replace(/\D/g, "").slice(0, 4)
                             handleInputChange("dateOfBirthYear", value)
                             validateAge(formData.dateOfBirthDay, formData.dateOfBirthMonth, value)
                           }}
-                          className="w-full h-10 sm:h-12 text-sm sm:text-base"
+                          className="w-full h-10 sm:h-12 text-base"
                           placeholder="YYYY"
                           maxLength={4}
                           required
@@ -1718,29 +1703,51 @@ export default function GetQuotePage() {
                   {/* Occupation */}
                   <div className="sm:col-span-2 occupation-dropdown-container relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">OCCUPATION *</label>
-                    <Input
-                      type="text"
-                      value={formData.occupation}
-                      onChange={(e) => handleInputChange("occupation", e.target.value)}
-                      onFocus={() => setShowOccupationDropdown(true)}
-                      className="w-full h-10 sm:h-12 text-sm sm:text-base"
-                      placeholder="Start typing your occupation..."
-                      required
-                    />
-                    {showOccupationDropdown && filteredOccupations.length > 0 && (
-                      <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {filteredOccupations.slice(0, 10).map((occupation) => (
-                          <button
-                            key={occupation.id}
-                            type="button"
-                            onClick={() => selectOccupation(occupation)}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm sm:text-base"
-                          >
-                            {occupation.desc}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <Popover open={isOccupationOpen} onOpenChange={setIsOccupationOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isOccupationOpen}
+                          className="w-full justify-between h-10 sm:h-12 text-base font-normal"
+                        >
+                          <span className="truncate">
+                          {formData.occupation
+                            ? occupation_list.find((job) => job.desc.toLowerCase() === formData.occupation.toLowerCase())?.desc
+                            : "Select occupation..."}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search occupation..." />
+                          <CommandList className="max-h-[200px] overflow-y-auto">
+                            <CommandEmpty>No occupation found.</CommandEmpty>
+                            <CommandGroup>
+                              {occupation_list.map((job) => (
+                                <CommandItem
+                                  key={job.id}
+                                  value={job.desc}
+                                  onSelect={(currentValue) => {
+                                    handleInputChange("occupation", currentValue === formData.occupation.toLowerCase() ? "" : job.desc)
+                                    setIsOccupationOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.occupation.toLowerCase() === job.desc.toLowerCase() ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {job.desc}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               </div>

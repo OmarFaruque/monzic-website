@@ -151,6 +151,7 @@ const StripePayment = React.forwardRef(({ quoteData, user, quote, onProcessingCh
         if (error) throw error;
         if (paymentIntent.status === "succeeded") {
           toast({ title: "Payment Successful", description: "Your payment has been processed." });
+          localStorage.removeItem('quoteCreationTimestamp');
           window.location.href = "/payment-confirmation";
         }
       } catch (error: any) {
@@ -168,6 +169,8 @@ const StripePayment = React.forwardRef(({ quoteData, user, quote, onProcessingCh
 });
 StripePayment.displayName = 'StripePayment';
 
+import { useQuoteExpiration } from "@/hooks/use-quote-expiration.tsx";
+
 interface QuoteCheckoutPageProps {}
 
 function QuoteCheckoutPage() {
@@ -176,11 +179,13 @@ function QuoteCheckoutPage() {
   const router = useRouter();
   const settings = useSettings();
   const [showSummary, setShowSummary] = useState(false);
-  const [sameAsPersonal, setSameAsPersonal] = useState(true);
+  // const [sameAsPersonal, setSameAsPersonal] = useState(true);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [quote, setQuote] = useState<any>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+
+  const { ExpirationDialog } = useQuoteExpiration(quote, selectedPaymentMethod);
 
   const paymentProvider = settings?.paymentProvider?.activeProcessor;
   const bankPaymentEnabled = settings?.bank?.show;
@@ -369,6 +374,7 @@ function QuoteCheckoutPage() {
             throw new Error('Failed to update payment method');
           }
 
+          localStorage.removeItem('quoteCreationTimestamp');
           router.push(`/bank-payment-details?policynumber=${quote?.policyNumber}`);
         } catch (error) {
           console.error('Error updating payment method:', error);
@@ -403,6 +409,7 @@ function QuoteCheckoutPage() {
       });
       if (response.ok) {
         toast({ title: "Payment Successful", description: "Your payment has been processed." });
+        localStorage.removeItem('quoteCreationTimestamp');
         window.location.href = "/payment-confirmation";
       } else {
         const error = await response.json();
@@ -433,6 +440,7 @@ function QuoteCheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <ExpirationDialog />
       <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 shadow-md">
         <div className="flex justify-between items-center">
           <Link href="/">
@@ -440,13 +448,13 @@ function QuoteCheckoutPage() {
               {settings?.siteName || "TEMPNOW"}
             </h1>
           </Link>
-          {isAuthenticated && (
+          {/* {isAuthenticated && (
             <Link href="/dashboard">
               <Button variant="outline" className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4">
                 DASHBOARD
               </Button>
             </Link>
-          )}
+          )} */}
         </div>
       </header>
 
@@ -559,7 +567,7 @@ function QuoteCheckoutPage() {
                 )}
               </div>
 
-              <div className="bg-white rounded-lg p-6 shadow-sm">
+              {/* <div className="bg-white rounded-lg p-6 shadow-sm">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">BILLING DETAILS</h2>
                 <div className="flex items-center space-x-2">
                   <Checkbox id="same-address" checked={sameAsPersonal} onCheckedChange={(c) => setSameAsPersonal(c as boolean)} />
@@ -567,10 +575,10 @@ function QuoteCheckoutPage() {
                 </div>
                 {!sameAsPersonal && (
                   <div className="space-y-4 pt-2">
-                    {/* Additional billing fields would go here */}
+                    
                   </div>
                 )}
-              </div>
+              </div> */}
 
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <div className="space-y-3">

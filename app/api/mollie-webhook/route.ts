@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
             mailSent: false, // Will be set to true by the confirmation sender
             paymentMethod: 'mollie',
             paymentIntentId: payment.id,
+            paymentDate: new Date(),
           })
           .where(eq(quotes.policyNumber, metadata.policyNumber))
           .returning({ id: quotes.id });

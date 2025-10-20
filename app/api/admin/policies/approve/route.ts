@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     await db
       .update(quotes)
-      .set({ paymentStatus: 'paid', status: 'completed' })
+      .set({ paymentStatus: 'paid', status: 'completed', paymentDate: new Date() })
       .where(eq(quotes.id, policyId));
 
     // After successful update, trigger the confirmation email

@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
               paymentMethod: 'stripe',
               mailSent: false, // Mark as not sent yet, the next step will handle it
               paymentIntentId: paymentIntent.id,
+              paymentDate: new Date(),
               updatedAt: new Date().toISOString(),
           }).where(eq(quotes.id, quoteId));
 

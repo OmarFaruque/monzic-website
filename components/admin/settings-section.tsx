@@ -222,15 +222,15 @@ The Tempnow Team`,
     vehicleYear: "2020",
     code: "123456",
     expiryMinutes: "15",
-    resetLink: "https://monzic.co.uk/reset-password?token=abc123",
+    resetLink: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=abc123`,
     orderId: "ORD-87654321",
     documentType: "Legal Document",
     orderDate: "15/05/2023",
     amount: "29.99",
-    downloadLink: "https://monzic.co.uk/documents/download/12345",
+    downloadLink: `${process.env.NEXT_PUBLIC_BASE_URL}/documents/download/12345`,
     expiryDate: "31/05/2023",
     expiryTime: "23:59:59",
-    renewalLink: "https://monzic.co.uk/renew/POL-12345678",
+    renewalLink: `${process.env.NEXT_PUBLIC_BASE_URL}/renew/POL-12345678`,
   }
 
   const replaceVariables = (text: string) => {
@@ -539,7 +539,7 @@ export function SettingsSection() {
     paddle: {
       vendorId: "",
       apiKey: "",
-      publicKey: "",
+      clientToken: "",
       webhookKey: "",
       environment: "production",
     },
@@ -597,6 +597,15 @@ export function SettingsSection() {
       productInformationVisible:false,
       statementOfFactVisible:false,
       carSearchApiProvider: "dayinsure",
+      siteDomain: "",
+      companyName: "",
+      companyRegistration: "",
+      effectiveDate: "",
+      aliases: "",
+      businessActivity: "",
+      redirectUrl: "",
+      activeRedirection: "0",
+      checkoutCheckboxContent: "",
     },
     bank: {
       show: false,
@@ -610,6 +619,7 @@ export function SettingsSection() {
     airwallex: {
       client_id: "",
       apikey: "",
+      webhookSecret: "",
       environment: "test",
     },
     quoteFormula: {
@@ -1918,6 +1928,34 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "businessActivity", e.target.value)}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="redirectUrl">Redirect URL</Label>
+                  <Input
+                    id="redirectUrl"
+                    type="url"
+                    value={settings.general?.redirectUrl}
+                    onChange={(e) => updateSetting("general", "redirectUrl", e.target.value)}
+                  />
+                </div>
+                <div>
+                <Label htmlFor="activeRedirection">Active Redirection</Label>
+                <Select
+                  value={settings.general?.activeRedirection}
+                  onValueChange={(value) => updateSetting("general", "activeRedirection", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Active Redirection" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">No</SelectItem>
+                    <SelectItem value="1">Yes</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  If enabled, the frontend will be redirected to the specified URL.
+                </p>
+              </div>
+                
                 
 
               </div>

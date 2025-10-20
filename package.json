@@ -45,6 +45,7 @@
     "@react-email/render": "latest",
     "@stripe/react-stripe-js": "^5.0.0",
     "@stripe/stripe-js": "^8.0.0",
+    "@tanstack/react-virtual": "^3.13.12",
     "@types/bcryptjs": "^3.0.0",
     "@types/dompurify": "^3.2.0",
     "@types/jsonwebtoken": "^9.0.10",

@@ -139,7 +139,13 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    return NextResponse.json(newQuote[0]);
+    const quoteToSend = newQuote[0];
+
+    if (quoteToSend && quoteToSend.createdAt) {
+      quoteToSend.createdAt = new Date(quoteToSend.createdAt).toISOString();
+    }
+
+    return NextResponse.json(quoteToSend);
   } catch (error) {
     console.error("Error creating quote:", error);
     if (error instanceof z.ZodError) {

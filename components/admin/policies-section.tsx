@@ -36,10 +36,11 @@ import {
   Car,
   CheckCircle,
   RefreshCw,
-  Check,
+  Check
 } from "lucide-react"
 import { isValidUKRegistration } from "@/lib/utils"
 import { lookupVehicle } from "@/lib/vehicle-lookup"
+import { useToast } from "@/hooks/use-toast"
 
 
 interface VehicleData {
@@ -107,6 +108,7 @@ const DEMO_REGISTRATIONS = [
 ]
 
 export function PoliciesSection() {
+  const { toast } = useToast();
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 
@@ -121,6 +123,7 @@ export function PoliciesSection() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false)
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("policies")
+  const [generatingInvoice, setGeneratingInvoice] = useState<number | null>(null);
 
   // Add these state variables after the existing state declarations:
   const [customerSearch, setCustomerSearch] = useState("")
@@ -659,6 +662,36 @@ export function PoliciesSection() {
     }
   };
 
+  const handleGenerateInvoice = async (policyNumber: string, policyId: number) => {
+    setGeneratingInvoice(policyId);
+    try {
+      const response = await fetch('/api/admin/policies/generate-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ policyNumber }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate invoice');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${policyNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) { // @ts-ignore
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
+
 
   if (loading) {
     return <div>Loading...</div>;
@@ -823,6 +856,27 @@ export function PoliciesSection() {
                           <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleGenerateInvoice(policy.policyNumber, policy.id)}
+                                  disabled={generatingInvoice === policy.id}
+                                >
+                                  {generatingInvoice === policy.id ? (
+                                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Generate Invoice</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           {/* <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
                             <User className="h-4 w-4" />
                           </Button> */}
@@ -962,6 +1016,27 @@ export function PoliciesSection() {
                           <Button variant="outline" size="sm" onClick={() => handleViewPolicy(policy)}>
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleGenerateInvoice(policy.policyNumber, policy.id)}
+                                  disabled={generatingInvoice === policy.id}
+                                >
+                                  {generatingInvoice === policy.id ? (
+                                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Generate Invoice</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           {/* <Button variant="outline" size="sm" onClick={() => handleViewCustomer(policy)}>
                             <User className="h-4 w-4" />
                           </Button> */}

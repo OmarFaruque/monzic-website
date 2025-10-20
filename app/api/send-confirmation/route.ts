@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
 
     const finalAmount = parseFloat(quote.updatePrice || quote.cpw || fullQuoteData.total);
     fullQuoteData.total = finalAmount;
+    fullQuoteData.paymentDate = quote.paymentDate;
 
     // 2. Generate invoice
     const pdfBytes = await generateInvoicePdf(fullQuoteData, user);

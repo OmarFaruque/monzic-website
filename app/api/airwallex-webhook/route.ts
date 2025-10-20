@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
               paymentMethod: 'airwallex',
               mailSent: true,
               paymentIntentId: paymentIntent.id,
+              paymentDate: new Date(),
               updatedAt: new Date().toISOString(),
           }).where(eq(quotes.id, quoteId));
 

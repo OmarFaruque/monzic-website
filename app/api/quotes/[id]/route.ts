@@ -24,9 +24,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     // 1. Update the quote status in the database
     await db.update(quotes).set({
-      status: 'paid',
+      status:'completed',
+      paymentStatus: 'paid',
       paymentMethod: PaymentMethod,
       paymentIntentId: PaymentIntentId,
+      paymentDate: new Date(),
       updatedAt: new Date().toISOString(),
     }).where(eq(quotes.id, quoteId));
 
@@ -52,6 +54,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const effectivePrice = (quote.updatePrice && quote.updatePrice !== 'false') ? quote.updatePrice : quote.cpw;
     const finalAmount = parseFloat(effectivePrice || fullQuoteData.total);
     fullQuoteData.total = finalAmount; // Ensure the invoice and email use the final amount
+    fullQuoteData.paymentDate = quote.paymentDate; // Pass payment date to invoice generator
 
     // 3. Generate invoice
     const pdfBytes = await generateInvoicePdf(fullQuoteData, user);
@@ -88,5 +91,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   } finally {
     // Restore original toJSON to prevent side-effects
     (BigInt.prototype as any).toJSON = originalToJSON;
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const quoteId = params.id;
+
+    if (!quoteId) {
+      return NextResponse.json({ success: false, error: 'Quote ID is required' }, { status: 400 });
+    }
+
+    await db.delete(quotes).where(eq(quotes.id, parseInt(quoteId, 10)));
+
+    return NextResponse.json({ success: true, message: 'Quote deleted successfully.' });
+
+  } catch (error: any) {
+    console.error('Error deleting quote:', error);
+    return NextResponse.json({ success: false, message: error.message || 'An internal error occurred.' }, { status: 500 });
   }
 }

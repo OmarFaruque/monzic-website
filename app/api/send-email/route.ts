@@ -82,12 +82,14 @@ export async function POST(request: NextRequest) {
     // Handle FormData-based direct emails (new functionality for tickets section)
     } else if (contentType.includes('multipart/form-data')) {
 
-      console.log('inse multipart form')
+      
       const formData = await request.formData();
       const to = formData.get('to') as string;
       const subject = formData.get('subject') as string;
-      const message = formData.get('message') as string;
+      const message = (formData.get('html') || formData.get('message')) as string;
       const attachments = formData.getAll('attachments') as File[];
+
+      // console.log('inse multipart form: ', to, 'subject: ', subject, 'message: ', message, 'attachment: ', attachments)
 
       if (!to || !subject || !message) {
         return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
         processedAttachments.push({ filename: file.name, content: buffer });
       }
 
-      const emailHtml = createDirectEmail(subject, message);
+      const emailHtml = await createDirectEmail(subject, message);
 
       // Send the direct email
       const result = await sendEmail({

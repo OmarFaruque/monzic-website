@@ -11,7 +11,7 @@ if (!connectionString) {
 // Disable prefetch as it is not supported for "Transaction" pool mode
 const client = postgres(connectionString, { 
   prepare: false,
-  idle_timeout: 10, // seconds
+  idle_timeout: 60, // seconds
   max_lifetime: 60 * 5, // 5 minutes in seconds
 });
 

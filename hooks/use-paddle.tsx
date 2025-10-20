@@ -71,7 +71,7 @@ export default function usePaddle() {
                 }
 
 
-                console.log('Userevent: ', user)
+                
 
                 const customData = event.data.custom_data;
 
@@ -142,6 +142,7 @@ export default function usePaddle() {
                             return response.json();
                         })
                         .then(data => {
+                            localStorage.removeItem('quoteCreationTimestamp');
                             window.location.href = "/payment-confirmation";
                         })
                         .catch(error => {

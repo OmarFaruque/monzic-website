@@ -77,9 +77,9 @@ export const quotes = pgTable("quotes", {
 	status: varchar("status", { length: 50 }).default('pending').notNull(), // e.g., 'pending', 'completed'
 	paymentIntentId: varchar("payment_intent_id", { length: 255 }),
 	paymentMethod: varchar("payment_method", { length: 50 }), // e.g., 'stripe', 'square'
-	expiresAt: timestamp("expires_at", { mode: 'string' })	
-});
-
+	paymentDate: timestamp("payment_date", { mode: 'string' }),
+	expiresAt: timestamp("expires_at", { mode: 'string' })
+	});
 
 export const coupons = pgTable("coupons", {
 	id: serial("id").primaryKey().notNull(),

@@ -394,13 +394,8 @@ export async function sendTicketReplyEmail({
 }
 
 export async function createDirectEmail(subject: string, message: string): Promise<string> {
-  const templates = await getEmailTemplates();
-  const template = templates?.directEmail;
-  if (!template) return "<body><p>Email template not found</p></body>";
-
-  let content = template.content;
-  content = content.replace(/{{subject}}/g, subject);
-  content = content.replace(/{{message}}/g, message);
+  // The message from the admin is the full content, just wrap it in the layout.
+  const content = message;
 
   return `
 <!DOCTYPE html>
