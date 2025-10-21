@@ -4,7 +4,8 @@ import { quotes, users } from '@/lib/schema';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { sendEmail, createPolicyExpiryEmail } from '@/lib/email';
 
-export async function POST(request: NextRequest) {
+// Define the POST handler logic
+async function handleCronRequest(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
@@ -68,4 +69,12 @@ export async function POST(request: NextRequest) {
     console.error('Error sending expiry reminders:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
+}
+
+export async function POST(request: NextRequest) {
+  return handleCronRequest(request);
+}
+
+export async function GET(request: NextRequest) {
+  return handleCronRequest(request);
 }
