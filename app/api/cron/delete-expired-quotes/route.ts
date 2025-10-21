@@ -3,9 +3,6 @@ import { db } from '@/lib/db';
 import { quotes } from '@/lib/schema';
 import { sql, and, lt, ne, or } from 'drizzle-orm';
 
-export const config = {
-  schedule: '0 8 * * 1', // every Monday at 8AM UTC
-};
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
