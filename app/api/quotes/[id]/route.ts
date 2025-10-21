@@ -28,7 +28,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       paymentStatus: 'paid',
       paymentMethod: PaymentMethod,
       paymentIntentId: PaymentIntentId,
-      paymentDate: new Date(),
+      paymentDate: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }).where(eq(quotes.id, quoteId));
 
@@ -57,14 +57,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     fullQuoteData.paymentDate = quote.paymentDate; // Pass payment date to invoice generator
 
     // 3. Generate invoice
-    const pdfBytes = await generateInvoicePdf(fullQuoteData, user);
+    const pdfBytes = await generateInvoicePdf(fullQuoteData, user, quote.policyNumber);
 
     // 4. Send confirmation email
     const vehicle = fullQuoteData.customerData.vehicle;
-    const emailHtml = createInsurancePolicyEmail(
-      `${user.firstName} ${user.lastName}`,
+    const emailHtml = await createInsurancePolicyEmail(
+      user.firstName || '',
+      user.lastName || '',
       quote.policyNumber,
-      `${fullQuoteData.customerData.vehicle.year} ${fullQuoteData.customerData.vehicle.make} ${fullQuoteData.customerData.vehicle.model}`,
+      vehicle.registration,
+      vehicle.make,
+      vehicle.model,
+      vehicle.year,
       fullQuoteData.startTime,
       fullQuoteData.expiryTime,
       finalAmount,

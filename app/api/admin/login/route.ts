@@ -6,9 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password, clientIP } = await request.json()
 
-    console.log("Email:", email);
-    console.log("Password:", password);
-    console.log("JWT_SECRET:", process.env.JWT_SECRET); // Add this line
+
 
 
     if (!email || !password) {

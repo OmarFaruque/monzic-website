@@ -152,26 +152,43 @@ export async function createAIDocumentPurchaseEmail(customerName: string, docume
 
 // Insurance Policy Email Template
 export async function createInsurancePolicyEmail(
-  customerName: string,
+  firstName: string,
+  lastName: string,
   policyNumber: string,
-  vehicleDetails: string,
+  vehicleReg: string,
+  vehicleMake: string,
+  vehicleModel: string,
+  vehicleYear: string,
   startDate: string,
   endDate: string,
   amount: number,
   policyDocumentLink: string,
+  coverageType: string = "Temporary Insurance" // Default value
 ) {
   const templates = await getEmailTemplates();
   const template = templates?.policyConfirmation;
+  
+  
+
   if (!template) return "<body><p>Email template not found</p></body>";
 
   let content = template.content;
-  content = content.replace(/{{customerName}}/g, customerName);
+  
+
+  content = content.replace(/{{firstName}}/g, firstName);
+  content = content.replace(/{{lastName}}/g, lastName);
   content = content.replace(/{{policyNumber}}/g, policyNumber);
-  content = content.replace(/{{vehicleDetails}}/g, vehicleDetails);
+  content = content.replace(/{{coverageType}}/g, coverageType);
   content = content.replace(/{{startDate}}/g, startDate);
   content = content.replace(/{{endDate}}/g, endDate);
-  content = content.replace(/{{amount}}/g, amount.toFixed(2));
+  content = content.replace(/{{premium}}/g, amount.toFixed(2));
+  content = content.replace(/{{vehicleReg}}/g, vehicleReg);
+  content = content.replace(/{{vehicleMake}}/g, vehicleMake);
+  content = content.replace(/{{vehicleModel}}/g, vehicleModel);
+  content = content.replace(/{{vehicleYear}}/g, vehicleYear);
   content = content.replace(/{{policyDocumentLink}}/g, policyDocumentLink);
+
+  
 
   return `
     <!DOCTYPE html>
@@ -393,83 +410,59 @@ export async function sendTicketReplyEmail({
     })
 }
 
-export async function createDirectEmail(subject: string, message: string): Promise<string> {
-  // The message from the admin is the full content, just wrap it in the layout.
-  const content = message;
+export async function createPolicyExpiryEmail(
+  firstName: string,
+  lastName: string,
+  policyNumber: string,
+  vehicleDetails: string,
+  expiresAt: string,
+  policyDocumentLink: string,
+) {
+  const templates = await getEmailTemplates();
+  const template = templates?.policyExpiry; // Assuming 'policyExpiry' is the key for the template
+  if (!template) return "<body><p>Policy Expiry email template not found</p></body>";
+
+  let content = template.content;
+  content = content.replace(/{{firstName}}/g, firstName);
+  content = content.replace(/{{lastName}}/g, lastName);
+  content = content.replace(/{{policyNumber}}/g, policyNumber);
+  content = content.replace(/{{vehicleDetails}}/g, vehicleDetails);
+  content = content.replace(/{{expiresAt}}/g, new Date(expiresAt).toLocaleString());
+  content = content.replace(/{{policyDocumentLink}}/g, policyDocumentLink);
 
   return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${subject}</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        .container {
-            width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #e0e0e0;
-        }
-        .header {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .header img {
-            max-width: 150px;
-        }
-        .content {
-            padding: 30px;
-            line-height: 1.6;
-            color: #333333;
-        }
-        .footer {
-            background-color: #f8f8f8;
-            color: #888888;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            border-top: 1px solid #e0e0e0;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${template.subject.replace(/{{policyNumber}}/g, policyNumber)}</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ffc107, #ff9800); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #fff8e1; padding: 30px; border-radius: 0 0 8px 8px; }
+        .button { display: inline-block; background: #ff9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
+        .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .alert { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
         <div class="header">
-            <img src="${process.env.NEXT_PUBLIC_BASE_URL}/tempnow-logo-horizontal.png" alt="Tempnow Logo">
+          <div class="logo">Tempnow</div>
+          <h1>Policy Expiry Reminder</h1>
         </div>
         <div class="content">
-            ${content.replace(/\n/g, '<br>')}
+          ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Tempnow. All rights reserved.</p>
-            <p>This is an automated message. Please do not reply directly to this email.</p>
+          <p>&copy; ${new Date().getFullYear()} Tempnow Solutions Ltd. All rights reserved.</p>
+          <p>This is a reminder that your policy is expiring soon.</p>
         </div>
-    </div>
-</body>
-</html>
-`
-}
-
-export async function getAdminEmail(): Promise<string> {
-  try {
-    const settingsFromDb = await db.query.settings.findFirst({
-      where: eq(settings.param, 'general')
-    });
-    const generalSettings = settingsFromDb?.value ? JSON.parse(settingsFromDb.value) : {};
-    return generalSettings.adminEmail || 'admin@tempnow.uk';
-  } catch (error) {
-    console.error("Failed to fetch admin email from settings:", error);
-    return 'admin@tempnow.uk';
-  }
+      </div>
+    </body>
+    </html>
+  `
 }

@@ -30,12 +30,10 @@ export async function POST(req: NextRequest) {
     // Use the most up-to-date price for the invoice
     const finalAmount = parseFloat(quote.updatePrice || quote.cpw || quoteData.total);
     quoteData.total = finalAmount;
-    quoteData.id = quote.id; // Ensure the invoice number is the quote ID
-    quoteData.policyNumber = quote.policyNumber; // Add policyNumber for use in invoice
     quoteData.paymentDate = quote.paymentDate;
 
     // 3. Generate the invoice PDF
-    const pdfBytes = await generateInvoicePdf(quoteData, user);
+    const pdfBytes = await generateInvoicePdf(quoteData, user, policyNumber);
 
     // 4. Return the PDF as a response
     return new NextResponse(pdfBytes, {

@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         spaymentId: paymentResult.payment.id,
         paymentMethod: 'square',
-        paymentDate: new Date()
+        paymentDate: new Date().toISOString()
       }).where(eq(quotes.id, quoteData.id));
 
       // Fetch the updated quote to get the policy number
@@ -86,18 +86,22 @@ export async function POST(req: NextRequest) {
       const finalAmount = parseFloat(effectivePrice || quoteData.total);
 
       // Generate invoice
-      const pdfBytes = await generateInvoicePdf({ ...quoteData, total: finalAmount, paymentDate: quote.paymentDate }, user);
+      const pdfBytes = await generateInvoicePdf({ ...quoteData, total: finalAmount, paymentDate: quote.paymentDate }, user, quote.policyNumber);
 
       // Send confirmation email
       const vehicle = quoteData.customerData.vehicle;
-      const emailHtml = createInsurancePolicyEmail(
-        `${user.firstName} ${user.lastName}`,
-        quote.policyNumber, // Using policyNumber from the database
-        `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+      const emailHtml = await createInsurancePolicyEmail(
+        user.firstName || '',
+        user.lastName || '',
+        quote.policyNumber,
+        vehicle.registration,
+        vehicle.make,
+        vehicle.model,
+        vehicle.year,
         quoteData.startTime,
         quoteData.expiryTime,
-        finalAmount, // Use the corrected final amount
-        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}` // Using policyNumber
+        finalAmount,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`
       );
 
       await sendEmail({

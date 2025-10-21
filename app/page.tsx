@@ -1,16 +1,14 @@
 "use client"
 
-
-
 import { useState, useCallback, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Check, Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation"
+import { checkBlacklist } from "@/lib/blacklist"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
-import { checkBlacklist } from "@/lib/blacklist"
 import { useAuth } from "@/context/auth"
 import Cookies from "js-cookie"; // Import js-cookie at the top
 import { Loader2 } from "lucide-react"

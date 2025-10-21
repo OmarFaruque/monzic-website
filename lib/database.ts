@@ -5,7 +5,26 @@ import type { Quote, User } from "./definitions"
 
 export async function getPoliciesByUserId(userId: string): Promise<any[]> {
   const userPolicies = await db.select().from(quotes).where(and(eq(quotes.userId, userId), eq(quotes.paymentStatus, 'paid')))
-  return userPolicies
+
+  const now = new Date();
+
+  return userPolicies.map(policy => {
+    const startDate = new Date(policy.startDate);
+    const endDate = new Date(policy.endDate);
+    let status = policy.status; // Preserve existing status if set (e.g., 'cancelled')
+
+    if (status !== 'cancelled') { // Only calculate if not explicitly cancelled
+      if (now < startDate) {
+        status = 'pending';
+      } else if (now >= startDate && now <= endDate) {
+        status = 'active';
+      } else if (now > endDate) {
+        status = 'expired';
+      }
+    }
+
+    return { ...policy, status };
+  });
 }
 
 export async function getUserById(userId: string): Promise<any | null> {

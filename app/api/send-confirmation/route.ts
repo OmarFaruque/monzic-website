@@ -39,13 +39,17 @@ export async function POST(req: NextRequest) {
     fullQuoteData.paymentDate = quote.paymentDate;
 
     // 2. Generate invoice
-    const pdfBytes = await generateInvoicePdf(fullQuoteData, user);
+    const pdfBytes = await generateInvoicePdf(fullQuoteData, user, quote.policyNumber);
 
     // 3. Send confirmation email
-    const emailHtml = createInsurancePolicyEmail(
-        `${user.firstName} ${user.lastName}`,
+    const emailHtml = await createInsurancePolicyEmail(
+        user.firstName || '',
+        user.lastName || '',
         quote.policyNumber,
-        `${fullQuoteData.customerData.vehicle.year} ${fullQuoteData.customerData.vehicle.make} ${fullQuoteData.customerData.vehicle.model}`,
+        fullQuoteData.customerData.registration,
+        fullQuoteData.customerData.vehicle.make,
+        fullQuoteData.customerData.vehicle.model,
+        fullQuoteData.customerData.vehicle.year,
         fullQuoteData.startTime,
         fullQuoteData.expiryTime,
         finalAmount,

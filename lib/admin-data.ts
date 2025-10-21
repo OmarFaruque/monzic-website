@@ -228,6 +228,7 @@ export async function getBlacklistData() {
   const users = allItems.filter(item => item.type === 'user');
   const ips = allItems.filter(item => item.type === 'ip');
   const postcodes = allItems.filter(item => item.type === 'postcode');
+  const regNumbers = allItems.filter(item => item.type === 'reg_number');
 
-  return { users, ips, postcodes };
+  return { users, ips, postcodes, regNumbers };
 }

@@ -53,20 +53,19 @@ interface VehicleData {
 }
 
 
-// Function to determine policy status based on dates and times
-const calculatePolicyStatus = (startDate: string, startTime: string, endDate: string, endTime: string) => {
-  const now = new Date()
-  const start = new Date(`${startDate}T${startTime}`)
-  const end = new Date(`${endDate}T${endTime}`)
+const calculatePolicyStatus = (startDateTime: string, endDateTime: string) => {
+  const now = new Date();
+  const start = new Date(startDateTime);
+  const end = new Date(endDateTime);
 
   if (now < start) {
-    return "Upcoming"
+    return "Upcoming";
   } else if (now >= start && now <= end) {
-    return "Active"
+    return "Active";
   } else {
-    return "Expired"
+    return "Expired";
   }
-}
+};
 
 const formatShortDate = (dateString: string) => {
   if (!dateString) return '';
@@ -267,7 +266,7 @@ export function PoliciesSection() {
       return <Badge variant="secondary">Unknown</Badge>
     }
 
-    const status = calculatePolicyStatus(policy.startDate, '00:00', policy.endDate, '23:59')
+    const status = calculatePolicyStatus(policy.startDate, policy.endDate)
 
     switch (status) {
       case "Upcoming":

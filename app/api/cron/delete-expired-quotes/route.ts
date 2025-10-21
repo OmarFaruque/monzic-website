@@ -14,11 +14,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-
+    
     const deletedQuotes = await db.delete(quotes).where(
       and(
         lt(quotes.createdAt, tenMinutesAgo.toISOString()),
-        ne(quotes.paymentStatus, 'paid'),
+        or(
+          ne(quotes.paymentStatus, 'paid'),
+          sql`"quotes"."payment_status" IS NULL`
+        ),
         or(
           ne(quotes.paymentMethod, 'bank_transfer'),
           sql`"quotes"."payment_method" IS NULL`

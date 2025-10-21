@@ -540,6 +540,7 @@ export default function GetQuotePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
     const calculatedQuote = calculateQuote();
     setQuote(calculatedQuote);
     localStorage.setItem('quoteCreationTimestamp', Date.now().toString());
@@ -729,6 +730,43 @@ export default function GetQuotePage() {
 
     const calculatedQuote = calculateQuote()
     const finalTotal = calculatedQuote.total - discountAmount
+
+    // Gather data for blacklist check
+    const cleanReg = registrationFromHome?.replace(/\s+/g, "").toUpperCase();
+    const dob = `${formData.dateOfBirthDay}/${formData.dateOfBirthMonth}/${formData.dateOfBirthYear}`;
+
+    try {
+      // Get client IP for blacklist check
+      const ipResponse = await fetch("/api/get-client-ip")
+      const { ip } = await ipResponse.json()
+
+      // Perform comprehensive blacklist check
+      const blacklistCheckResponse = await fetch('/api/blacklist-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          regNumber: cleanReg,
+          ipAddress: ip,
+          postcode: formData.postcode,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          dateOfBirth: dob,
+          email: user?.email, // Include email if user is logged in
+        }),
+      });
+      const blacklistResult = await blacklistCheckResponse.json();
+
+      if (blacklistResult.isBlacklisted) {
+        toast({ variant: "destructive", title: "Access Restricted", description: blacklistResult.reason || "Your access has been restricted. Please contact support for assistance." });
+        setIsCalculating(false);
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to perform blacklist check:", error);
+      toast({ variant: "destructive", title: "Service Unavailable", description: "Could not perform blacklist check at this time. Please try again later." });
+      setIsCalculating(false);
+      return;
+    }
 
     const quoteDataForCheckout = {
       userId: user.id,

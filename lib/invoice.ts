@@ -1,6 +1,6 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
-export async function generateInvoicePdf(quoteData: any, user: any) {
+export async function generateInvoicePdf(quoteData: any, user: any, policyNumber: string) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage();
   const { width, height } = page.getSize();
@@ -15,7 +15,7 @@ export async function generateInvoicePdf(quoteData: any, user: any) {
   page.drawText('Invoice', { x, y, font: boldFont, size: 24, color: rgb(0, 0, 0) });
   y -= 50;
 
-  page.drawText(`Invoice #: ${quoteData.id}`, { x, y, font, size: fontSize });
+  page.drawText(`Invoice #: ${policyNumber}`, { x, y, font, size: fontSize });
   y -= 20;
   const invoiceDate = quoteData.paymentDate ? new Date(quoteData.paymentDate) : new Date();
   page.drawText(`Date: ${invoiceDate.toLocaleDateString()}`, { x, y, font, size: fontSize });

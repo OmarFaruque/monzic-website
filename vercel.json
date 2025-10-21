@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/delete-expired-quotes",
       "schedule": "0 0 * * 0"
+    },
+    {
+      "path": "/api/cron/send-expiry-reminders",
+      "schedule": "* * * * *"
     }
   ]
 }

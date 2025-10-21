@@ -78,7 +78,8 @@ export const quotes = pgTable("quotes", {
 	paymentIntentId: varchar("payment_intent_id", { length: 255 }),
 	paymentMethod: varchar("payment_method", { length: 50 }), // e.g., 'stripe', 'square'
 	paymentDate: timestamp("payment_date", { mode: 'string' }),
-	expiresAt: timestamp("expires_at", { mode: 'string' })
+	expiresAt: timestamp("expires_at", { mode: 'string' }),
+	expiryEmailSent: boolean("expiry_email_sent").default(false),
 	});
 
 export const coupons = pgTable("coupons", {
@@ -142,6 +143,9 @@ export const blacklist = pgTable("blacklist", {
 
 	// Field for 'postcode' type
 	postcode: varchar("postcode", { length: 50 }),
+
+	// Field for 'reg_number' type
+	regNumber: varchar("reg_number", { length: 50 }),
 
 	// Common fields
 	reason: text("reason"),
