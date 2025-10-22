@@ -24,6 +24,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Header } from "@/components/header"
+import { useSettings } from "@/context/settings";
 
 // Mock ticket data for testing
 const mockTicketData: { [key: string]: any } = {
@@ -184,6 +185,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const settings = useSettings();
 
   useEffect(() => {
     // Load ticket data based on ID
@@ -340,7 +342,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                 Return Policy
               </Link>
             </div>
-            <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 MONZIC. All rights reserved.</div>
+            <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© {new Date().getFullYear()} {settings?.companyName || 'Mozero AI Ltd'}. All rights reserved.</div>
           </div>
         </footer>
       </div>
@@ -641,7 +643,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
               Return Policy
             </Link>
           </div>
-          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 MONZIC. All rights reserved.</div>
+          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© {new Date().getFullYear()} {settings?.companyName || 'Mozero AI Ltd'}. All rights reserved.</div>
         </div>
       </footer>
     </div>

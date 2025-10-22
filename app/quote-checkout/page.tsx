@@ -431,7 +431,7 @@ function QuoteCheckoutPage() {
     },
   });
 
-  console.log('content array: ', settings)
+
 
 
   if (!quoteData) {

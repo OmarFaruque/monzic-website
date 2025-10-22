@@ -3,8 +3,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Home, MessageSquare } from "lucide-react"
 import Link from "next/link"
+import { useSettings } from "@/lib/settings"
 
 export default function TicketLoading() {
+  const settings = useSettings();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
       {/* Header */}
@@ -213,7 +216,7 @@ export default function TicketLoading() {
           </div>
           <div className="border-t border-gray-700 mt-8 pt-8 text-center">
             <p className="text-gray-300 text-sm">
-              © 2024 MONZIC. All rights reserved. | Providing exceptional insurance and AI document services.
+              © {new Date().getFullYear()} {settings?.companyName || 'Mozero AI Ltd'}. All rights reserved. | Providing exceptional insurance and AI document services.
             </p>
           </div>
         </div>

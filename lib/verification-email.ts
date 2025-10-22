@@ -1,10 +1,25 @@
 import { sendEmail, getEmailTemplates } from '@/lib/email';
+import { db } from '@/lib/db';
+import { settings } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
 
 export async function sendVerificationEmail(email: string, token: string, firstName: string) {
   const templates = await getEmailTemplates();
   const template = templates?.verificationCode;
   if (!template) {
     throw new Error("Verification email template not found.");
+  }
+
+  // Fetch site name from settings
+  const generalSettings = await db.query.settings.findFirst({
+    where: eq(settings.param, 'general')
+  });
+  let siteName = "";
+  let companyName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
   }
 
   let subject = template.subject;
@@ -33,14 +48,14 @@ export async function sendVerificationEmail(email: string, token: string, firstN
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">Tempnow</div>
+          <div class="logo">${siteName || 'TEMPNOW'}</div>
           <h1>Account Verification</h1>
         </div>
         <div class="content">
           ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Tempnow. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
           <p>If you did not request this, please ignore this email.</p>
         </div>
       </div>

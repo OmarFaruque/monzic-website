@@ -130,7 +130,11 @@ export default function LoginPage() {
         });
 
         if (!response.ok) {
-          showError("Authentication Failed", "Could not request verification code.");
+          if (response.status === 404) {
+            showError("Email Not Found", "This email is not registered. Please sign up or try a different email.");
+          } else {
+            showError("Authentication Failed", "Could not request verification code.");
+          }
         } else {
           showInfo("Verification Required", "Please check your email for a 6-digit verification code to sign in.");
           setUserEmail(formData.email); // Store email for verification modal
@@ -551,7 +555,7 @@ export default function LoginPage() {
             </Link>
           </div>
           <div className="text-center mt-2 text-xs text-teal-100">
-            © 2025 {settings?.siteName || "Tempnow Solutions Ltd."}. All rights reserved.
+            © {new Date().getFullYear()} {settings?.siteName || "Tempnow Solutions Ltd."}. All rights reserved.
           </div>
         </div>
       </footer>

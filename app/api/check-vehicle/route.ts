@@ -126,7 +126,7 @@ export async function POST(request: Request) {
         make: data.make,
         model: data.model,
         engineCapacity: data.engineSize,
-        year: data.yearOfManufacture,
+        year: data.yearOfManufacture || "Unknown",
         color: data.primaryColour,
       };
 
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
         make: vehicleDetail.make,
         model: vehicleDetail.model,
         engineCapacity: vehicleDetail.engineSize,
-        year: vehicleDetail.year,
+        year: vehicleDetail.year || "Unknown",
         color: vehicleDetail.colour,
       };
     }

@@ -48,6 +48,16 @@ export async function POST(req: NextRequest) {
     const finalAmount = docData.price + (tip || 0) - (discount || 0);
     const limitedPrompt = docData.prompt.substring(0, 200);
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+    }
+
     const paymentIntentResponse = await fetch(`${baseUrl}/api/v1/pa/payment_intents/create`, {
       method: 'POST',
       headers: {
@@ -59,6 +69,7 @@ export async function POST(req: NextRequest) {
         amount: finalAmount,
         currency: "GBP",
         merchant_order_id: crypto.randomUUID(),
+        description: `${siteName} AI Docs: ${limitedPrompt}`,
         metadata: {
           type: 'ai_document',
           document_details: JSON.stringify({

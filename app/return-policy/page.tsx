@@ -4,9 +4,12 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { useState } from "react"
+import { useSettings } from "@/context/settings";
 
 export default function ReturnPolicyPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const settings = useSettings();
+
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -103,15 +106,15 @@ export default function ReturnPolicyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-red-100">Temwpno Solutions Ltd</p>
+                    <p className="text-red-100">{settings.companyName}</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
-                    <p className="text-red-100">16414928</p>
+                    <p className="text-red-100">{settings.companyRegistration}</p>
                   </div>
                   <div>
                     <p className="font-medium">Effective Date</p>
-                    <p className="text-red-100">January 6, 2025</p>
+                    <p className="text-red-100">{new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
               </div>
@@ -132,10 +135,10 @@ export default function ReturnPolicyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p>
-                          <strong>Legal Name:</strong> Tempnow Solutions Ltd
+                          <strong>Legal Name:</strong> {settings.companyName}
                         </p>
                         <p>
-                          <strong>Company Number:</strong> 16414928
+                          <strong>Company Number:</strong> {settings.companyRegistration}
                         </p>
                         <p>
                           <strong>Jurisdiction:</strong> England and Wales
@@ -143,7 +146,7 @@ export default function ReturnPolicyPage() {
                       </div>
                       <div>
                         <p>
-                          <strong>Service Type:</strong> Digital AI Document Generation
+                          <strong>Service Type:</strong> {settings.businessActivity}
                         </p>
                         <p>
                           <strong>Contact Method:</strong> Website contact form
@@ -445,11 +448,11 @@ export default function ReturnPolicyPage() {
               <div className="flex flex-col sm:flex-row justify-between items-center">
                 <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-0 text-center sm:text-left">
                   <p>
-                    <strong>Tempnow Solutions Ltd</strong> • Company Registration: 16414928 • Registered in England and
+                    <strong>{settings.companyName}</strong> • Company Registration: {settings.companyRegistration} • Registered in England and
                     Wales
                   </p>
                 </div>
-                <div className="text-xs sm:text-sm text-gray-500">Last updated: January 6, 2025</div>
+                <div className="text-xs sm:text-sm text-gray-500">Last updated: {new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
               </div>
             </div>
           </div>
@@ -471,7 +474,7 @@ export default function ReturnPolicyPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © 2025 Tempnow Solutions Ltd. All rights reserved.
+            © {new Date().getFullYear()} {settings.companyName}. All rights reserved.
           </div>
         </div>
       </footer>

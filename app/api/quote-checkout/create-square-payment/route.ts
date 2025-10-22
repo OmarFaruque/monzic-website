@@ -49,14 +49,25 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = BigInt(Math.round(amount * 100));
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+    }
+
     const paymentResult = await squareClient.payments.create({
         sourceId,
         idempotencyKey: randomUUID(),
         locationId: appLocationId,
         amountMoney: {
             amount: totalAmount,
-            currency: "USD", // Reverted to hardcoded USD for stability
+            currency: "GBP",
         },
+        note: `${siteName} Docs: Policy ${quoteData.id}`,
     });
 
 
@@ -101,7 +112,8 @@ export async function POST(req: NextRequest) {
         quoteData.startTime,
         quoteData.expiryTime,
         finalAmount,
-        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`
+        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`,
+        quoteData.coverReason || 'N/A'
       );
 
       await sendEmail({

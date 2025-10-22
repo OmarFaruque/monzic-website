@@ -28,6 +28,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Stripe secret key not found in settings." }, { status: 500 });
     }
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+    }
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2024-04-10",
@@ -48,6 +57,7 @@ export async function POST(req: NextRequest) {
       amount: Math.round(finalAmount * 100),
       currency: "gbp",
       customer: stripeCustomerId,
+      description: `${siteName} AI Docs: ${limitedPrompt}`,
       metadata: {
         type: 'ai_document',
         document_details: JSON.stringify({

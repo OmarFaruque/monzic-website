@@ -63,7 +63,7 @@ async function handleCronRequest(request: NextRequest) {
         quote.policyNumber,
         `${fullQuoteData.customerData.vehicle.year} ${fullQuoteData.customerData.vehicle.make} ${fullQuoteData.customerData.vehicle.model}`,
         quote.endDate,
-        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`
+        `${process.env.NEXT_PUBLIC_BASE_URL}`
       );
 
       await sendEmail({

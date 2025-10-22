@@ -1,7 +1,7 @@
 "use server"
 import { db } from './db';
 import { quotes, users } from './schema';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function validatePolicyAccess(
@@ -59,7 +59,12 @@ export async function validatePolicyAccess(
 
 // Get all policies
 export async function getAllPolicies() {
-  return await db.select().from(quotes);
+  return await db.select().from(quotes).where(
+    or(
+      eq(quotes.paymentStatus, 'paid'),
+      eq(quotes.paymentMethod, 'bank_transfer')
+    )
+  );
 }
 
 // Create a new policy

@@ -83,9 +83,6 @@ export async function getPaddleInstance(): Promise<Paddle> {
     const apiKey = await getPaddleApiKey();
     const environment = await getPaddleEnvironment();
 
-    console.log('apikeyis: ', apiKey)
-    console.log('environmentis: ', environment)
-
     paddleInstance = new Paddle(apiKey, { environment });
     return paddleInstance;
 }

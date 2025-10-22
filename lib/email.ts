@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { settings } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
+
 export interface EmailTemplate {
   to: string
   subject: string
@@ -109,6 +110,18 @@ export async function createAIDocumentPurchaseEmail(customerName: string, docume
   const template = templates?.documentPurchase;
   if (!template) return "<body><p>Email template not found</p></body>";
 
+  // Fetch site name from settings
+  const generalSettings = await db.query.settings.findFirst({
+    where: eq(settings.param, 'general')
+  });
+  let siteName = "";
+  let companyName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+  }
+
   let content = template.content;
   content = content.replace(/{{customerName}}/g, customerName);
   content = content.replace(/{{documentType}}/g, documentType);
@@ -134,15 +147,15 @@ export async function createAIDocumentPurchaseEmail(customerName: string, docume
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">Tempnow</div>
+          <div class="logo">${siteName || "Tempnow"}</div>
           <h1>Your AI Document is Ready!</h1>
         </div>
         <div class="content">
           ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
-          <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
-          <p>You received this email because you purchased a document from Tempnow.</p>
+          <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
+          <p>You received this email because you purchased a document from ${companyName}.</p>
         </div>
       </div>
     </body>
@@ -168,12 +181,40 @@ export async function createInsurancePolicyEmail(
   const templates = await getEmailTemplates();
   const template = templates?.policyConfirmation;
   
-  
-
   if (!template) return "<body><p>Email template not found</p></body>";
 
+  // Fetch site name from settings
+  const generalSettings = await db.query.settings.findFirst({
+    where: eq(settings.param, 'general')
+  });
+  let siteName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+  }
+
   let content = template.content;
-  
+
+  // Conditionally add vehicle details to content
+  let vehicleDetailsHtml = '';
+  if (vehicleReg) {
+    vehicleDetailsHtml += `- Registration: {{vehicleReg}}\n`;
+  }
+  if (vehicleMake) {
+    vehicleDetailsHtml += `- Make: {{vehicleMake}}\n`;
+  }
+  if (vehicleModel) {
+    vehicleDetailsHtml += `- Model: {{vehicleModel}}\n`;
+  }
+  if (vehicleYear) {
+    vehicleDetailsHtml += `- Year: {{vehicleYear}}\n`;
+  }
+
+  if (vehicleDetailsHtml) {
+    content = content.replace('Vehicle Details:\n- Registration: {{vehicleReg}}\n- Make: {{vehicleMake}}\n- Model: {{vehicleModel}}\n- Year: {{vehicleYear}}', `Vehicle Details:\n${vehicleDetailsHtml}`);
+  } else {
+    content = content.replace('Vehicle Details:\n- Registration: {{vehicleReg}}\n- Make: {{vehicleMake}}\n- Model: {{vehicleModel}}\n- Year: {{vehicleYear}}', '');
+  }
 
   content = content.replace(/{{firstName}}/g, firstName);
   content = content.replace(/{{lastName}}/g, lastName);
@@ -212,14 +253,14 @@ export async function createInsurancePolicyEmail(
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">Tempnow</div>
+          <div class="logo">${siteName || "Tempnow"}</div>
           <h1>Insurance Policy Confirmed</h1>
         </div>
         <div class="content">
           ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
-          <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
+          <p>&copy; 2025 ${siteName || "Tempnow"} Solutions Ltd. All rights reserved.</p>
           <p>This email contains important policy information. Please save it for your records.</p>
         </div>
       </div>
@@ -296,6 +337,18 @@ export async function sendTicketConfirmationEmail({
     const template = templates?.ticketConfirmation;
     if (!template) return;
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    let companyName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+      companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+    }
+
     let emailHtml = template.content;
     emailHtml = emailHtml.replace(/{{name}}/g, name);
     emailHtml = emailHtml.replace(/{{ticketId}}/g, ticketId);
@@ -320,14 +373,14 @@ export async function sendTicketConfirmationEmail({
         <body>
             <div class="container">
             <div class="header">
-                <div class="logo">Tempnow</div>
+                <div class="logo">${siteName || "Tempnow"}</div>
                 <h1>Support Ticket Received</h1>
             </div>
             <div class="content">
                 ${emailHtml.replace(/\n/g, '<br>')}
             </div>
             <div class="footer">
-                <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
+                <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
                 <p>You are receiving this email because you submitted a contact form on our website.</p>
             </div>
             </div>
@@ -362,6 +415,18 @@ export async function sendTicketReplyEmail({
     const template = templates?.ticketReply;
     if (!template) return;
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    let companyName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+      companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+    }
+
     let emailHtml = template.content;
     emailHtml = emailHtml.replace(/{{name}}/g, name);
     emailHtml = emailHtml.replace(/{{ticketId}}/g, ticketId);
@@ -387,14 +452,14 @@ export async function sendTicketReplyEmail({
         <body>
             <div class="container">
             <div class="header">
-                <div class="logo">Tempnow</div>
+                <div class="logo">${siteName || "Tempnow"}</div>
                 <h1>New Reply to Your Ticket</h1>
             </div>
             <div class="content">
                 ${emailHtml.replace(/\n/g, '<br>')}
             </div>
             <div class="footer">
-                <p>&copy; 2025 Tempnow Solutions Ltd. All rights reserved.</p>
+                <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
                 <p>You are receiving this email because you have an active support ticket with us.</p>
             </div>
             </div>
@@ -421,6 +486,18 @@ export async function createPolicyExpiryEmail(
   const templates = await getEmailTemplates();
   const template = templates?.policyExpiry; // Assuming 'policyExpiry' is the key for the template
   if (!template) return "<body><p>Policy Expiry email template not found</p></body>";
+
+  // Fetch site name from settings
+  const generalSettings = await db.query.settings.findFirst({
+    where: eq(settings.param, 'general')
+  });
+  let siteName = "";
+  let companyName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+  }
 
   let content = template.content;
   content = content.replace(/{{firstName}}/g, firstName);
@@ -451,14 +528,14 @@ export async function createPolicyExpiryEmail(
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">Tempnow</div>
+          <div class="logo">${siteName || "Tempnow"}</div>
           <h1>Policy Expiry Reminder</h1>
         </div>
         <div class="content">
           ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Tempnow Solutions Ltd. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
           <p>This is a reminder that your policy is expiring soon.</p>
         </div>
       </div>

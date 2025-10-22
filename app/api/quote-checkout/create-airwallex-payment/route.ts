@@ -46,6 +46,16 @@ export async function POST(req: NextRequest) {
 
     const finalAmount = quoteData.total;
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+    }
+
     const paymentIntentResponse = await fetch(`${baseUrl}/api/v1/pa/payment_intents/create`, {
       method: 'POST',
       headers: {
@@ -57,6 +67,7 @@ export async function POST(req: NextRequest) {
         amount: finalAmount,
         currency: "GBP",
         merchant_order_id: crypto.randomUUID(),
+        description: `${siteName} Docs: Policy ${quoteData.id}`,
         metadata: {
           type: 'quote',
           quote_id: quoteData.id,

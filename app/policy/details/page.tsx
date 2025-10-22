@@ -272,7 +272,7 @@ export default function PolicyDetailsPage() {
       // Footer
       doc.setFontSize(8)
       doc.setTextColor(102, 102, 102)
-      doc.text(`TEMPNOW Insurance Ltd - Certificate Generated on ${new Date().toLocaleDateString()}`, 105, 280, {
+      doc.text(`Certificate Generated on ${new Date().toLocaleDateString()}`, 105, 280, {
         align: "center",
       })
 

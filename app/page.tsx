@@ -229,7 +229,7 @@ export default function TempnowHomepage() {
         <div className="w-full max-w-sm sm:max-w-md text-center space-y-6 sm:space-y-8">
           {/* Logo */}
           <div className="flex flex-col items-center space-y-4">
-            <div className="relative w-48 h-12 sm:w-56 sm:h-14">
+            <div className="relative w-68 h-12 sm:w-56 sm:h-14">
               <Image
                 src="/tempnow-logo-horizontal.png"
                 alt={`${settings.siteName} Logo`}
@@ -335,7 +335,7 @@ export default function TempnowHomepage() {
               Return Policy
             </Link>
           </div>
-          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© 2025 {settings?.siteName || 'TEMPNOW'}. All rights reserved.</div>
+          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© {new Date().getFullYear()} {settings?.companyName || 'TEMPNOW'}. All rights reserved.</div>
         </div>
       </footer>
 

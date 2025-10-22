@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Clock, ShieldCheck, Shield, Menu, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/context/auth"
+import { useSettings } from "@/context/settings";
 
 export default function ContactPage() {
   const [isVerified, setIsVerified] = useState(false)
@@ -17,12 +18,13 @@ export default function ContactPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isAuthenticated, loading } = useAuth()
   const [firstName, setFirstName] = useState("")
-    const [lastName, setLastName] = useState("")
-    const [email, setEmail] = useState("")
-    const [subject, setSubject] = useState("")
-    const [message, setMessage] = useState("")
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(null)
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [subject, setSubject] = useState("")
+  const [message, setMessage] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(null)
+  const settings = useSettings();
 
 
   // Pool of verification questions
@@ -105,7 +107,7 @@ export default function ContactPage() {
         <div className="flex items-center">
           <Link href="/">
             <h1 className="text-xl sm:text-2xl font-bold text-white cursor-pointer hover:text-teal-100 transition-colors">
-              MONZIC
+              {settings.siteName || "TEMPNOW"}
             </h1>
           </Link>
         </div>
@@ -381,7 +383,7 @@ export default function ContactPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © 2025 Tempnow Solutions Ltd. All rights reserved.
+            © {new Date().getFullYear()} {settings.companyName || "Mozero AI Ltd"}. All rights reserved.
           </div>
         </div>
       </footer>

@@ -17,7 +17,7 @@ export default function TermsOfServicesPage() {
         <div className="flex items-center">
           <Link href="/">
             <h1 className="text-xl sm:text-2xl font-bold text-white cursor-pointer hover:text-teal-100 transition-colors">
-              MONZIC
+              {settings.siteName}
             </h1>
           </Link>
         </div>
@@ -111,15 +111,15 @@ export default function TermsOfServicesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-slate-200">Tempnow Solutions Ltd</p>
+                    <p className="text-slate-200">{settings.companyName}</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
-                    <p className="text-slate-200">16414928</p>
+                    <p className="text-slate-200">{settings.companyRegistration}</p>
                   </div>
                   <div>
                     <p className="font-medium">Effective Date</p>
-                    <p className="text-slate-200">January 6, 2025</p>
+                    <p className="text-slate-200">{new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
               </div>
@@ -468,7 +468,7 @@ export default function TermsOfServicesPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © 2025 Tempnow Solutions Ltd. All rights reserved.
+            © {new Date().getFullYear()} {settings?.companyName || 'Mozero AI Ltd'}. All rights reserved.
           </div>
         </div>
       </footer>

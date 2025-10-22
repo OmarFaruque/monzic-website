@@ -1,6 +1,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPaddleApiKey, getPaddleEnvironment, getPaddleInstance, getPaddleProductId, updatePaddleProductId } from "@/lib/paddle";
+import { db } from "@/lib/db";
+import { settings } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
   const { docData, user, tip, discount } = await req.json();
@@ -17,8 +20,18 @@ export async function POST(req: NextRequest) {
       ? 'https://api.paddle.com'
       : 'https://sandbox-api.paddle.com';
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+    }
+
     // Use a specific product ID for AI documents, or create a new product
-    const productName = "AI Generated Document";
+    const productName = `${siteName} AI Docs`;
     let product;
     // For simplicity, we'll create a new product each time for now.
     // A better approach would be to store and reuse a product ID for "AI Generated Document".

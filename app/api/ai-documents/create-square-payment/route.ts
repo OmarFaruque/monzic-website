@@ -45,14 +45,25 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = BigInt(Math.round(amount * 100)); // Amount in cents
 
+    // Fetch site name from settings
+    const generalSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, 'general')
+    });
+    let siteName = "";
+    if (generalSettings && generalSettings.value) {
+      const parsedSettings = JSON.parse(generalSettings.value);
+      siteName = parsedSettings.siteName || "";
+    }
+
     const payment = {
         sourceId: sourceId,
         idempotencyKey: randomUUID(),
         locationId: appLocationId,
         amountMoney: {
             amount: totalAmount,
-            currency: "USD",
-        }
+            currency: "GBP", // Assuming GBP as default currency
+        },
+        note: `${siteName} AI Docs: ${docData.prompt.substring(0, 50)}...`,
       };
 
     const result = await squareClient.payments.create(payment);

@@ -65,14 +65,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       user.firstName || '',
       user.lastName || '',
       quote.policyNumber,
-      vehicle.registration,
+      quote.regNumber || '', // Use quote.regNumber from the database
       vehicle.make,
       vehicle.model,
       vehicle.year,
       fullQuoteData.startTime,
       fullQuoteData.expiryTime,
       finalAmount,
-      `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`,
+      fullQuoteData.coverReason || 'N/A'
     );
 
     await sendEmail({

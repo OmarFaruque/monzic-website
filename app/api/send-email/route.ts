@@ -40,10 +40,14 @@ export async function POST(request: NextRequest) {
 
         case "insurance_policy":
           subject = "Insurance Policy Confirmation - TEMPNOW";
-          emailHtml = createInsurancePolicyEmail(
-            customerData.name,
+          emailHtml = await createInsurancePolicyEmail(
+            customerData.firstName,
+            customerData.lastName,
             purchaseData.policyNumber,
-            purchaseData.vehicleDetails,
+            purchaseData.vehicleReg,
+            purchaseData.vehicleMake,
+            purchaseData.vehicleModel,
+            purchaseData.vehicleYear,
             purchaseData.startDate,
             purchaseData.endDate,
             purchaseData.amount,

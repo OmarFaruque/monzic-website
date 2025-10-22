@@ -795,15 +795,14 @@ export default function GetQuotePage() {
         vehicleValue: formData.vehicleValue,
         reason: formData.reason,
         duration: formData.duration,
-        registration: registrationFromHome,
-        post_code: formData.postcode,
-        vehicle: {
-          make: vehicle?.make || "Unknown",
-          model: vehicle?.model || "Unknown",
-          year: vehicle?.year || "Unknown",
-          engineCC: "1400", // You can add this to vehicle data if needed
-        },
-      },
+                  registration: registrationFromHome || "",
+                  post_code: formData.postcode,
+                  vehicle: {
+                    make: vehicle?.make || "",
+                    model: vehicle?.model || "",
+                    year: vehicle?.year && vehicle.year !== "Unknown" ? vehicle.year : "",
+                    engineCC: "1400", // You can add this to vehicle data if needed
+                  },      },
     }
 
     try {
@@ -1805,12 +1804,13 @@ export default function GetQuotePage() {
                       <div className="flex space-x-2 sm:space-x-3">
                         <Input
                           type="text"
+                          inputMode="text"
                           value={formData.postcode}
                           onChange={(e) => {
                             handleInputChange("postcode", e.target.value.toUpperCase())
                             setPostcodeError("")
                           }}
-                          className="flex-1 h-10 sm:h-12 text-sm sm:text-base"
+                          className="flex-1 h-10 sm:h-12 text-base"
                           placeholder="Enter postcode"
                           required
                         />

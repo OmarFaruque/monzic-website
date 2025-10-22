@@ -19,6 +19,16 @@ export async function POST(req: NextRequest) {
 
   const activeProvider = paymentSettings ? JSON.parse(paymentSettings.value as string).activeProcessor : 'stripe';
 
+  // Fetch site name from settings
+  const generalSettings = await db.query.settings.findFirst({
+    where: eq(settings.param, 'general')
+  });
+  let siteName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+  }
+
   if (activeProvider === 'mollie') {
     try {
       const mollie = await getMollieClient();
@@ -31,7 +41,7 @@ export async function POST(req: NextRequest) {
         const amountValue = docData.price + (tip || 0) - (discount || 0);
         amount = amountValue.toFixed(2);
         redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/ai-payment-confirmation`;
-        description = `AI Document: ${docData.prompt.substring(0, 50)}...`;
+        description = `${siteName} AI Document: ${docData.prompt.substring(0, 50)}...`;
         
         const newDocument = await db.insert(aiDocuments).values({
           uuid: uuidv4(),
@@ -49,7 +59,7 @@ export async function POST(req: NextRequest) {
       } else if (quoteData) {
         const amountValue = quoteData.total - (discount || 0);
         amount = amountValue.toFixed(2);
-        description = `Insurance Quote: ${quoteData.policyNumber}`;
+        description = `${siteName} Docs: ${quoteData.policyNumber}`;
         metadata = { type: 'quote', policyNumber: quoteData.policyNumber };
       } else {
         return NextResponse.json({ error: "No document or quote data provided." }, { status: 400 });
@@ -107,7 +117,7 @@ export async function POST(req: NextRequest) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              name: docData ? "AI Document" : "Tempnow Insurance Policy",
+              name: docData ? `${siteName} AI Docs` : `${siteName} Docs`,
               tax_category: "standard",
             }),
           });
@@ -117,7 +127,7 @@ export async function POST(req: NextRequest) {
         }
 
         const amount = docData ? (docData.price + (tip || 0) - (discount || 0)) * 100 : (quoteData.total - (discount || 0)) * 100;
-        const description = docData ? `AI Document: ${docData.prompt.substring(0, 50)}...` : "One-time payment for insurance policy";
+        const description = docData ? `${siteName} AI Document: ${docData.prompt.substring(0, 50)}...` : `${siteName} Docs: One-time payment for insurance policy`;
         const custom_data = docData ? { doc_details: JSON.stringify(docData), user_details: JSON.stringify(user) } : { quote_details: JSON.stringify(quoteData), user_details: JSON.stringify(user) };
 
         const createPriceResponse = await fetch(`${paddleApiUrl}/prices`, {
