@@ -117,9 +117,7 @@ This is a reminder that your policy {{policyNumber}} will expire in 10 minutes.
 
 Policy Details:
 - Policy Number: {{policyNumber}}
-- Coverage Type: {{coverageType}}
-- Expiry Date: {{expiryDate}}
-- Expiry Time: {{expiryTime}}
+- Expiry Date: {{endDate}}
 
 To ensure continuous coverage, please renew your policy by clicking the link below:
 {{renewalLink}}
@@ -228,9 +226,7 @@ The Tempnow Team`,
     orderDate: "15/05/2023",
     amount: "29.99",
     downloadLink: `${process.env.NEXT_PUBLIC_BASE_URL}/documents/download/12345`,
-    expiryDate: "31/05/2023",
-    expiryTime: "23:59:59",
-    renewalLink: `${process.env.NEXT_PUBLIC_BASE_URL}/renew/POL-12345678`,
+    renewalLink: `${process.env.NEXT_PUBLIC_BASE_URL}`,
   }
 
   const replaceVariables = (text: string) => {
@@ -288,7 +284,7 @@ The Tempnow Team`,
       case "documentPurchase":
         return ["firstName", "lastName", "orderId", "documentType", "orderDate", "amount", "downloadLink"]
       case "policyExpiry":
-        return ["firstName", "lastName", "policyNumber", "coverageType", "expiryDate", "expiryTime", "renewalLink"]
+        return ["firstName", "lastName", "policyNumber", "endDate", "renewalLink"]
       case "adminNotification":
         return ["typeLabel", "customerName", "customerEmail", "amount", "time", "details"]
       case "ticketConfirmation":

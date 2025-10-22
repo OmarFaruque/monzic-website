@@ -427,8 +427,8 @@ export async function createPolicyExpiryEmail(
   content = content.replace(/{{lastName}}/g, lastName);
   content = content.replace(/{{policyNumber}}/g, policyNumber);
   content = content.replace(/{{vehicleDetails}}/g, vehicleDetails);
-  content = content.replace(/{{expiresAt}}/g, new Date(expiresAt).toLocaleString());
-  content = content.replace(/{{policyDocumentLink}}/g, policyDocumentLink);
+  content = content.replace(/{{endDate}}/g, new Date(expiresAt).toLocaleString());
+  content = content.replace(/{{renewalLink}}/g, policyDocumentLink);
 
   return `
     <!DOCTYPE html>

@@ -113,9 +113,7 @@ This is a reminder that your policy {{policyNumber}} will expire in 10 minutes.
 
 Policy Details:
 - Policy Number: {{policyNumber}}
-- Coverage Type: {{coverageType}}
-- Expiry Date: {{expiryDate}}
-- Expiry Time: {{expiryTime}}
+- Expiry Date: {{endDate}}
 
 To ensure continuous coverage, please renew your policy by clicking the link below:
 {{renewalLink}}
@@ -211,9 +209,7 @@ const sampleData = {
   amount: "10.00",
   orderId: "ORD-87654321",
   downloadLink: "https://monzic.co.uk/documents/download/12345",
-  expiryDate: "31/05/2023",
-  expiryTime: "23:59:59",
-  renewalLink: "https://monzic.co.uk/renew/POL-12345678",
+  renewalLink: "https://monzic.co.uk",
   ticketNumber: "TKT-789123",
   ticketSubject: "Unable to download policy document",
   ticketPriority: "High",
@@ -363,7 +359,7 @@ export function EmailTemplatesSection() {
       case "documentPurchase":
         return ["firstName", "lastName", "orderId", "documentType", "orderDate", "amount", "downloadLink"]
       case "policyExpiry":
-        return ["firstName", "lastName", "policyNumber", "coverageType", "expiryDate", "expiryTime", "renewalLink"]
+        return ["firstName", "lastName", "policyNumber", "endDate", "renewalLink"]
       case "contactFormConfirmation":
         return ["firstName", "lastName", "subject", "submittedDate", "ticketId", "ticketLink"]
       case "ticketReplyNotification":
