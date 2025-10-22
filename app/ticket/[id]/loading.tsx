@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Home, MessageSquare } from "lucide-react"
 import Link from "next/link"
-import { useSettings } from "@/lib/settings"
+import { useSettings } from "@/context/settings"
 
 export default function TicketLoading() {
   const settings = useSettings();
