@@ -35,6 +35,8 @@ function EmailTemplatesTab() {
   const [templates, setTemplates] = useState({
     policyConfirmation: {
       subject: "Your Policy Confirmation - {{policyNumber}}",
+      header: "Policy Confirmation",
+      footer: "Thank you for choosing our service.",
       content: `Dear {{firstName}} {{lastName}},
 
 Thank you for choosing Tempnow! Your policy has been successfully created.
@@ -60,6 +62,8 @@ The Tempnow Team`,
     },
     verificationCode: {
       subject: "Your Verification Code - Tempnow",
+      header: "Verification Code",
+      footer: "If you did not request this, please ignore this email.",
       content: `Dear {{firstName}},
 
 Your verification code is: {{code}}
@@ -73,6 +77,8 @@ The Tempnow Team`,
     },
     passwordReset: {
       subject: "Password Reset Request - Tempnow",
+      header: "Password Reset",
+      footer: "If you did not request this, please ignore this email.",
       content: `Dear {{firstName}},
 
 We received a request to reset your password for your Tempnow account.
@@ -89,6 +95,8 @@ The Tempnow Team`,
     },
     documentPurchase: {
       subject: "Your AI Document Purchase - Tempnow",
+      header: "AI Document Purchase",
+      footer: "Thank you for your purchase.",
       content: `Dear {{firstName}} {{lastName}},
 
 Thank you for purchasing an AI-generated document from Tempnow.
@@ -111,6 +119,8 @@ The Tempnow Team`,
     },
     policyExpiry: {
       subject: "Your Policy is About to Expire - {{policyNumber}}",
+      header: "Policy Expiry Reminder",
+      footer: "Please renew to ensure continuous coverage.",
       content: `Dear {{firstName}} {{lastName}},
 
 This is a reminder that your policy {{policyNumber}} will expire in 10 minutes.
@@ -129,18 +139,26 @@ The Tempnow Team`,
     },
     adminNotification: {
       subject: "New Purchase Notification - {{typeLabel}}",
+      header: "New Purchase Notification",
+      footer: "This is an automated notification.",
       content: `A new {{typeLabel}} has been purchased on Tempnow.\n\nPurchase Details:\n- Customer: {{customerName}}\n- Email: {{customerEmail}}\n- Amount: £{{amount}}\n- Type: {{typeLabel}}\n- Time: {{time}}\n- Details: {{details}}\n\nPlease review this purchase in the admin dashboard if needed.`
     },
     ticketConfirmation: {
       subject: "Support Ticket Confirmation - {{ticketId}}",
+      header: "Support Ticket Received",
+      footer: "We will get back to you shortly.",
       content: `Hello {{name}},\n\nThank you for contacting us. We have successfully received your support request and a ticket has been created for you.\n\nYour Ticket Details:\n- Ticket ID: {{ticketId}}\n- Status: Open\n- Next Step: Our team will review your request and get back to you shortly.\n\nYou can reference this ticket ID in any future communication with us regarding this matter. We aim to respond to all inquiries within 24 hours.\n\nBest regards,\nThe Tempnow Team`
     },
     ticketReply: {
       subject: "New Reply to Your Support Ticket - {{ticketId}}",
+      header: "New Reply to Your Ticket",
+      footer: "Thank you for your patience.",
       content: `Hello {{name}},\n\nA support agent has replied to your ticket with the ID: {{ticketId}}.\n\nReply:\n{{message}}\n\nPlease contact us if you have further questions. We appreciate your patience.\n\nBest regards,\nThe Tempnow Team`
     },
     directEmail: {
       subject: "{{subject}}",
+      header: "",
+      footer: "",
       content: `{{message}}`
     }
   })
@@ -163,7 +181,7 @@ The Tempnow Team`,
       if (response.ok) {
         const data = await response.json();
         if (data.success && Object.keys(data.templates).length > 0) {
-          setTemplates(data.templates);
+          setTemplates((prevTemplates) => ({ ...prevTemplates, ...data.templates }));
         }
       }
     } catch (error) {
@@ -207,6 +225,8 @@ The Tempnow Team`,
 
   // Sample data for preview
   const sampleData = {
+    siteName: "Tempnow",
+    companyName: "Tempnow Ltd",
     firstName: "John",
     lastName: "Smith",
     policyNumber: "POL-12345678",
@@ -231,6 +251,9 @@ The Tempnow Team`,
 
   const replaceVariables = (text: string) => {
     return text.replace(/\{\{(\w+)\}\}/g, (match, variable) => {
+      if (variable === 'viewDocument') {
+        return `${process.env.NEXT_PUBLIC_BASE_URL}/policy/view?number=${sampleData.policyNumber}`;
+      }
       return sampleData[variable as keyof typeof sampleData] || match
     })
   }
@@ -265,6 +288,8 @@ The Tempnow Team`,
     switch (activeTemplate) {
       case "policyConfirmation":
         return [
+          "siteName",
+          "companyName",
           "firstName",
           "lastName",
           "policyNumber",
@@ -276,25 +301,26 @@ The Tempnow Team`,
           "vehicleMake",
           "vehicleModel",
           "vehicleYear",
+          "viewDocument"
         ]
       case "verificationCode":
-        return ["firstName", "code", "expiryMinutes"]
+        return ["siteName", "companyName", "firstName", "code", "expiryMinutes"]
       case "passwordReset":
-        return ["firstName", "resetLink", "expiryMinutes"]
+        return ["siteName", "companyName", "firstName", "resetLink", "expiryMinutes"]
       case "documentPurchase":
-        return ["firstName", "lastName", "orderId", "documentType", "orderDate", "amount", "downloadLink"]
+        return ["siteName", "companyName", "firstName", "lastName", "orderId", "documentType", "orderDate", "amount", "downloadLink"]
       case "policyExpiry":
-        return ["firstName", "lastName", "policyNumber", "endDate", "renewalLink"]
+        return ["siteName", "companyName", "firstName", "lastName", "policyNumber", "endDate", "renewalLink"]
       case "adminNotification":
-        return ["typeLabel", "customerName", "customerEmail", "amount", "time", "details"]
+        return ["siteName", "companyName", "typeLabel", "customerName", "customerEmail", "amount", "time", "details"]
       case "ticketConfirmation":
-        return ["name", "ticketId"]
+        return ["siteName", "companyName", "name", "ticketId"]
       case "ticketReply":
-        return ["name", "ticketId", "message"]
+        return ["siteName", "companyName", "name", "ticketId", "message"]
       case "directEmail":
-        return ["subject", "message"]
+        return ["siteName", "companyName", "subject", "message"]
       default:
-        return []
+        return ["siteName", "companyName"]
     }
   }
 
@@ -463,6 +489,44 @@ The Tempnow Team`,
                 </div>
 
                 <div>
+                  <Label htmlFor="header">Header Text</Label>
+                  <Textarea
+                    id="header"
+                    value={templates[activeTemplate as keyof typeof templates].header}
+                    onChange={(e) =>
+                      setTemplates({
+                        ...templates,
+                        [activeTemplate]: {
+                          ...templates[activeTemplate as keyof typeof templates],
+                          header: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="Email header text..."
+                    rows={2}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="footer">Footer Text</Label>
+                  <Textarea
+                    id="footer"
+                    value={templates[activeTemplate as keyof typeof templates].footer}
+                    onChange={(e) =>
+                      setTemplates({
+                        ...templates,
+                        [activeTemplate]: {
+                          ...templates[activeTemplate as keyof typeof templates],
+                          footer: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="Email footer text..."
+                    rows={4}
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="email-content">Email Content</Label>
                   <Textarea
                     id="email-content"
@@ -483,7 +547,7 @@ The Tempnow Team`,
                 </div>
 
                 <div>
-                  <Label>Available Variables</Label>
+                  <Label>Available Variables se</Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {getAvailableVariables().map((variable) => (
                       <Badge

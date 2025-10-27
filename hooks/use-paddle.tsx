@@ -52,7 +52,7 @@ export default function usePaddle() {
           environment: environment,
           token: clientToken,
           eventCallback: function(event) {
-            console.log("Paddle Event:", event);
+            
             if (event.name === "checkout.error") {
                 console.error("Paddle Checkout Error:", event);
                  addNotification({

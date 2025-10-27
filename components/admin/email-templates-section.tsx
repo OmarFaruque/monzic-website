@@ -190,6 +190,8 @@ The MONZIC Support Team`,
 
 // Sample data for preview
 const sampleData = {
+  siteName: "MONZIC",
+  companyName: "MONZIC LTD",
   firstName: "John",
   lastName: "Smith",
   policyNumber: "POL-12345678",
@@ -339,6 +341,8 @@ export function EmailTemplatesSection() {
     switch (activeTemplate) {
       case "policyConfirmation":
         return [
+          "siteName",
+          "companyName",
           "firstName",
           "lastName",
           "policyNumber",
@@ -353,19 +357,19 @@ export function EmailTemplatesSection() {
           "policyViewLink",
         ]
       case "verificationCode":
-        return ["firstName", "code", "expiryMinutes"]
+        return ["siteName", "companyName", "firstName", "code", "expiryMinutes"]
       case "passwordReset":
-        return ["firstName", "resetLink"]
+        return ["siteName", "companyName", "firstName", "resetLink"]
       case "documentPurchase":
-        return ["firstName", "lastName", "orderId", "documentType", "orderDate", "amount", "downloadLink"]
+        return ["siteName", "companyName", "firstName", "lastName", "orderId", "documentType", "orderDate", "amount", "downloadLink"]
       case "policyExpiry":
-        return ["firstName", "lastName", "policyNumber", "endDate", "renewalLink"]
+        return ["siteName", "companyName", "firstName", "lastName", "policyNumber", "endDate", "renewalLink"]
       case "contactFormConfirmation":
-        return ["firstName", "lastName", "subject", "submittedDate", "ticketId", "ticketLink"]
+        return ["siteName", "companyName", "firstName", "lastName", "subject", "submittedDate", "ticketId", "ticketLink"]
       case "ticketReplyNotification":
-        return ["firstName", "lastName", "ticketId", "subject", "status", "updatedDate", "replyMessage", "ticketLink"]
+        return ["siteName", "companyName", "firstName", "lastName", "ticketId", "subject", "status", "updatedDate", "replyMessage", "ticketLink"]
       default:
-        return []
+        return ["siteName", "companyName"]
     }
   }
 
@@ -533,7 +537,7 @@ export function EmailTemplatesSection() {
                 </div>
 
                 <div>
-                  <Label className="mb-2 block">Available Variables</Label>
+                  <Label className="mb-2 block">Available Variables f</Label>
                   <div className="flex flex-wrap gap-2">
                     {getAvailableVariables().map((variable) => (
                       <Badge

@@ -380,7 +380,7 @@ const PoliciesSection = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Date of Birth</p>
-                        <p className="font-medium text-gray-900">{user?.createdAt ? formatDate(user.createdAt) : "N/A"}</p>
+                        <p className="font-medium text-gray-900">{selectedPolicy?.dateOfBirth ? formatDate(selectedPolicy.dateOfBirth) : "N/A"}</p>
                       </div>
                     </div>
 

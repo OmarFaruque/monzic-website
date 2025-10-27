@@ -42,8 +42,8 @@ type Message = {
 type Ticket = {
   id: number
   user_id: string | null
-  first_name: string
-  last_name: string
+  firstName: string
+  lastName: string
   email: string
   token: string
   policy_number: string | null
@@ -73,6 +73,7 @@ export function TicketsSection() {
   const [attachments, setAttachments] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
 
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false)
   const [emailData, setEmailData] = useState({
@@ -274,8 +275,11 @@ export function TicketsSection() {
   }
 
   const handleSendMessage = async () => {
+    
     if (!newMessage.trim() && attachments.length === 0) return
     if (!selectedTicket) return
+
+    setIsSendingMessage(true);
 
     try {
       // Save the message to the database
@@ -293,8 +297,10 @@ export function TicketsSection() {
 
       // Send email notification in the background with attachments
       const formData = new FormData();
+
+
       formData.append("to", selectedTicket.email);
-      formData.append("name", `${selectedTicket.first_name} ${selectedTicket.last_name}`);
+      formData.append("name", `${selectedTicket.firstName} ${selectedTicket.lastName}`);
       formData.append("ticketId", selectedTicket.token);
       formData.append("message", newMessage);
 
@@ -303,7 +309,6 @@ export function TicketsSection() {
         formData.append("attachments", file);
       });
 
-      console.log("FormData content:", Array.from(formData.entries()));
 
       fetch("/api/admin/tickets/send-reply-email", {
         method: "POST",
@@ -314,6 +319,7 @@ export function TicketsSection() {
       await handleOpenTicket(selectedTicket);
       setNewMessage("");
       setAttachments([]);
+      setIsSendingMessage(false);
     } catch (error) {
       console.error(error);
       alert("Failed to send reply.");
@@ -649,11 +655,17 @@ export function TicketsSection() {
                     />
                     <Button
                       onClick={handleSendMessage}
-                      disabled={!newMessage.trim() && attachments.length === 0}
+                      disabled={(!newMessage.trim() && attachments.length === 0) || isSendingMessage}
                       className="self-end"
                     >
-                      <Send className="h-4 w-4 mr-2" />
-                      Send & Notify
+                      {isSendingMessage ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <><Send className="h-4 w-4 mr-2" /> Send & Notify</>
+                      )}
                     </Button>
                   </div>
                 </div>

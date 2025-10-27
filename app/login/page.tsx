@@ -154,18 +154,18 @@ export default function LoginPage() {
 
 
   const handleVerificationCodeChange = (index: number, value: string) => {
-    if (value.length > 1) return
+    if (value.length > 1) return;
 
-    const newCode = [...verificationCode]
-    newCode[index] = value
-    setVerificationCode(newCode)
+    const newCode = [...verificationCode];
+    newCode[index] = value;
+    setVerificationCode(newCode);
 
     // Auto-focus next input
     if (value && index < 5) {
-      const nextInput = document.getElementById(`code-${index + 1}`)
-      nextInput?.focus()
+      const nextInput = document.getElementById(`code-${index + 1}`);
+      nextInput?.focus();
     }
-  }
+  };
 
   const handleVerificationKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
@@ -173,6 +173,17 @@ export default function LoginPage() {
       prevInput?.focus()
     }
   }
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    if (/^\d{6}$/.test(pastedText)) {
+      const newCode = pastedText.split('');
+      setVerificationCode(newCode);
+      const lastInput = document.getElementById('code-5');
+      lastInput?.focus();
+    }
+  };
 
   const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -462,7 +473,7 @@ export default function LoginPage() {
                 <Shield className="w-8 h-8 text-teal-600" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Email</h3>
-              <p className="text-gray-600 text-sm">We've sent a 6-digit verification code to:</p>
+              <p className="text-gray-600 text-sm">We've sent a 6-digit verification code to 6:</p>
               <p className="font-semibold text-teal-600 mt-1 break-all">{userEmail}</p>
             </div>
 
@@ -483,6 +494,7 @@ export default function LoginPage() {
                       value={digit}
                       onChange={(e) => handleVerificationCodeChange(index, e.target.value)}
                       onKeyDown={(e) => handleVerificationKeyDown(index, e)}
+                      onPaste={handlePaste}
                       className="w-10 h-12 text-center text-xl font-bold border-2 border-gray-200 focus:border-teal-500 rounded-lg"
                       autoComplete="off"
                     />

@@ -277,6 +277,17 @@ export default function CheckoutPage() {
     }
   }
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    if (/^\d{6}$/.test(pastedText)) {
+      const newCode = pastedText.split('');
+      setVerificationCode(newCode);
+      const lastInput = document.getElementById('code-5');
+      lastInput?.focus();
+    }
+  };
+
   const handleResendCode = async () => {
     if (!userEmail) return;
     try {
@@ -956,6 +967,7 @@ export default function CheckoutPage() {
                       value={digit}
                       onChange={(e) => handleVerificationCodeChange(index, e.target.value)}
                       onKeyDown={(e) => handleVerificationKeyDown(index, e)}
+                      onPaste={handlePaste}
                       className="w-10 h-12 text-center text-xl font-bold border-2 border-gray-200 focus:border-teal-500 rounded-lg"
                       autoComplete="off"
                     />

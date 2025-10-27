@@ -49,14 +49,16 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = BigInt(Math.round(amount * 100));
 
-    // Fetch site name from settings
+    // Fetch site name and currency from settings
     const generalSettings = await db.query.settings.findFirst({
       where: eq(settings.param, 'general')
     });
     let siteName = "";
+    let currency = "GBP"; // Default currency
     if (generalSettings && generalSettings.value) {
       const parsedSettings = JSON.parse(generalSettings.value);
       siteName = parsedSettings.siteName || "";
+      currency = parsedSettings.currency || "GBP";
     }
 
     const paymentResult = await squareClient.payments.create({
@@ -65,14 +67,14 @@ export async function POST(req: NextRequest) {
         locationId: appLocationId,
         amountMoney: {
             amount: totalAmount,
-            currency: "GBP",
+            currency: currency,
         },
         note: `${siteName} Docs: Policy ${quoteData.id}`,
     });
 
 
 
-    console.log('paymentResult: ', paymentResult);
+    
 
     if (paymentResult.payment) {
       // Update database
@@ -82,7 +84,9 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         spaymentId: paymentResult.payment.id,
         paymentMethod: 'square',
-        paymentDate: new Date().toISOString()
+        paymentDate: new Date().toISOString(),
+        mailSent: true,
+        updatedAt: new Date().toISOString()
       }).where(eq(quotes.id, quoteData.id));
 
       // Fetch the updated quote to get the policy number
@@ -118,8 +122,8 @@ export async function POST(req: NextRequest) {
 
       await sendEmail({
         to: user.email,
-        subject: 'Your Insurance Policy Confirmation',
-        html: emailHtml,
+        subject: emailHtml.subject,
+        html: emailHtml.html,
         attachments: [
           {
             filename: `invoice-${quote.policyNumber}.pdf`,

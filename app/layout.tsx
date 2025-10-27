@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { AuthProvider } from "@/context/auth"
 import { AdminAuthProvider } from "@/context/admin-auth"
-import { ThemeProvider } from "@/components/theme-provider"
+
 import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
 import Script from "next/script"
@@ -42,16 +42,24 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <head />
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                document.documentElement.classList.remove('dark');
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <AdminAuthProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-              <SettingsProvider settings={settings}>
-                {children}
-              </SettingsProvider>
-              <Toaster />
-            </ThemeProvider>
+            <SettingsProvider settings={settings}>
+              {children}
+            </SettingsProvider>
+            <Toaster />
           </AdminAuthProvider>
         </AuthProvider>
       </body>

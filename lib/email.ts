@@ -12,25 +12,6 @@ export interface EmailTemplate {
   attachments?:any
 }
 
-
-
-// export async function sendEmail({ to, subject, html }: EmailTemplate) {
-//   try {
-//     const data = await resend.emails.send({
-//       from: "Tempnow <noreply@monzic.co.uk>",
-//       to: [to],
-//       subject,
-//       html,
-//     })
-
-//     return { success: true, data }
-//   } catch (error) {
-//     console.error("Email sending failed:", error)
-//     return { success: false, error }
-//   }
-// }
-
-
 async function getResendSettings() {
   try {
     const resendSettings = await db.query.settings.findFirst({
@@ -105,27 +86,16 @@ export async function getEmailTemplates() {
   }
 }
 
-export async function createAIDocumentPurchaseEmail(customerName: string, documentType: string, downloadLink: string) {
-  const templates = await getEmailTemplates();
-  const template = templates?.documentPurchase;
-  if (!template) return "<body><p>Email template not found</p></body>";
-
-  // Fetch site name from settings
-  const generalSettings = await db.query.settings.findFirst({
-    where: eq(settings.param, 'general')
+function replaceEmailVariables(text: string, data: Record<string, any>): string {
+  if (!text) return '';
+  return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, variable) => {
+    return data[variable] !== undefined ? data[variable] : match;
   });
-  let siteName = "";
-  let companyName = "";
-  if (generalSettings && generalSettings.value) {
-    const parsedSettings = JSON.parse(generalSettings.value);
-    siteName = parsedSettings.siteName || "";
-    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
-  }
+}
 
-  let content = template.content;
-  content = content.replace(/{{customerName}}/g, customerName);
-  content = content.replace(/{{documentType}}/g, documentType);
-  content = content.replace(/{{downloadLink}}/g, downloadLink);
+function buildEmailHtml(siteName: string, companyName: string, subject: string, header: string, content: string, footer: string): string {
+  const finalHeader = header || subject;
+  const finalFooter = footer || `&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
 
   return `
     <!DOCTYPE html>
@@ -133,7 +103,7 @@ export async function createAIDocumentPurchaseEmail(customerName: string, docume
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${template.subject}</title>
+      <title>${subject}</title>
       <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -148,22 +118,46 @@ export async function createAIDocumentPurchaseEmail(customerName: string, docume
       <div class="container">
         <div class="header">
           <div class="logo">${siteName || "Tempnow"}</div>
-          <h1>Your AI Document is Ready!</h1>
+          <h1>${finalHeader}</h1>
         </div>
         <div class="content">
           ${content.replace(/\n/g, '<br>')}
         </div>
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
-          <p>You received this email because you purchased a document from ${companyName}.</p>
+          ${finalFooter.replace(/\n/g, '<br>')}
         </div>
       </div>
     </body>
     </html>
-  `
+  `;
 }
 
-// Insurance Policy Email Template
+export async function createAIDocumentPurchaseEmail(customerName: string, documentType: string, downloadLink: string) {
+  const templates = await getEmailTemplates();
+  const template = templates?.documentPurchase;
+  if (!template) return { subject: "Error", html: "<body><p>Email template not found</p></body>" };
+
+  const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
+  let siteName = "";
+  let companyName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+  }
+
+  const data = { customerName, documentType, downloadLink, siteName, companyName };
+  const subject = replaceEmailVariables(template.subject, data);
+  const header = replaceEmailVariables(template.header, data);
+  const content = replaceEmailVariables(template.content, data);
+  const footer = replaceEmailVariables(template.footer, data);
+  const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
+
+
+
+  return { subject, html };
+}
+
 export async function createInsurancePolicyEmail(
   firstName: string,
   lastName: string,
@@ -176,102 +170,55 @@ export async function createInsurancePolicyEmail(
   endDate: string,
   amount: number,
   policyDocumentLink: string,
-  coverageType: string = "Temporary Insurance" // Default value
+  coverageType: string = "Temporary Insurance"
 ) {
   const templates = await getEmailTemplates();
   const template = templates?.policyConfirmation;
-  
-  if (!template) return "<body><p>Email template not found</p></body>";
+  if (!template) return { subject: "Error", html: "<body><p>Email template not found</p></body>" };
 
-  // Fetch site name from settings
-  const generalSettings = await db.query.settings.findFirst({
-    where: eq(settings.param, 'general')
-  });
+  const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
   let siteName = "";
+  let companyName = "";
   if (generalSettings && generalSettings.value) {
     const parsedSettings = JSON.parse(generalSettings.value);
     siteName = parsedSettings.siteName || "";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
   }
 
-  let content = template.content;
+  const data = { 
+    firstName, 
+    lastName, 
+    policyNumber, 
+    vehicleReg, 
+    vehicleMake, 
+    vehicleModel, 
+    vehicleYear, 
+    startDate, 
+    endDate, 
+    premium: amount.toFixed(2), 
+    policyDocumentLink, 
+    coverageType, 
+    siteName, 
+    companyName,
+    viewDocument: policyDocumentLink
+  };
 
-  // Conditionally add vehicle details to content
-  let vehicleDetailsHtml = '';
-  if (vehicleReg) {
-    vehicleDetailsHtml += `- Registration: {{vehicleReg}}\n`;
-  }
-  if (vehicleMake) {
-    vehicleDetailsHtml += `- Make: {{vehicleMake}}\n`;
-  }
-  if (vehicleModel) {
-    vehicleDetailsHtml += `- Model: {{vehicleModel}}\n`;
-  }
-  if (vehicleYear) {
-    vehicleDetailsHtml += `- Year: {{vehicleYear}}\n`;
+  const subject = replaceEmailVariables(template.subject, data);
+  const header = replaceEmailVariables(template.header, data);
+  const footer = replaceEmailVariables(template.footer, data);
+
+  let content = replaceEmailVariables(template.content, data);
+  if (template.content.includes('{{viewDocument}}')) {
+      const buttonHtml = `<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"margin: 20px auto;\"><tr><td align=\"center\" style=\"background-color: #0d9488; border-radius: 6px;\"><a href=\"${policyDocumentLink}\" target=\"_blank\" style=\"display: inline-block; color: white; text-decoration: none; padding: 12px 24px; font-weight: bold; border-radius: 6px; font-family: Arial, sans-serif; font-size: 16px;\"><span style=\"vertical-align: middle;\">&#128196;</span><span style=\"vertical-align: middle; margin-left: 8px;\">View Document</span></a></td></tr></table>`;
+      content = content.replace(policyDocumentLink, buttonHtml);
   }
 
-  if (vehicleDetailsHtml) {
-    content = content.replace('Vehicle Details:\n- Registration: {{vehicleReg}}\n- Make: {{vehicleMake}}\n- Model: {{vehicleModel}}\n- Year: {{vehicleYear}}', `Vehicle Details:\n${vehicleDetailsHtml}`);
-  } else {
-    content = content.replace('Vehicle Details:\n- Registration: {{vehicleReg}}\n- Make: {{vehicleMake}}\n- Model: {{vehicleModel}}\n- Year: {{vehicleYear}}', '');
-  }
-
-  content = content.replace(/{{firstName}}/g, firstName);
-  content = content.replace(/{{lastName}}/g, lastName);
-  content = content.replace(/{{policyNumber}}/g, policyNumber);
-  content = content.replace(/{{coverageType}}/g, coverageType);
-  content = content.replace(/{{startDate}}/g, startDate);
-  content = content.replace(/{{endDate}}/g, endDate);
-  content = content.replace(/{{premium}}/g, amount.toFixed(2));
-  content = content.replace(/{{vehicleReg}}/g, vehicleReg);
-  content = content.replace(/{{vehicleMake}}/g, vehicleMake);
-  content = content.replace(/{{vehicleModel}}/g, vehicleModel);
-  content = content.replace(/{{vehicleYear}}/g, vehicleYear);
-  content = content.replace(/{{policyDocumentLink}}/g, policyDocumentLink);
+  const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
 
   
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${template.subject.replace(/{{policyNumber}}/g, policyNumber)}</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #0d9488, #14b8a6); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .policy-box { background: white; border: 2px solid #0d9488; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .button { display: inline-block; background: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-        .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
-        .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .alert { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div class="logo">${siteName || "Tempnow"}</div>
-          <h1>Insurance Policy Confirmed</h1>
-        </div>
-        <div class="content">
-          ${content.replace(/\n/g, '<br>')}
-        </div>
-        <div class="footer">
-          <p>&copy; 2025 ${siteName || "Tempnow"} Solutions Ltd. All rights reserved.</p>
-          <p>This email contains important policy information. Please save it for your records.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
+  return { subject, html };
 }
 
-
-
-// Admin Notification Email Template
 export async function createAdminNotificationEmail(
   type: "ai_document" | "insurance_policy",
   customerName: string,
@@ -281,55 +228,26 @@ export async function createAdminNotificationEmail(
 ) {
   const templates = await getEmailTemplates();
   const template = templates?.adminNotification;
-  if (!template) return "<body><p>Email template not found</p></body>";
+  if (!template) return { subject: "Error", html: "<body><p>Email template not found</p></body>" };
+  
+  const typeLabel = type === "ai_document" ? "AI Document" : "Insurance Policy";
+  const data = { typeLabel, customerName, customerEmail, amount: amount.toFixed(2), details, time: new Date().toLocaleString() };
 
-  const typeLabel = type === "ai_document" ? "AI Document" : "Insurance Policy"
+  const subject = replaceEmailVariables(template.subject, data);
+  const header = replaceEmailVariables(template.header, data);
+  const content = replaceEmailVariables(template.content, data);
+  const footer = replaceEmailVariables(template.footer, data);
+  const html = buildEmailHtml("", "", subject, header, content, footer); // No site/company name needed for admin emails
 
-  let content = template.content;
-  content = content.replace(/{{typeLabel}}/g, typeLabel);
-  content = content.replace(/{{customerName}}/g, customerName);
-  content = content.replace(/{{customerEmail}}/g, customerEmail);
-  content = content.replace(/{{amount}}/g, amount.toFixed(2));
-  content = content.replace(/{{details}}/g, details);
-  content = content.replace(/{{time}}/g, new Date().toLocaleString());
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${template.subject.replace(/{{typeLabel}}/g, typeLabel)}</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #1f2937; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .info-box { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0d9488; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>New ${typeLabel} Purchase</h1>
-        </div>
-        <div class="content">
-          ${content.replace(/\n/g, '<br>')}
-        </div>
-      </div>
-    </body>
-    </html>
-  `
+  return { subject, html };
 }
 
 export async function sendTicketConfirmationEmail({
     to,
-    subject,
     name,
     ticketId,
     }: {
     to: string
-    subject: string
     name: string
     ticketId: string
     }) {
@@ -337,10 +255,7 @@ export async function sendTicketConfirmationEmail({
     const template = templates?.ticketConfirmation;
     if (!template) return;
 
-    // Fetch site name from settings
-    const generalSettings = await db.query.settings.findFirst({
-      where: eq(settings.param, 'general')
-    });
+    const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
     let siteName = "";
     let companyName = "";
     if (generalSettings && generalSettings.value) {
@@ -349,63 +264,24 @@ export async function sendTicketConfirmationEmail({
       companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
     }
 
-    let emailHtml = template.content;
-    emailHtml = emailHtml.replace(/{{name}}/g, name);
-    emailHtml = emailHtml.replace(/{{ticketId}}/g, ticketId);
+    const data = { name, ticketId, siteName, companyName };
+    const subject = replaceEmailVariables(template.subject, data);
+    const header = replaceEmailVariables(template.header, data);
+    const content = replaceEmailVariables(template.content, data);
+    const footer = replaceEmailVariables(template.footer, data);
+    const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
 
-    const emailWrapper = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${template.subject.replace(/{{ticketId}}/g, ticketId)}</title>
-            <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #0d9488, #14b8a6); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .ticket-info { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0d9488; }
-            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
-            .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-            <div class="header">
-                <div class="logo">${siteName || "Tempnow"}</div>
-                <h1>Support Ticket Received</h1>
-            </div>
-            <div class="content">
-                ${emailHtml.replace(/\n/g, '<br>')}
-            </div>
-            <div class="footer">
-                <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
-                <p>You are receiving this email because you submitted a contact form on our website.</p>
-            </div>
-            </div>
-        </body>
-        </html>
-    `;
-
-    return sendEmail({
-        to,
-        subject: template.subject.replace(/{{ticketId}}/g, ticketId),
-        html: emailWrapper,
-        attachments: [],
-    })
+    return sendEmail({ to, subject, html, attachments: [] });
 }
 
 export async function sendTicketReplyEmail({
     to,
-    subject,
     name,
     ticketId,
     message,
     attachments = []
     }: {
     to: string
-    subject: string
     name: string
     ticketId: string
     message: string
@@ -415,10 +291,7 @@ export async function sendTicketReplyEmail({
     const template = templates?.ticketReply;
     if (!template) return;
 
-    // Fetch site name from settings
-    const generalSettings = await db.query.settings.findFirst({
-      where: eq(settings.param, 'general')
-    });
+    const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
     let siteName = "";
     let companyName = "";
     if (generalSettings && generalSettings.value) {
@@ -427,52 +300,14 @@ export async function sendTicketReplyEmail({
       companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
     }
 
-    let emailHtml = template.content;
-    emailHtml = emailHtml.replace(/{{name}}/g, name);
-    emailHtml = emailHtml.replace(/{{ticketId}}/g, ticketId);
-    emailHtml = emailHtml.replace(/{{message}}/g, message);
+    const data = { name, ticketId, message, siteName, companyName };
+    const subject = replaceEmailVariables(template.subject, data);
+    const header = replaceEmailVariables(template.header, data);
+    const content = replaceEmailVariables(template.content, data);
+    const footer = replaceEmailVariables(template.footer, data);
+    const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
 
-    const emailWrapper = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${template.subject.replace(/{{ticketId}}/g, ticketId)}</title>
-            <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #0d9488, #14b8a6); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .message-box { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0d9488; }
-            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
-            .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-            <div class="header">
-                <div class="logo">${siteName || "Tempnow"}</div>
-                <h1>New Reply to Your Ticket</h1>
-            </div>
-            <div class="content">
-                ${emailHtml.replace(/\n/g, '<br>')}
-            </div>
-            <div class="footer">
-                <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
-                <p>You are receiving this email because you have an active support ticket with us.</p>
-            </div>
-            </div>
-        </body>
-        </html>
-    `;
-
-    return sendEmail({
-        to,
-        subject: template.subject.replace(/{{ticketId}}/g, ticketId),
-        html: emailWrapper,
-        attachments
-    })
+    return sendEmail({ to, subject, html, attachments });
 }
 
 export async function createPolicyExpiryEmail(
@@ -484,13 +319,10 @@ export async function createPolicyExpiryEmail(
   policyDocumentLink: string,
 ) {
   const templates = await getEmailTemplates();
-  const template = templates?.policyExpiry; // Assuming 'policyExpiry' is the key for the template
-  if (!template) return "<body><p>Policy Expiry email template not found</p></body>";
+  const template = templates?.policyExpiry;
+  if (!template) return { subject: "Error", html: "<body><p>Email template not found</p></body>" };
 
-  // Fetch site name from settings
-  const generalSettings = await db.query.settings.findFirst({
-    where: eq(settings.param, 'general')
-  });
+  const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
   let siteName = "";
   let companyName = "";
   if (generalSettings && generalSettings.value) {
@@ -499,47 +331,95 @@ export async function createPolicyExpiryEmail(
     companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
   }
 
-  let content = template.content;
-  content = content.replace(/{{firstName}}/g, firstName);
-  content = content.replace(/{{lastName}}/g, lastName);
-  content = content.replace(/{{policyNumber}}/g, policyNumber);
-  content = content.replace(/{{vehicleDetails}}/g, vehicleDetails);
-  content = content.replace(/{{endDate}}/g, new Date(expiresAt).toLocaleString());
-  content = content.replace(/{{renewalLink}}/g, policyDocumentLink);
+  const data = { firstName, lastName, policyNumber, vehicleDetails, endDate: new Date(expiresAt).toLocaleString(), renewalLink: policyDocumentLink, siteName, companyName };
+  const subject = replaceEmailVariables(template.subject, data);
+  const header = replaceEmailVariables(template.header, data);
+  const footer = replaceEmailVariables(template.footer, data);
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${template.subject.replace(/{{policyNumber}}/g, policyNumber)}</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #ffc107, #ff9800); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #fff8e1; padding: 30px; border-radius: 0 0 8px 8px; }
-        .button { display: inline-block; background: #ff9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-        .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
-        .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .alert { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div class="logo">${siteName || "Tempnow"}</div>
-          <h1>Policy Expiry Reminder</h1>
-        </div>
-        <div class="content">
-          ${content.replace(/\n/g, '<br>')}
-        </div>
-        <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
-          <p>This is a reminder that your policy is expiring soon.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
+  let content = replaceEmailVariables(template.content, data);
+  if (template.content.includes('{{renewalLink}}')) {
+      const buttonHtml = `<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"margin: 20px auto;\"><tr><td align=\"center\" style=\"background-color: #0d9488; border-radius: 6px;\"><a href=\"${policyDocumentLink}\" target=\"_blank\" style=\"display: inline-block; color: white; text-decoration: none; padding: 12px 24px; font-weight: bold; border-radius: 6px; font-family: Arial, sans-serif; font-size: 16px;\">Get a New Order</a></td></tr></table>`;
+      content = content.replace(policyDocumentLink, buttonHtml);
+  }
+
+  const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
+
+  return { subject, html };
+}
+
+export async function createDirectEmail(subject: string, message: string) {
+  const templates = await getEmailTemplates();
+  const template = templates?.directEmail;
+  if (!template) return { subject: "Error", html: "<body><p>Email template not found</p></body>" };
+
+  const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, "general") });
+  let siteName = "";
+  let companyName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+  }
+
+  const data = { subject, message, siteName, companyName };
+  const finalSubject = replaceEmailVariables(template.subject, data);
+  const header = replaceEmailVariables(template.header, data);
+  const content = replaceEmailVariables(template.content, data);
+  const footer = replaceEmailVariables(template.footer, data);
+  const html = buildEmailHtml(siteName, companyName, finalSubject, header, content, footer);
+
+  return { subject: finalSubject, html };
+}
+
+export async function getAdminEmail() {
+  try {
+    const adminSettings = await db.query.settings.findFirst({
+      where: eq(settings.param, "general"),
+    })
+    if (adminSettings && adminSettings.value) {
+      const parsed = JSON.parse(adminSettings.value)
+      return parsed.adminEmail || process.env.ADMIN_EMAIL
+    }
+    return process.env.ADMIN_EMAIL
+  } catch (error) {
+    console.error("Failed to fetch admin email:", error)
+    return process.env.ADMIN_EMAIL
+  }
+}
+
+export async function createVerificationCodeEmail(firstName: string, code: string, expiryMinutes: string) {
+  const templates = await getEmailTemplates();
+  const template = templates?.verificationCode;
+  if (!template) return { subject: "Error", html: "<body><p>Email template not found</p></body>" };
+
+  const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
+  let siteName = "";
+  let companyName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+  }
+
+  const data = { 
+    firstName: firstName || 'Customer', 
+    code, 
+    expiryMinutes, 
+    siteName, 
+    companyName 
+  };
+
+  const subject = replaceEmailVariables(template.subject, data);
+  const header = replaceEmailVariables(template.header, data);
+  const footer = replaceEmailVariables(template.footer, data);
+
+  let content = replaceEmailVariables(template.content, data);
+  content = content.replace(
+      code, 
+      `<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"margin: 15px auto;\"><tr><td style=\"background-color: #0d9488; color: white; padding: 15px 25px; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px;\">${code}</td></tr></table>`
+  );
+
+  const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
+
+  return { subject, html };
 }

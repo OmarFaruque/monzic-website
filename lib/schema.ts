@@ -85,6 +85,7 @@ export const quotes = pgTable("quotes", {
 export const coupons = pgTable("coupons", {
 	id: serial("id").primaryKey().notNull(),
 	promoCode: varchar("promo_code", { length: 100 }).notNull(),
+	caseSensitive: boolean("case_sensitive").default(false).notNull(),
 	discount: json("discount").notNull(), // { type: 'percentage' | 'fixed', value: number }
 	minSpent: varchar("min_spent", { length: 50 }), // e.g., '100' for $100
 	maxDiscount: varchar("max_discount", { length: 50 }), // e.g., '50' for $50

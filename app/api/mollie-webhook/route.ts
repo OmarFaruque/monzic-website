@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
           }
 
       } else if (metadata.type === 'quote') {
+        const updateTimestamp = new Date().toISOString();
         const updatedQuotes = await db.update(quotes)
           .set({
             paymentStatus: 'paid',
@@ -80,7 +81,8 @@ export async function POST(request: NextRequest) {
             mailSent: false, // Will be set to true by the confirmation sender
             paymentMethod: 'mollie',
             paymentIntentId: payment.id,
-            paymentDate: new Date(),
+            paymentDate: updateTimestamp,
+            updatedAt: updateTimestamp,
           })
           .where(eq(quotes.policyNumber, metadata.policyNumber))
           .returning({ id: quotes.id });

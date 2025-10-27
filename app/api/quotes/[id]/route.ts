@@ -61,7 +61,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     // 4. Send confirmation email
     const vehicle = fullQuoteData.customerData.vehicle;
-    const emailHtml = await createInsurancePolicyEmail(
+    const emailData = await createInsurancePolicyEmail(
       user.firstName || '',
       user.lastName || '',
       quote.policyNumber,
@@ -78,8 +78,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     await sendEmail({
       to: user.email,
-      subject: 'Your Insurance Policy Confirmation',
-      html: emailHtml,
+      subject: emailData.subject,
+      html: emailData.html,
       attachments: [
         {
           filename: `invoice-${quote.policyNumber}.pdf`,

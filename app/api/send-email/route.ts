@@ -12,24 +12,21 @@ export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type') || '';
 
-    // Handle JSON-based transactional emails (existing functionality)
     if (contentType.includes('application/json')) {
       const body = await request.json();
       const { type, customerData, purchaseData } = body;
 
-      let emailHtml = "";
-      let subject = "";
-      let adminNotificationHtml = "";
+      let emailData;
+      let adminEmailData;
 
       switch (type) {
         case "ai_document":
-          subject = "Your AI Document is Ready - TEMPNOW";
-          emailHtml = createAIDocumentPurchaseEmail(
+          emailData = await createAIDocumentPurchaseEmail(
             customerData.name,
             purchaseData.documentType,
             purchaseData.downloadLink,
           );
-          adminNotificationHtml = createAdminNotificationEmail(
+          adminEmailData = await createAdminNotificationEmail(
             "ai_document",
             customerData.name,
             customerData.email,
@@ -39,8 +36,7 @@ export async function POST(request: NextRequest) {
           break;
 
         case "insurance_policy":
-          subject = "Insurance Policy Confirmation - TEMPNOW";
-          emailHtml = await createInsurancePolicyEmail(
+          emailData = await createInsurancePolicyEmail(
             customerData.firstName,
             customerData.lastName,
             purchaseData.policyNumber,
@@ -53,7 +49,7 @@ export async function POST(request: NextRequest) {
             purchaseData.amount,
             purchaseData.policyDocumentLink,
           );
-          adminNotificationHtml = createAdminNotificationEmail(
+          adminEmailData = await createAdminNotificationEmail(
             "insurance_policy",
             customerData.name,
             customerData.email,
@@ -66,53 +62,49 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Invalid email type" }, { status: 400 });
       }
 
-      // Send customer email
-      await sendEmail({
-        to: customerData.email,
-        subject,
-        html: emailHtml,
-      });
+      if (emailData) {
 
-      // Send admin notification
-      const adminEmail = await getAdminEmail();
-      await sendEmail({
-        to: adminEmail,
-        subject: `New Purchase Alert - ${type === "ai_document" ? "AI Document" : "Insurance Policy"}`,
-        html: adminNotificationHtml,
-      });
+        await sendEmail({
+          to: customerData.email,
+          subject: emailData.subject,
+          html: emailData.html,
+        });
+      }
+
+      if (adminEmailData) {
+        const adminEmail = await getAdminEmail();
+        await sendEmail({
+          to: adminEmail,
+          subject: adminEmailData.subject,
+          html: adminEmailData.html,
+        });
+      }
 
       return NextResponse.json({ success: true, message: "Emails sent successfully" });
     
-    // Handle FormData-based direct emails (new functionality for tickets section)
     } else if (contentType.includes('multipart/form-data')) {
-
-      
       const formData = await request.formData();
       const to = formData.get('to') as string;
       const subject = formData.get('subject') as string;
       const message = (formData.get('html') || formData.get('message')) as string;
       const attachments = formData.getAll('attachments') as File[];
 
-      // console.log('inse multipart form: ', to, 'subject: ', subject, 'message: ', message, 'attachment: ', attachments)
-
       if (!to || !subject || !message) {
         return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
       }
 
-      // Process attachments for the email service
       const processedAttachments = [];
       for (const file of attachments) {
         const buffer = Buffer.from(await file.arrayBuffer());
         processedAttachments.push({ filename: file.name, content: buffer });
       }
 
-      const emailHtml = await createDirectEmail(subject, message);
+      const emailData = await createDirectEmail(subject, message);
 
-      // Send the direct email
       const result = await sendEmail({
         to: to,
-        subject: subject,
-        html: emailHtml,
+        subject: emailData.subject,
+        html: emailData.html,
         attachments: processedAttachments,
       });
 

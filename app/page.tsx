@@ -10,8 +10,8 @@ import { checkBlacklist } from "@/lib/blacklist"
 import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationContainer } from "@/components/notification"
 import { useAuth } from "@/context/auth"
-import Cookies from "js-cookie"; // Import js-cookie at the top
-import { Loader2 } from "lucide-react"
+
+import { Header } from "@/components/header"
 
 import { useSettings } from "@/context/settings"
 
@@ -142,87 +142,7 @@ export default function TempnowHomepage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 shadow-md">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Link href="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            {settings?.siteName || 'TEMPNOW'}
-          </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden sm:flex gap-2 md:gap-3" role="navigation">
-            <Link href="/ai-documents">
-              <Button className="bg-white hover:bg-gray-100 text-teal-600 font-medium text-sm md:text-base px-3 md:px-4">
-                AI Documents
-              </Button>
-            </Link>
-            <Link href="/contact">
-              <Button
-                variant="outline"
-                className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4"
-              >
-                Contact
-              </Button>
-            </Link>
-            {isAuthenticated ? (
-              <Link href="/dashboard">
-              <Button
-                variant="outline"
-                className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4"
-              >
-                Dashboard
-              </Button>
-              </Link>
-            ) : (
-              <Link href="/login">
-              <Button
-                variant="outline"
-                className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent text-sm md:text-base px-3 md:px-4"
-              >
-                Sign In
-              </Button>
-              </Link>
-            )}
-          </nav>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={toggleMobileMenu}
-            className="sm:hidden p-2 text-white hover:bg-teal-700 rounded-md transition-colors"
-            aria-label="Toggle mobile menu"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <nav className="sm:hidden mt-4 pb-4 border-t border-teal-500 pt-4" role="navigation">
-            <div className="flex flex-col space-y-3">
-              <Link href="/ai-documents" onClick={closeMobileMenu}>
-                <Button className="w-full bg-white hover:bg-gray-100 text-teal-600 font-medium">AI Documents</Button>
-              </Link>
-              <Link href="/contact" onClick={closeMobileMenu}>
-                <Button
-                  variant="outline"
-                  className="w-full border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent"
-                >
-                  Contact
-                </Button>
-              </Link>
-              <Link href="/login" onClick={closeMobileMenu}>
-                <Button
-                  variant="outline"
-                  className="w-full border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent"
-                >
-                  Sign In
-                </Button>
-              </Link>
-            </div>
-          </nav>
-        )}
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-start px-4 sm:px-6 py-6 sm:py-8 bg-teal-50">

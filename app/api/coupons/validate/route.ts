@@ -1,7 +1,6 @@
-
 import { db } from "@/lib/db";
 import { coupons } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -12,12 +11,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Promo code is required" }, { status: 400 });
     }
 
-    const [coupon] = await db
+    const potentialCoupons = await db
       .select()
       .from(coupons)
-      .where(eq(coupons.promoCode, promoCode));
+      .where(eq(sql`lower(${coupons.promoCode})`, promoCode.toLowerCase()));
 
-    
+    if (potentialCoupons.length === 0) {
+      return NextResponse.json({ error: "Invalid promo code" }, { status: 404 });
+    }
+
+    // Prioritize case-sensitive match if available
+    let coupon = potentialCoupons.find(c => c.caseSensitive && c.promoCode === promoCode);
+
+    if (!coupon) {
+      // If no case-sensitive match, find the first case-insensitive one
+      coupon = potentialCoupons.find(c => !c.caseSensitive);
+    }
 
     if (!coupon) {
       return NextResponse.json({ error: "Invalid promo code" }, { status: 404 });
@@ -33,7 +42,7 @@ export async function POST(request: Request) {
 
     const usedQuota = parseInt(coupon.usedQuota || '0', 10);
     const quotaAvailable = parseInt(coupon.quotaAvailable, 10);
-    if (usedQuota >= quotaAvailable) {
+    if (quotaAvailable > 0 && usedQuota >= quotaAvailable) {
       return NextResponse.json({ error: "This promo code has reached its usage limit" }, { status: 400 });
     }
     
@@ -43,8 +52,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: `A minimum spend of £${minSpent.toFixed(2)} is required for this code.` }, { status: 400 });
         }
     }
-
-    
 
     return NextResponse.json(coupon);
   } catch (error) {

@@ -1,0 +1,65 @@
+.checkoutTheme :global(body) {
+    background-color: #f6f6f6;
+}
+
+.checkoutTheme :global(.divide-y > :not([hidden]) ~ :not([hidden])) {
+    border-color: #e2e8f0; /* slate-200 */
+}
+
+.checkoutTheme :global(.bg-section-header) {
+    background-color: #f1f5f9; /* slate-100 */
+}
+
+.checkoutTheme :global(.bg-card) {
+    background-color: white;
+}
+
+.checkoutTheme :global(.border-border) {
+    border-color: #e2e8f0; /* slate-200 */
+}
+
+.checkoutTheme :global(.shadow-sm) {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.checkoutTheme :global(.text-card-foreground) {
+    color: #0f172a; /* slate-900 */
+}
+
+.checkoutTheme :global(.text-muted-foreground) {
+    color: #64748b; /* slate-500 */
+}
+
+.checkoutTheme :global(.text-primary) {
+    color: #0d9488; /* teal-600 */
+}
+
+.checkoutTheme :global(.bg-primary\/10) {
+    background-color: rgba(13, 148, 136, 0.1);
+}
+
+.checkoutTheme :global(.bg-primary) {
+    background-color: #0d9488; /* teal-600 */
+}
+
+.checkoutTheme :global(.text-primary-foreground) {
+    color: white;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromTop {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.checkoutTheme :global(.animate-in) {
+  animation: slideInFromTop 0.5s ease-out, fadeIn 0.5s ease-out;
+}
+
+.checkoutTheme :global(.fade-in) {
+  animation: fadeIn 0.5s ease-out;
+}

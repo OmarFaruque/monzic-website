@@ -10,6 +10,7 @@ import { Clock, ShieldCheck, Shield, Menu, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/context/auth"
 import { useSettings } from "@/context/settings";
+import { Header } from "@/components/header"
 
 export default function ContactPage() {
   const [isVerified, setIsVerified] = useState(false)
@@ -103,78 +104,7 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Mobile-Optimized Header */}
-      <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-md relative">
-        <div className="flex items-center">
-          <Link href="/">
-            <h1 className="text-xl sm:text-2xl font-bold text-white cursor-pointer hover:text-teal-100 transition-colors">
-              {settings.siteName || "TEMPNOW"}
-            </h1>
-          </Link>
-        </div>
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex gap-3">
-          <Link href="/ai-documents">
-            <Button className="bg-white hover:bg-gray-100 text-teal-600 font-medium">AI Documents</Button>
-          </Link>
-          <Link href="/contact">
-            <Button
-              variant="outline"
-              className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent"
-            >
-              Contact
-            </Button>
-          </Link>
-          <Link href={isAuthenticated ? "/dashboard" : "/login"}>
-            <Button
-              variant="outline"
-              className="border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent"
-              disabled={loading}
-            >
-              {loading ? "..." : isAuthenticated ? "Dashboard" : "Sign In"}
-            </Button>
-          </Link>
-        </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="md:hidden p-2 text-white hover:bg-teal-700 rounded-lg transition-colors"
-          aria-label="Toggle menu"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-
-        {/* Mobile Navigation Menu */}
-        {isMobileMenuOpen && (
-          <div className="absolute top-full left-0 right-0 bg-teal-600 border-t border-teal-500 md:hidden z-50">
-            <div className="px-4 py-3 space-y-2">
-              <Link href="/ai-documents" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button className="w-full bg-white hover:bg-gray-100 text-teal-600 font-medium justify-start h-12">
-                  AI Documents
-                </Button>
-              </Link>
-              <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button
-                  variant="outline"
-                  className="w-full border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent justify-start h-12"
-                >
-                  Contact
-                </Button>
-              </Link>
-              <Link href={isAuthenticated ? "/dashboard" : "/login"} onClick={() => setIsMobileMenuOpen(false)}>
-                <Button
-                  variant="outline"
-                  className="w-full border-teal-400 text-white hover:bg-teal-500 hover:border-white bg-transparent justify-start h-12"
-                  disabled={loading}
-                >
-                  {loading ? "..." : isAuthenticated ? "Dashboard" : "Sign In"}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        )}
-      </header>
+      <Header/>
 
       {/* Main Content */}
       <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 bg-teal-50">

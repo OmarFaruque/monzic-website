@@ -57,14 +57,15 @@ export async function POST(req: NextRequest) {
           }
 
           // 1. Update the quote with payment details (fast operation)
+          const updateTimestamp = new Date().toISOString();
           await db.update(quotes).set({
               status: 'completed',
               paymentStatus: 'paid',
               paymentMethod: 'stripe',
               mailSent: false, // Mark as not sent yet, the next step will handle it
               paymentIntentId: paymentIntent.id,
-              paymentDate: new Date(),
-              updatedAt: new Date().toISOString(),
+              paymentDate: updateTimestamp,
+              updatedAt: updateTimestamp,
           }).where(eq(quotes.id, quoteId));
 
           // 2. Trigger the email sending API without awaiting the response (fire-and-forget)

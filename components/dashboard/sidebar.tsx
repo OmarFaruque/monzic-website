@@ -6,6 +6,7 @@ import { Menu, X, FileText, User, LogOut, ChevronRight } from "lucide-react"
 import { useAuth } from "@/context/auth"
 import { useNotifications } from "@/hooks/use-notifications"
 import { LogoutDialog } from "@/components/dashboard/logout-dialog"
+import { useSettings } from "@/context/settings"
 
 export function DashboardSidebar({
   activeSection,
@@ -19,6 +20,7 @@ export function DashboardSidebar({
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const { logout } = useAuth()
   const { showSuccess } = useNotifications()
+  const settings = useSettings()
 
   // Check if mobile on mount and window resize
   useEffect(() => {
@@ -76,7 +78,7 @@ export function DashboardSidebar({
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-800">MONZIC</h2>
+              <h2 className="text-xl font-bold text-gray-800">{settings.siteName || 'TEMPNOW'}</h2>
               {isMobile && (
                 <Button variant="ghost" size="icon" onClick={closeSidebar}>
                   <ChevronRight className="h-5 w-5" />

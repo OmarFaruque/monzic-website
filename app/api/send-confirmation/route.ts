@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const pdfBytes = await generateInvoicePdf(fullQuoteData, user, quote.policyNumber);
 
     // 3. Send confirmation email
-    const emailHtml = await createInsurancePolicyEmail(
+    const emailData = await createInsurancePolicyEmail(
         user.firstName || '',
         user.lastName || '',
         quote.policyNumber,
@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
 
     await sendEmail({
         to: user.email,
-        subject: 'Your Insurance Policy Confirmation',
-        html: emailHtml,
+        subject: emailData.subject,
+        html: emailData.html,
         attachments: [{ filename: `invoice-${quote.policyNumber}.pdf`, content: Buffer.from(pdfBytes) }],
     });
 

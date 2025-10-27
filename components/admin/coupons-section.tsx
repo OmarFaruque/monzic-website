@@ -20,24 +20,25 @@ import { Search, Plus, AlertTriangle, X, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 
 interface Coupon {
-  id: number;
-  promoCode: string;
-  discount: { type: string; value: number };
-  minSpent: string;
-  maxDiscount: string;
-  quotaAvailable: string;
-  expires: Date | undefined;
+  id: number
+  promoCode: string
+  discount: { type: string; value: number }
+  minSpent: string
+  maxDiscount: string
+  quotaAvailable: string
+  expires: Date | undefined
   matches: {
-    lastName: string;
-    dateOfBirth: string;
-    registrations: string;
-  };
+    lastName: string
+    dateOfBirth: string
+    registrations: string
+  }
   restrictions: {
-    firstTimeOnly: boolean;
-    maxUsesPerUser: number;
-    validDays: string[];
-    validHours: { start: string; end: string };
-  };
+    firstTimeOnly: boolean
+    maxUsesPerUser: number
+    validDays: string[]
+    validHours: { start: string; end: string }
+  }
+  caseSensitive: boolean
 }
 
 export function CouponsSection() {
@@ -65,8 +66,9 @@ export function CouponsSection() {
       validDays: [],
       validHours: { start: "00:00", end: "23:59" },
     },
+    caseSensitive: false,
   } as Coupon)
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true)
 
   const [isUpdating, setIsUpdating] = useState(false)
 
@@ -75,7 +77,7 @@ export function CouponsSection() {
   }, [])
 
   const fetchCoupons = async () => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
       const response = await fetch("/api/coupons")
       const data = await response.json()
@@ -83,7 +85,7 @@ export function CouponsSection() {
     } catch (error) {
       console.error("Error fetching coupons:", error)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
@@ -91,7 +93,7 @@ export function CouponsSection() {
     const formattedNewCoupon = {
       ...newCoupon,
       expires: newCoupon.expires ? format(newCoupon.expires, "yyyy-MM-dd HH:mm:ss") : "",
-    };
+    }
 
     try {
       await fetch("/api/coupons", {
@@ -114,7 +116,7 @@ export function CouponsSection() {
     const formattedSelectedCoupon = {
       ...selectedCoupon,
       expires: selectedCoupon.expires ? format(new Date(selectedCoupon.expires), "yyyy-MM-dd HH:mm:ss") : "",
-    };
+    }
 
     try {
       await fetch("/api/coupons", {
@@ -148,9 +150,9 @@ export function CouponsSection() {
     }
   }
 
-  const filteredCoupons = Array.isArray(coupons) ? coupons.filter((coupon) =>
-    coupon.promoCode.toLowerCase().includes(searchTerm.toLowerCase()),
-  ) : []
+  const filteredCoupons = Array.isArray(coupons)
+    ? coupons.filter((coupon) => coupon.promoCode.toLowerCase().includes(searchTerm.toLowerCase()))
+    : []
 
   const formatDiscount = (discount: any) => {
     if (discount.type === "percentage") {
@@ -178,6 +180,7 @@ export function CouponsSection() {
         validDays: [],
         validHours: { start: "00:00", end: "23:59" },
       },
+      caseSensitive: false,
     })
   }
 
@@ -285,9 +288,7 @@ export function CouponsSection() {
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle className="flex items-center justify-between">
-                    Create Coupon
-                  </DialogTitle>
+                  <DialogTitle className="flex items-center justify-between">Create Coupon</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -335,6 +336,17 @@ export function CouponsSection() {
                         </Select>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="create-case-sensitive"
+                      checked={newCoupon.caseSensitive}
+                      onChange={(e) => setNewCoupon({ ...newCoupon, caseSensitive: e.target.checked })}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="create-case-sensitive">Case sensitive</Label>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -476,10 +488,7 @@ export function CouponsSection() {
                   >
                     Cancel
                   </Button>
-                  <Button
-                    onClick={createCoupon}
-                    className="bg-teal-600 hover:bg-teal-700"
-                  >
+                  <Button onClick={createCoupon} className="bg-teal-600 hover:bg-teal-700">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Coupon
                   </Button>
@@ -498,133 +507,188 @@ export function CouponsSection() {
                     </Button>
                   </DialogTitle>
                 </DialogHeader>
-                {selectedCoupon && <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="edit-promo-code">Promo Code</Label>
-                      <Input id="edit-promo-code" value={selectedCoupon?.promoCode} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, promoCode: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-discount">Discount</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="edit-discount"
-                          type="number"
-                          value={selectedCoupon?.discount.value}
-                          onChange={(e) => setSelectedCoupon({ ...selectedCoupon, discount: { ...selectedCoupon.discount, value: Number.parseInt(e.target.value) || 0 } })}
-                          className="flex-1"
-                        />
-                        <Select value={selectedCoupon?.discount.type} onValueChange={(value) => setSelectedCoupon({ ...selectedCoupon, discount: { ...selectedCoupon.discount, type: value } })}>
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="percentage">%</SelectItem>
-                            <SelectItem value="fixed">£</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="edit-min-spent">Min. Spent</Label>
-                      <Input id="edit-min-spent" type="number" value={selectedCoupon?.minSpent} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, minSpent: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-max-discount">Max. Discount</Label>
-                      <Input id="edit-max-discount" type="number" value={selectedCoupon?.maxDiscount} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, maxDiscount: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-quota">Quota Available</Label>
-                      <Input id="edit-quota" type="number" value={selectedCoupon?.quotaAvailable} onChange={(e) => setSelectedCoupon({ ...selectedCoupon, quotaAvailable: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="edit-expires">Expires</Label>
-                    <DateTimePicker
-                      date={selectedCoupon?.expires ? new Date(selectedCoupon.expires) : undefined}
-                      setDate={(date) => setSelectedCoupon({ ...selectedCoupon, expires: date })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-base font-medium">Matches:</Label>
-                    <div className="space-y-3 mt-2">
+                {selectedCoupon && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="edit-last-name">Last Name:</Label>
+                        <Label htmlFor="edit-promo-code">Promo Code</Label>
                         <Input
-                          id="edit-last-name"
-                          placeholder="Enter last name"
-                          value={selectedCoupon.matches?.lastName || ""}
-                          onChange={(e) =>
-                            setSelectedCoupon({
-                              ...selectedCoupon,
-                              matches: { ...selectedCoupon.matches, lastName: e.target.value },
-                            })
-                          }
+                          id="edit-promo-code"
+                          value={selectedCoupon?.promoCode}
+                          onChange={(e) => setSelectedCoupon({ ...selectedCoupon, promoCode: e.target.value })}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="edit-date-of-birth">Date of Birth:</Label>
-                        <Input
-                          id="edit-date-of-birth"
-                          placeholder="YYYY or YYYY-mm or YYYY-mm-dd"
-                          value={selectedCoupon.matches?.dateOfBirth || ""}
-                          onChange={(e) =>
-                            setSelectedCoupon({
-                              ...selectedCoupon,
-                              matches: { ...selectedCoupon.matches, dateOfBirth: e.target.value },
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="edit-registrations">Registrations (Comma separated):</Label>
-                        <Input
-                          id="edit-registrations"
-                          placeholder="GL69 RZB, GL88 RZB"
-                          value={selectedCoupon.matches?.registrations || ""}
-                          onChange={(e) =>
-                            setSelectedCoupon({
-                              ...selectedCoupon,
-                              matches: { ...selectedCoupon.matches, registrations: e.target.value },
-                            })
-                          }
-                        />
+                        <Label htmlFor="edit-discount">Discount</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="edit-discount"
+                            type="number"
+                            value={selectedCoupon?.discount.value}
+                            onChange={(e) =>
+                              setSelectedCoupon({
+                                ...selectedCoupon,
+                                discount: { ...selectedCoupon.discount, value: Number.parseInt(e.target.value) || 0 },
+                              })
+                            }
+                            className="flex-1"
+                          />
+                          <Select
+                            value={selectedCoupon?.discount.type}
+                            onValueChange={(value) =>
+                              setSelectedCoupon({ ...selectedCoupon, discount: { ...selectedCoupon.discount, type: value } })
+                            }
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="percentage">%</SelectItem>
+                              <SelectItem value="fixed">£</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium">Restrictions:</Label>
 
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        id="first-time-only"
-                        checked={selectedCoupon?.restrictions?.firstTimeOnly || false}
-                        onChange={(e) => setSelectedCoupon({ ...selectedCoupon, restrictions: { ...selectedCoupon.restrictions, firstTimeOnly: e.target.checked } })}
+                        id="edit-case-sensitive"
+                        checked={selectedCoupon.caseSensitive}
+                        onChange={(e) => setSelectedCoupon({ ...selectedCoupon, caseSensitive: e.target.checked })}
                         className="h-4 w-4"
                       />
-                      <Label htmlFor="first-time-only">First-time customers only</Label>
+                      <Label htmlFor="edit-case-sensitive">Case sensitive</Label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="edit-min-spent">Min. Spent</Label>
+                        <Input
+                          id="edit-min-spent"
+                          type="number"
+                          value={selectedCoupon?.minSpent}
+                          onChange={(e) => setSelectedCoupon({ ...selectedCoupon, minSpent: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-max-discount">Max. Discount</Label>
+                        <Input
+                          id="edit-max-discount"
+                          type="number"
+                          value={selectedCoupon?.maxDiscount}
+                          onChange={(e) => setSelectedCoupon({ ...selectedCoupon, maxDiscount: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-quota">Quota Available</Label>
+                        <Input
+                          id="edit-quota"
+                          type="number"
+                          value={selectedCoupon?.quotaAvailable}
+                          onChange={(e) => setSelectedCoupon({ ...selectedCoupon, quotaAvailable: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="max-uses-per-user">Max uses per user:</Label>
-                      <Input
-                        id="max-uses-per-user"
-                        type="number"
-                        min="1"
-                        placeholder="1"
-                        value={selectedCoupon?.restrictions?.maxUsesPerUser || ""}
-                        onChange={(e) => setSelectedCoupon({ ...selectedCoupon, restrictions: { ...selectedCoupon.restrictions, maxUsesPerUser: Number.parseInt(e.target.value) || 1 } })}
+                      <Label htmlFor="edit-expires">Expires</Label>
+                      <DateTimePicker
+                        date={selectedCoupon?.expires ? new Date(selectedCoupon.expires) : undefined}
+                        setDate={(date) => setSelectedCoupon({ ...selectedCoupon, expires: date })}
                       />
                     </div>
+
+                    <div>
+                      <Label className="text-base font-medium">Matches:</Label>
+                      <div className="space-y-3 mt-2">
+                        <div>
+                          <Label htmlFor="edit-last-name">Last Name:</Label>
+                          <Input
+                            id="edit-last-name"
+                            placeholder="Enter last name"
+                            value={selectedCoupon.matches?.lastName || ""}
+                            onChange={(e) =>
+                              setSelectedCoupon({
+                                ...selectedCoupon,
+                                matches: { ...selectedCoupon.matches, lastName: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-date-of-birth">Date of Birth:</Label>
+                          <Input
+                            id="edit-date-of-birth"
+                            placeholder="YYYY or YYYY-mm or YYYY-mm-dd"
+                            value={selectedCoupon.matches?.dateOfBirth || ""}
+                            onChange={(e) =>
+                              setSelectedCoupon({
+                                ...selectedCoupon,
+                                matches: { ...selectedCoupon.matches, dateOfBirth: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-registrations">Registrations (Comma separated):</Label>
+                          <Input
+                            id="edit-registrations"
+                            placeholder="GL69 RZB, GL88 RZB"
+                            value={selectedCoupon.matches?.registrations || ""}
+                            onChange={(e) =>
+                              setSelectedCoupon({
+                                ...selectedCoupon,
+                                matches: { ...selectedCoupon.matches, registrations: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-base font-medium">Restrictions:</Label>
+
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="first-time-only"
+                          checked={selectedCoupon?.restrictions?.firstTimeOnly || false}
+                          onChange={(e) =>
+                            setSelectedCoupon({
+                              ...selectedCoupon,
+                              restrictions: { ...selectedCoupon.restrictions, firstTimeOnly: e.target.checked },
+                            })
+                          }
+                          className="h-4 w-4"
+                        />
+                        <Label htmlFor="first-time-only">First-time customers only</Label>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="max-uses-per-user">Max uses per user:</Label>
+                        <Input
+                          id="max-uses-per-user"
+                          type="number"
+                          min="1"
+                          placeholder="1"
+                          value={selectedCoupon?.restrictions?.maxUsesPerUser || ""}
+                          onChange={(e) =>
+                            setSelectedCoupon({
+                              ...selectedCoupon,
+                              restrictions: {
+                                ...selectedCoupon.restrictions,
+                                maxUsesPerUser: Number.parseInt(e.target.value) || 1,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>}
+                )}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                     Cancel
@@ -652,7 +716,8 @@ export function CouponsSection() {
                     Delete Coupon
                   </DialogTitle>
                   <DialogDescription>
-                    Are you sure you want to delete the coupon "{selectedCoupon?.promoCode}"? This action cannot be undone.
+                    Are you sure you want to delete the coupon "{selectedCoupon?.promoCode}"? This action cannot be
+                    undone.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

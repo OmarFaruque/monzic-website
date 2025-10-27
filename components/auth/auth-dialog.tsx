@@ -184,6 +184,19 @@ export function AuthDialog({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    if (/^\d{6}$/.test(pastedText)) {
+      const newCode = pastedText.split('');
+      setVerificationCode(newCode);
+      const lastInput = document.getElementById('code-5');
+      lastInput?.focus();
+    }
+  };
+
+
+
   const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = verificationCode.join("");
@@ -417,6 +430,7 @@ export function AuthDialog({
                         value={digit}
                         onChange={(e) => handleVerificationCodeChange(index, e.target.value)}
                         onKeyDown={(e) => handleVerificationKeyDown(index, e)}
+                        onPaste={handlePaste}
                         className="w-10 h-12 text-center text-xl font-bold border-2 border-gray-200 focus:border-teal-500 rounded-lg"
                         autoComplete="off"
                       />
