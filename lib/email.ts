@@ -121,7 +121,7 @@ function buildEmailHtml(siteName: string, companyName: string, subject: string, 
           <h1>${finalHeader}</h1>
         </div>
         <div class="content">
-          ${content.replace(/\n/g, '<br>')}
+          ${content}
         </div>
         <div class="footer">
           ${finalFooter.replace(/\n/g, '<br>')}
@@ -279,13 +279,15 @@ export async function sendTicketReplyEmail({
     name,
     ticketId,
     message,
-    attachments = []
+    attachments = [],
+    ticketUrl
     }: {
     to: string
     name: string
     ticketId: string
     message: string
     attachments?: any[]
+    ticketUrl: string
     }) {
     const templates = await getEmailTemplates();
     const template = templates?.ticketReply;
@@ -300,11 +302,31 @@ export async function sendTicketReplyEmail({
       companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
     }
 
-    const data = { name, ticketId, message, siteName, companyName };
+    const data = { name, ticketId, message: message.trim().replace(/\n/g, '<br>'), siteName, companyName, ticketUrl };
     const subject = replaceEmailVariables(template.subject, data);
     const header = replaceEmailVariables(template.header, data);
-    const content = replaceEmailVariables(template.content, data);
     const footer = replaceEmailVariables(template.footer, data);
+
+    let content = template.content; // Start with raw template content
+
+    // Apply styling to {{message}} placeholder
+    content = content.replace(
+      /\{\{message\}\}/g,
+      `<div style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; padding: 16px; margin: 16px 0;">{{message}}</div>`
+    );
+
+    // Apply styling to {{ticketUrl}} placeholder
+    content = content.replace(
+      /\{\{ticketUrl\}\}/g,
+      `<div style="text-align: center; margin: 20px 0;"><a href="{{ticketUrl}}" style="display: inline-block; padding: 12px 24px; font-size: 16px; color: #ffffff; background-color: #0d9488; border-radius: 8px; text-decoration: none;">View Ticket</a></div>`
+    );
+
+    // Now, replace all variables in the pre-styled content
+    content = replaceEmailVariables(content, data);
+    
+    // Convert newlines in the final content (from template parts that were not variables)
+    content = content.replace(/\n/g, '<br>');
+
     const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
 
     return sendEmail({ to, subject, html, attachments });

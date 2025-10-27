@@ -316,7 +316,7 @@ The Tempnow Team`,
       case "ticketConfirmation":
         return ["siteName", "companyName", "name", "ticketId"]
       case "ticketReply":
-        return ["siteName", "companyName", "name", "ticketId", "message"]
+        return ["siteName", "companyName", "name", "ticketId", "message", "ticketUrl"]
       case "directEmail":
         return ["siteName", "companyName", "subject", "message"]
       default:
@@ -547,7 +547,7 @@ The Tempnow Team`,
                 </div>
 
                 <div>
-                  <Label>Available Variables se</Label>
+                  <Label>Available Variables</Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {getAvailableVariables().map((variable) => (
                       <Badge

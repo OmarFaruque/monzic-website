@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     }
 
     // Send the email
+    const ticketUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/ticket/${ticketId}`;
     await sendTicketReplyEmail({
       to,
       subject: `Reply to Ticket #${ticketId}`,
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
       ticketId,
       message,
       attachments,
+      ticketUrl,
     });
 
     return NextResponse.json({ message: "Reply email sent successfully" }, { status: 200 });

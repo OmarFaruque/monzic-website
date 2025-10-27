@@ -3,10 +3,20 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Home, MessageSquare } from "lucide-react"
 import Link from "next/link"
-import { useSettings } from "@/context/settings"
+import { db } from '@/lib/db';
+import { settings } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
 
-export default function TicketLoading() {
-  const settings = useSettings();
+export default async function TicketLoading() {
+
+  const generalSettings = await db.query.settings.findFirst({
+    where: eq(settings.param, 'general')
+  });
+  let companyName = 'Mozero AI Ltd'; // Default fallback
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    companyName = parsedSettings.companyName || 'Mozero AI Ltd';
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
@@ -216,7 +226,7 @@ export default function TicketLoading() {
           </div>
           <div className="border-t border-gray-700 mt-8 pt-8 text-center">
             <p className="text-gray-300 text-sm">
-              © {new Date().getFullYear()} {settings?.companyName || 'Mozero AI Ltd'}. All rights reserved. | Providing exceptional insurance and AI document services.
+              © {new Date().getFullYear()} {companyName}. All rights reserved. | Providing exceptional insurance and AI document services.
             </p>
           </div>
         </div>

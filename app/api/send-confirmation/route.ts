@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     // Only send email if the quote is actually paid
     if (quote.status !== 'paid' && quote.status !== 'completed') {
-        console.log(`Quote ${quoteId} status is '${quote.status}', not sending confirmation.`);
+        
         return NextResponse.json({ success: true, message: 'Email not sent for non-paid quote.' });
     }
 

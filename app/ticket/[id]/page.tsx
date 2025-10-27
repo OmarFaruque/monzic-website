@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import type React from "react"
 
@@ -20,165 +20,17 @@ import {
   AlertCircle,
   FileText,
   ArrowLeft,
+  Loader2,
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Header } from "@/components/header"
 import { useSettings } from "@/context/settings";
-
-// Mock ticket data for testing
-const mockTicketData: { [key: string]: any } = {
-  "TKT-001-abc123": {
-    id: "TKT-001",
-    subject: "Policy Cancellation Request",
-    customer: {
-      name: "John Smith",
-      email: "john.smith@example.com",
-    },
-    status: "Open",
-    priority: "High",
-    category: "Policy",
-    createdAt: "2023-05-28T10:30:00",
-    updatedAt: "2023-05-28T14:45:00",
-    messages: [
-      {
-        id: "MSG-001",
-        sender: "customer",
-        content:
-          "I would like to cancel my policy POL-123456 as I've sold my vehicle. Can you please process this and let me know if I'm eligible for any refund?",
-        timestamp: "2023-05-28T10:30:00",
-        read: true,
-        attachments: [
-          {
-            id: "ATT-001",
-            name: "sale_receipt.pdf",
-            size: "245 KB",
-            type: "application/pdf",
-            url: "#",
-          },
-        ],
-      },
-      {
-        id: "MSG-002",
-        sender: "admin",
-        content:
-          "Thank you for your message. I can help you with cancelling your policy. Could you please confirm your policy number and the date you sold the vehicle?",
-        timestamp: "2023-05-28T11:15:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-003",
-        sender: "customer",
-        content: "My policy number is POL-123456 and I sold the vehicle on May 25th, 2023.",
-        timestamp: "2023-05-28T13:20:00",
-        read: true,
-        attachments: [],
-      },
-    ],
-  },
-  "TKT-002-def456": {
-    id: "TKT-002",
-    subject: "General Inquiry - AI Document Services",
-    customer: {
-      name: "Sarah Johnson",
-      email: "sarah.j@example.com",
-    },
-    status: "Open",
-    priority: "Medium",
-    category: "General",
-    createdAt: "2023-05-27T09:15:00",
-    updatedAt: "2023-05-27T16:30:00",
-    messages: [
-      {
-        id: "MSG-005",
-        sender: "customer",
-        content:
-          "Hi, I'm interested in your AI document generation services. Can you tell me more about what types of documents you can create and the pricing?",
-        timestamp: "2023-05-27T09:15:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-006",
-        sender: "admin",
-        content:
-          "Thank you for your interest! Our AI can generate various business documents including contracts, proposals, reports, and marketing materials. Pricing starts at £10 per document. Would you like me to send you our full service catalog?",
-        timestamp: "2023-05-27T10:45:00",
-        read: true,
-        attachments: [
-          {
-            id: "ATT-005",
-            name: "service_catalog.pdf",
-            size: "1.2 MB",
-            type: "application/pdf",
-            url: "#",
-          },
-        ],
-      },
-    ],
-  },
-  "TKT-003-ghi789": {
-    id: "TKT-003",
-    subject: "Payment Issue",
-    customer: {
-      name: "Michael Brown",
-      email: "m.brown@example.com",
-    },
-    status: "Resolved",
-    priority: "High",
-    category: "Billing",
-    createdAt: "2023-05-26T14:20:00",
-    updatedAt: "2023-05-26T17:45:00",
-    messages: [
-      {
-        id: "MSG-009",
-        sender: "customer",
-        content: "I was charged twice for my policy renewal. Can you please check and refund the extra payment?",
-        timestamp: "2023-05-26T14:20:00",
-        read: true,
-        attachments: [
-          {
-            id: "ATT-003",
-            name: "bank_statement.jpg",
-            size: "180 KB",
-            type: "image/jpeg",
-            url: "#",
-          },
-        ],
-      },
-      {
-        id: "MSG-010",
-        sender: "admin",
-        content:
-          "I apologize for the inconvenience. I can see that there was indeed a duplicate charge on your account. I've initiated a refund for the extra payment, which should be back in your account within 3-5 business days. Please let me know if you don't receive it by then.",
-        timestamp: "2023-05-26T15:30:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-011",
-        sender: "customer",
-        content: "Thank you for the quick response. I'll keep an eye out for the refund.",
-        timestamp: "2023-05-26T16:15:00",
-        read: true,
-        attachments: [],
-      },
-      {
-        id: "MSG-012",
-        sender: "admin",
-        content:
-          "Great news! I've confirmed that the refund has been processed successfully. You should see it in your account within 1-2 business days. Is there anything else I can help you with?",
-        timestamp: "2023-05-26T17:45:00",
-        read: true,
-        attachments: [],
-      },
-    ],
-  },
-}
+import { useToast } from "@/hooks/use-toast";
 
 export default function TicketPage({ params }: { params: { id: string } }) {
   const [ticket, setTicket] = useState<any>(null)
+  const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("")
   const [attachments, setAttachments] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -186,14 +38,33 @@ export default function TicketPage({ params }: { params: { id: string } }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const settings = useSettings();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Load ticket data based on ID
-    const ticketData = mockTicketData[params.id]
-    if (ticketData) {
-      setTicket(ticketData)
+    if (!params.id) {
+      setLoading(false);
+      return;
     }
-  }, [params.id])
+
+    const fetchTicket = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/tickets/${params.id}`);
+        if (!response.ok) {
+          throw new Error('Ticket not found');
+        }
+        const data = await response.json();
+        setTicket(data);
+      } catch (error) {
+        console.error("Failed to fetch ticket:", error);
+        setTicket(null); // Ensure not-found UI is shown
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTicket();
+  }, [params.id]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -205,42 +76,45 @@ export default function TicketPage({ params }: { params: { id: string } }) {
 
     setIsSubmitting(true)
 
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+    const formData = new FormData();
+    formData.append('message', newMessage);
+    attachments.forEach(file => {
+      formData.append('attachments', file);
+    });
 
-      // Add new message to ticket
-      const newMsg = {
-        id: `MSG-${Date.now()}`,
-        sender: "customer",
-        content: newMessage,
-        timestamp: new Date().toISOString(),
-        read: true,
-        attachments: attachments.map((file, index) => ({
-          id: `ATT-${Date.now()}-${index}`,
-          name: file.name,
-          size: `${Math.round(file.size / 1024)} KB`,
-          type: file.type,
-          url: "#",
-        })),
+    try {
+      const response = await fetch(`/api/tickets/${params.id}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit message');
       }
 
-      setTicket({
-        ...ticket,
-        messages: [...ticket.messages, newMsg],
+      const newMsg = await response.json();
+
+      setTicket((prevTicket: any) => ({
+        ...prevTicket,
+        messages: [...prevTicket.messages, newMsg],
         updatedAt: new Date().toISOString(),
-      })
+      }));
 
       setNewMessage("")
       setAttachments([])
       setSubmitSuccess(true)
 
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setSubmitSuccess(false)
       }, 3000)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to submit message:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Could not send your reply. Please try again.",
+      });
     } finally {
       setIsSubmitting(false)
     }
@@ -296,6 +170,17 @@ export default function TicketPage({ params }: { params: { id: string } }) {
     }
   }
 
+  if (loading) {
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50 flex items-center justify-center">
+            <div className="flex items-center gap-4 text-lg text-gray-700">
+                <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+                Loading Support Ticket...
+            </div>
+        </div>
+    )
+  }
+
   if (!ticket) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
@@ -325,7 +210,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
           </Card>
         </div>
 
-        {/* Footer - Copied from home page */}
+        {/* Footer */}
         <footer className="bg-teal-600 py-4 sm:py-6 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto">
             <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-white">
@@ -454,18 +339,18 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                     className={`flex ${message.sender === "admin" ? "justify-start" : "justify-end"}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${
+                      className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${`
                         message.sender === "admin"
                           ? "bg-gradient-to-br from-teal-50 to-teal-100 border border-teal-200"
                           : "bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200"
-                      }`}
+                      `}`}
                     >
                       <div className="flex justify-between items-center mb-3">
                         <div className="flex items-center gap-2">
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${`
                               message.sender === "admin" ? "bg-teal-600 text-white" : "bg-gray-600 text-white"
-                            }`}
+                            `}`}
                           >
                             {message.sender === "admin"
                               ? "MS"
@@ -484,36 +369,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                       </div>
                       <p className="whitespace-pre-wrap text-gray-800 leading-relaxed">{message.content}</p>
 
-                      {/* Attachments */}
-                      {message.attachments && message.attachments.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                          <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            Attachments:
-                          </div>
-                          {message.attachments.map((attachment: any) => (
-                            <div
-                              key={attachment.id}
-                              className="flex items-center gap-3 bg-white rounded-lg p-3 border border-gray-200 shadow-sm"
-                            >
-                              <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
-                                <FileText className="h-4 w-4 text-teal-600" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{attachment.name}</p>
-                                <p className="text-xs text-gray-500">{attachment.size}</p>
-                              </div>
-                              <div className="flex gap-1">
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-teal-50">
-                                  <Eye className="h-4 w-4 text-teal-600" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-teal-50">
-                                  <Download className="h-4 w-4 text-teal-600" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {/* Attachments are not displayed in history as they are not stored */}
                     </div>
                   </div>
                 ))}
@@ -566,8 +422,10 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                         Add Files
                       </Button>
                       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple />
-                      <span className="text-sm text-gray-500">Maximum 10MB per file</span>
                     </div>
+                     <p className="text-xs text-gray-500 mt-2">
+                        Note: Attachments are sent directly via email and will not be stored on the ticket page.
+                    </p>
 
                     {/* Attachment Preview */}
                     {attachments.length > 0 && (
@@ -629,7 +487,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Footer - Copied from home page */}
+      {/* Footer */}
       <footer className="bg-teal-600 py-4 sm:py-6 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-white">
