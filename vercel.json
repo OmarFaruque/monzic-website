@@ -8,5 +8,10 @@
       "path": "/api/cron/send-expiry-reminders",
       "schedule": "* * * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/**/*.ts": {
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    }
+  }
 }
