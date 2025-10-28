@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { aiDocuments } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import puppeteer from "puppeteer-core";
-import chrome from "@sparticuz/chrome-aws-lambda";
+import chrome from "@sparticuz/chromium";
 
 export async function GET(
   req: Request,
