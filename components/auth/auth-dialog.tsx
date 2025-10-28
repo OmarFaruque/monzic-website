@@ -226,7 +226,7 @@ export function AuthDialog({
       } else {
         login({ user: data.user, token: data.token }, { redirect: !disableRedirect });
         // Replace showSuccess with a more appropriate notification for the dialog
-        console.log("Email Verified!", "Your account is now active. Proceeding...");
+        // console.log("Email Verified!", "Your account is now active. Proceeding...");
         onSuccess();
         onClose();
       }

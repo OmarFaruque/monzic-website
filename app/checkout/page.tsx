@@ -207,7 +207,7 @@ export default function CheckoutPage() {
 
       const data = await response.json()
 
-      console.log('dataiscoupon: ', data)
+      
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to validate promo code")
@@ -309,7 +309,7 @@ export default function CheckoutPage() {
     e.preventDefault()
     const code = verificationCode.join("");
 
-    console.log('code inside verrifycation submit: ', code)
+    // console.log('code inside verrifycation submit: ', code)
     if (code.length !== 6) {
       addNotification({type: "warning", title: "Incomplete Code", message: "Please enter the complete 6-digit verification code."});
       return;

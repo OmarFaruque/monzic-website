@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         set: { value },
       });
 
-    console.log("Email templates updated.");
+    
 
     return NextResponse.json({
       success: true,

@@ -145,7 +145,7 @@ export function logAuditEvent(
     auditLogs.splice(0, auditLogs.length - 10000)
   }
 
-  console.log("Audit Log:", auditLog)
+  // console.log("Audit Log:", auditLog)
 }
 
 export function getAuditLogs(limit = 100, offset = 0): AuditLog[] {

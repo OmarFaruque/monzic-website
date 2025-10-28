@@ -324,7 +324,7 @@ export default function PolicyDetailsPage() {
   const policyStatus = getPolicyStatus(policyData);
 
 
-  console.log('settings: ', settings)
+  
 
 
   if (isLoading || !isVerified) {

@@ -52,7 +52,7 @@ export function OrdersSection() {
 
   const handleDownload = (orderId: string) => {
     showSuccess("Document Downloaded", "Your original document has been downloaded successfully.", 3000)
-    console.log(`Downloading original document for order: ${orderId}`)
+    // console.log(`Downloading original document for order: ${orderId}`)
 
     // In a real implementation, this would fetch and download the original PDF
     // that was generated when the user made the purchase

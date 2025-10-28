@@ -94,7 +94,7 @@ export function BlacklistSection({ blacklistData }: { blacklistData: any }) {
 
   const handleUpdate = () => {
     if (!editingItem) return;
-    console.log('Updating blacklist item with:', editingItem);
+    // console.log('Updating blacklist item with:', editingItem);
     startTransition(async () => {
       const result = await updateBlacklistItem(editingItem.id, editingItem);
       if (result.success) {

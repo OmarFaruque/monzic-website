@@ -292,8 +292,8 @@ export default function TermsOfServicesPage() {
                       </div>
                       <div>
                         <h4 className="font-semibold mb-2">Limitation of Liability</h4>
-                        <p>
-                          TO THE MAXIMUM EXTENT PERMITTED BY LAW, MONZIC SOLUTIONS LTD SHALL NOT BE LIABLE FOR ANY
+                        <p className="text-uppercase uppercase">
+                          TO THE MAXIMUM EXTENT PERMITTED BY LAW, {settings.companyName} SHALL NOT BE LIABLE FOR ANY
                           INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED
                           TO LOSS OF PROFITS, DATA, USE, OR GOODWILL.
                         </p>
