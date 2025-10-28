@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
         <tr><td class="td1">Date of Claim/Incident</td><td class="td2">-</td></tr>
         <tr><td class="td1">Costs</td><td class="td2">-</td></tr>
         <tr><td class="td1">Fault or Non-Fault</td><td class="td2">-</td></tr>
-        <tr><td colspan="2" style="width:100%;"><br><div style="width:100%; background-color:#000; color:#FFF; text-align:center; font-size:9.2pt; padding: 4px;">IMPORTANT - You also must read the Mulsanne Insurance Proposer Declaration & Important Notes on Pages 2 & 3</div></td></tr>
+        <tr><td colspan="2" style="width:100%;"><div style="margin-top: 4px; width:100%; background-color:#000; color:#FFF; text-align:center; font-size:9.2pt; padding: 4px;">IMPORTANT - You also must read the Mulsanne Insurance Proposer Declaration & Important Notes on Pages 2 & 3</div></td></tr>
     </table>
     <div class="page-break"></div>
     <div style="font-size:15pt; font-weight:bold">Mulsanne / PROPOSER DECLARATION</div>
@@ -192,8 +192,8 @@ export async function GET(req: NextRequest) {
       footerTemplate: footerTemplate,
       displayHeaderFooter: true,
       margin: {
-        top: "80px",
-        bottom: "50px",
+        top: "60px",
+        bottom: "40px",
         right: "40px",
         left: "40px",
       },

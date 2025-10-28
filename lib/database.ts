@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from 'next/cache';
 import { db } from "./db"
 import { quotes, users, settings } from "./schema"
 import { eq, and } from "drizzle-orm"
@@ -38,6 +39,7 @@ export async function updateUser(userId: string, updates: Partial<User>): Promis
 }
 
 export async function getSettings(param: string): Promise<any | null> {
+  noStore();
   const [setting] = await db.select().from(settings).where(eq(settings.param, param))
   if (setting && setting.value) {
     return JSON.parse(setting.value)

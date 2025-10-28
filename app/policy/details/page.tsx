@@ -575,7 +575,7 @@ export default function PolicyDetailsPage() {
                       <div className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:bg-gray-50 cursor-pointer"
                           onClick={() =>
                             window.open(
-                              `${process.env.NEXT_PUBLIC_BASE_URL}/.pdf/monzit.pdf`,
+                              `${process.env.NEXT_PUBLIC_BASE_URL}/.pdf/tempnow.pdf`,
                               "_blank"
                             )
                           }
