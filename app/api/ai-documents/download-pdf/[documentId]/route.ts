@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aiDocuments } from "@/lib/schema";
 import { eq } from "drizzle-orm";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chrome from "@sparticuz/chrome-aws-lambda";
 
 export async function GET(
   req: Request,
@@ -23,7 +24,11 @@ export async function GET(
 
     const html = document[0].content as string;
 
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: chrome.args,
+      executablePath: await chrome.executablePath(),
+      headless: chrome.headless,
+    });
     const page = await browser.newPage();
     await page.setContent(html);
     const pdfBuffer = await page.pdf({ format: 'A4' });

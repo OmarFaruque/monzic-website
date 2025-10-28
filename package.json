@@ -75,7 +75,6 @@
     "nodemailer": "^7.0.6",
     "pdf-lib": "^1.17.1",
     "postgres": "^3.4.7",
-    "puppeteer": "^24.23.0",
     "react": "^18",
     "react-day-picker": "9.8.0",
     "react-dom": "^18",

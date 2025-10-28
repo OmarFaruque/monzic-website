@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chrome from "@sparticuz/chrome-aws-lambda";
 import { getPolicyByNumber } from "@/lib/policy-server";
 
 export async function GET(req: NextRequest) {
@@ -167,7 +168,9 @@ export async function GET(req: NextRequest) {
     `;
 
     const browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: chrome.args,
+      executablePath: await chrome.executablePath(),
+      headless: chrome.headless,
     });
     const page = await browser.newPage();
     
