@@ -445,3 +445,45 @@ export async function createVerificationCodeEmail(firstName: string, code: strin
 
   return { subject, html };
 }
+
+export async function createCustomerReplyEmail({
+  ticketId,
+  ticketSubject,
+  customerName,
+  message,
+  ticketUrl,
+}: {
+  ticketId: string;
+  ticketSubject:string;
+  customerName: string;
+  message: string;
+  ticketUrl: string;
+}) {
+  const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
+  let siteName = "";
+  let companyName = "";
+  if (generalSettings && generalSettings.value) {
+    const parsedSettings = JSON.parse(generalSettings.value);
+    siteName = parsedSettings.siteName || "Tempnow";
+    companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
+  }
+
+  const subject = `New Customer Reply on Ticket #${ticketId}: ${ticketSubject}`;
+  const header = `Ticket Reply: #${ticketId}`;
+  const content = `
+    <p>A customer has replied to ticket #${ticketId} (${ticketSubject}).</p>
+    <p><strong>Customer:</strong> ${customerName}</p>
+    <p><strong>Message:</strong></p>
+    <div style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; padding: 16px; margin: 16px 0;">
+      ${message.trim().replace(/\n/g, '<br>')}
+    </div>
+    <div style="text-align: center; margin: 20px 0;">
+        <a href="${ticketUrl}" style="display: inline-block; padding: 12px 24px; font-size: 16px; color: #ffffff; background-color: #0d9488; border-radius: 8px; text-decoration: none;">View Ticket</a>
+    </div>
+  `;
+  const footer = `This is an automated notification. Please do not reply directly to this email.`;
+
+  const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
+
+  return { subject, html };
+}

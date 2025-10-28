@@ -304,6 +304,29 @@ export default function PolicyDetailsPage() {
     return `${day}/${month}/${year} ${timeString}`
   }
 
+  const getPolicyStatus = (policy) => {
+    if (!policy || !policy.startDate || !policy.endDate) {
+        return "Unknown";
+    }
+    const now = new Date();
+    const startDate = new Date(policy.startDate);
+    const endDate = new Date(policy.endDate);
+
+    if (endDate < now) {
+      return "Expired";
+    }
+    if (startDate > now) {
+      return "Upcoming";
+    }
+    return "Active";
+  };
+
+  const policyStatus = getPolicyStatus(policyData);
+
+
+  console.log('settings: ', settings)
+
+
   if (isLoading || !isVerified) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -363,14 +386,14 @@ export default function PolicyDetailsPage() {
               <div className="flex justify-start">
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    policyData.status === "Active"
+                    policyStatus === "Active"
                       ? "bg-green-100 text-green-800"
-                      : policyData.status === "Expired"
+                      : policyStatus === "Expired"
                         ? "bg-red-100 text-red-800"
                         : "bg-yellow-100 text-yellow-800"
                   }`}
                 >
-                  {policyData.status}
+                  {policyStatus}
                 </span>
               </div>
             </div>
@@ -453,18 +476,7 @@ export default function PolicyDetailsPage() {
                         <span className="font-medium text-sm">{policyData.policyNumber}</span>
                       </div>
                       <div className="flex justify-between sm:flex-col">
-                        <span className="text-gray-600 text-sm">Status:</span>
-                        <span
-                          className={`font-medium text-sm ${
-                            policyData.status === "Active"
-                              ? "text-green-600"
-                              : policyData.status === "Expired"
-                                ? "text-red-600"
-                                : "text-yellow-600"
-                          }`}
-                        >
-                          {policyData.status}
-                        </span>
+                        
                       </div>
                       <div className="flex justify-between sm:flex-col">
                         <span className="text-gray-600 text-sm">Premium:</span>

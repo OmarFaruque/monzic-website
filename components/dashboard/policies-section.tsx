@@ -61,12 +61,10 @@ const PoliciesSection = () => {
         return "bg-green-100 text-green-800 border-green-200"
       case "expired":
         return "bg-red-100 text-red-800 border-red-200"
-      case "pending":
+      case "upcoming":
         return "bg-yellow-100 text-yellow-800 border-yellow-200"
-      case "cancelled":
-        return "bg-gray-100 text-gray-800 border-gray-200"
       default:
-        return "bg-blue-100 text-blue-800 border-blue-200"
+        return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
 
@@ -76,14 +74,26 @@ const PoliciesSection = () => {
         return "🟢"
       case "expired":
         return "🔴"
-      case "pending":
+      case "upcoming":
         return "🟡"
-      case "cancelled":
-        return "⚫"
       default:
-        return "🔵"
+        return "⚪"
     }
   }
+
+  const getPolicyStatus = (policy) => {
+    const now = new Date();
+    const startDate = new Date(policy.startDate);
+    const endDate = new Date(policy.endDate);
+
+    if (endDate < now) {
+      return "expired";
+    }
+    if (startDate > now) {
+      return "upcoming";
+    }
+    return "active";
+  };
 
   const filteredPolicies = policies.filter(
     (policy) =>
@@ -215,7 +225,9 @@ const PoliciesSection = () => {
 
       {/* Policy Cards */}
       <div className="grid gap-6">
-        {filteredPolicies.map((policy) => (
+        {filteredPolicies.map((policy) => {
+          const status = getPolicyStatus(policy);
+          return (
           <Card key={policy.id} className="border border-gray-200 hover:shadow-lg transition-shadow duration-200">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -229,9 +241,9 @@ const PoliciesSection = () => {
                   </div>
                 </div>
 
-                <Badge className={`${getStatusColor(policy.status)} font-medium`}>
-                  <span className="mr-1">{getStatusIcon(policy.status)}</span>
-                  {policy.status.charAt(0).toUpperCase() + policy.status.slice(1)}
+                <Badge className={`${getStatusColor(status)} font-medium`}>
+                  <span className="mr-1">{getStatusIcon(status)}</span>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
                 </Badge>
               </div>
             </CardHeader>
@@ -308,7 +320,8 @@ const PoliciesSection = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
+          )
+        })}}
       </div>
 
       {/* No Search Results */}
@@ -350,9 +363,9 @@ const PoliciesSection = () => {
               {/* Policy Status */}
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <Badge className={`${getStatusColor(selectedPolicy.status)} font-medium text-sm`}>
-                    <span className="mr-1">{getStatusIcon(selectedPolicy.status)}</span>
-                    {selectedPolicy.status.charAt(0).toUpperCase() + selectedPolicy.status.slice(1)}
+                  <Badge className={`${getStatusColor(getPolicyStatus(selectedPolicy))} font-medium text-sm`}>
+                    <span className="mr-1">{getStatusIcon(getPolicyStatus(selectedPolicy))}</span>
+                    {getPolicyStatus(selectedPolicy).charAt(0).toUpperCase() + getPolicyStatus(selectedPolicy).slice(1)}
                   </Badge>
                   <span className="text-sm text-gray-600">Purchased on {formatDate(selectedPolicy.createdAt)}</span>
                 </div>

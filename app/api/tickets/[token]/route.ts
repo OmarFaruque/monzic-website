@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { tickets, messages } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
-import { getAdminEmail, sendEmail } from '@/lib/email';
+import { getAdminEmail, sendEmail, createCustomerReplyEmail } from '@/lib/email';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: NextRequest, { params }: { params: { token: string } }) {
@@ -95,20 +95,19 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     }
 
     const adminEmail = await getAdminEmail();
-
-    const emailHtml = `
-      <p>A customer has replied to ticket #${ticket.id} (${ticket.subject}).</p>
-      <p><strong>Customer:</strong> ${ticket.firstName} ${ticket.lastName}</p>
-      <p><strong>Message:</strong></p>
-      <div style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; padding: 16px; margin: 16px 0;">
-        ${message.trim().replace(/\n/g, '<br>')}
-      </div>
-    `;
+    const ticketUrl = `${request.nextUrl.protocol}//${request.headers.get('host')}/ticket/${ticket.token}`;
+    const emailContent = await createCustomerReplyEmail({
+      ticketId: ticket.id.toString(),
+      ticketSubject: ticket.subject,
+      customerName: `${ticket.firstName} ${ticket.lastName}`,
+      message: message,
+      ticketUrl: ticketUrl,
+    });
     
     await sendEmail({
       to: adminEmail,
-      subject: `New Customer Reply on Ticket #${ticket.id}: ${ticket.subject}`,
-      html: emailHtml,
+      subject: emailContent.subject,
+      html: emailContent.html,
       attachments: emailAttachments,
     });
 

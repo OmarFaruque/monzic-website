@@ -972,6 +972,8 @@ export default function GetQuotePage() {
     return null;
   }
 
+  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-teal-50 flex flex-col">
       <ExpirationDialog />
@@ -1073,7 +1075,7 @@ export default function GetQuotePage() {
                     <div className="flex justify-between text-sm sm:text-base">
                       <span className="text-gray-600">Vehicle:</span>
                       <span className="font-medium text-right">
-                        {vehicle?.year} {vehicle?.make} {vehicle?.model}
+                        {vehicle?.year != 'Unknown' ? vehicle?.year : ''} {vehicle?.make} {vehicle?.model}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm sm:text-base">
@@ -1214,6 +1216,14 @@ export default function GetQuotePage() {
                       <span className="text-gray-600">Address:</span>
                       <span className="font-medium text-right">{formData.address}</span>
                     </div>
+                    <div className="flex justify-between text-sm sm:text-base">
+                      <span className="text-gray-600">License Type:</span>
+                      <span className="font-medium text-right">{formData.licenseType}</span>
+                    </div>
+                    <div className="flex justify-between text-sm sm:text-base">
+                      <span className="text-gray-600">License Held:</span>
+                      <span className="font-medium text-right">{formData.licenseHeld}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1224,7 +1234,7 @@ export default function GetQuotePage() {
                     <div className="flex justify-between text-sm sm:text-base">
                       <span className="text-gray-600">Vehicle:</span>
                       <span className="font-medium text-right">
-                        {vehicle?.year} {vehicle?.make} {vehicle?.model}
+                        {vehicle?.year != 'Unknown' ? vehicle?.year : ''} {vehicle?.make} {vehicle?.model}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm sm:text-base">
@@ -1254,65 +1264,52 @@ export default function GetQuotePage() {
                   </div>
                 </div>
 
-                {/* License Information */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">License Information</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm sm:text-base">
-                      <span className="text-gray-600">License Type:</span>
-                      <span className="font-medium text-right">{formData.licenseType}</span>
-                    </div>
-                    <div className="flex justify-between text-sm sm:text-base">
-                      <span className="text-gray-600">License Held:</span>
-                      <span className="font-medium text-right">{formData.licenseHeld}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Estimated Price */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Calculated Price</h3>
-                  <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-4 sm:p-6">
-                    <div className="text-center">
-                      <div className="text-2xl sm:text-3xl font-bold text-teal-600 mb-2">
-                        {appliedPromo ? (
-                          <>
-                            <span className="text-gray-400 line-through mr-2">£{quote?.total.toFixed(2)}</span>
-                            <span>£{(quote?.total - discountAmount).toFixed(2)}</span>
-                          </>
-                        ) : (
-                          `£${quote?.total.toFixed(2)}`
+                {/* Calculated Price */}
+                <div className="lg:col-span-2 flex flex-col items-center justify-center pt-6">
+                  <div className="w-full max-w-md">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Calculated Price</h3>
+                    <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-4 sm:p-6">
+                      <div className="text-center">
+                        <div className="text-2xl sm:text-3xl font-bold text-teal-600 mb-2">
+                          {appliedPromo ? (
+                            <>
+                              <span className="text-gray-400 line-through mr-2">£{quote?.total.toFixed(2)}</span>
+                              <span>£{(quote?.total - discountAmount).toFixed(2)}</span>
+                            </>
+                          ) : (
+                            `£${quote?.total.toFixed(2)}`
+                          )}
+                        </div>
+                        <div className="text-sm sm:text-base text-gray-700">Calculated Premium</div>
+                        {appliedPromo && (
+                          <div className="text-sm text-green-600 mt-1">
+                            Discount applied: -£{discountAmount.toFixed(2)}
+                          </div>
                         )}
                       </div>
-                      <div className="text-sm sm:text-base text-gray-700">Calculated Premium</div>
-                      {appliedPromo && (
-                        <div className="text-sm text-green-600 mt-1">
-                          Discount applied: -£{discountAmount.toFixed(2)}
-                        </div>
-                      )}
                     </div>
-                  </div>
-                  {/* Promo Code Section */}
-                  <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Have a promo code?</label>
-                    <div className="flex space-x-2">
-                      <Input
-                        type="text"
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value)}
-                        placeholder="Enter promo code"
-                        className="flex-1"
-                        disabled={isApplyingPromo || !!appliedPromo}
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleApplyPromo}
-                        variant="outline"
-                        className="px-6"
-                        disabled={isApplyingPromo || !promoCode || !!appliedPromo}
-                      >
-                        {isApplyingPromo ? "Applying..." : appliedPromo ? "Applied" : "Apply"}
-                      </Button>
+                    {/* Promo Code Section */}
+                    <div className="mt-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Have a promo code?</label>
+                      <div className="flex space-x-2">
+                        <Input
+                          type="text"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value)}
+                          placeholder="Enter promo code"
+                          className="flex-1"
+                          disabled={isApplyingPromo || !!appliedPromo}
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleApplyPromo}
+                          variant="outline"
+                          className="px-6"
+                          disabled={isApplyingPromo || !promoCode || !!appliedPromo}
+                        >
+                          {isApplyingPromo ? "Applying..." : appliedPromo ? "Applied" : "Apply"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
