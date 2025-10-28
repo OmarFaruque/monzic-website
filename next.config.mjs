@@ -1,12 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/@sparticuz/chromium/bin',
-      ],
-    },
-  },
   async headers() {
     return [
       {
@@ -28,6 +21,12 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('@sparticuz/chromium');
+    }
+    return config;
   },
 }
 
