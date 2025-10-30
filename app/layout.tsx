@@ -32,7 +32,10 @@ export default async function RootLayout({
   const paymentSettings = await getSettings("payment")
 
   const settings = {
-    ...generalSettings,
+    general: {
+      ...generalSettings,
+      siteName: generalSettings?.siteName || "TEMPNOW", // Ensure siteName is always present
+    },
     openai: openaiSettings,
     bank: bankSettings,
     stripe: stripeSettings,

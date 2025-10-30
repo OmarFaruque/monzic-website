@@ -22,7 +22,11 @@ export async function POST(request: NextRequest) {
       switch (type) {
         case "ai_document":
           emailData = await createAIDocumentPurchaseEmail(
-            customerData.name,
+            customerData.firstName,
+            customerData.lastName,
+            purchaseData.orderId,
+            new Date().toLocaleDateString(),
+            purchaseData.amount,
             purchaseData.documentType,
             purchaseData.downloadLink,
           );

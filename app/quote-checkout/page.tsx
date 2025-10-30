@@ -230,18 +230,7 @@ function QuoteCheckoutPage() {
     });
   }
 
-  useEffect(() => {
-    if (paymentProvider) {
-        const cardPaymentMethod = paymentMethods.find(method => method.type === 'card');
-        if (cardPaymentMethod) {
-            setSelectedPaymentMethod(cardPaymentMethod.id);
-             setPaymentView('card-details');
-        } else if (bankPaymentEnabled) {
-            setSelectedPaymentMethod('bank');
-            setPaymentView('bank-details');
-        }
-    }
-}, [paymentProvider, bankPaymentEnabled]);
+
 
   useEffect(() => {
     if (authLoading) {
@@ -461,12 +450,20 @@ function QuoteCheckoutPage() {
        <ExpirationDialog />
       <header className="bg-primary px-6 py-4">
         <div className="mx-auto max-w-7xl">
-          <h1 className="text-lg font-bold tracking-wide text-primary-foreground">{settings?.siteName || 'TEMPNOW'}</h1>
+          <Link href="/" className="text-2xl font-bold text-white hover:text-teal-100 transition-colors">
+            {settings?.siteName || 'MONZIC'}
+          </Link>
         </div>
       </header>
 
       <div className="mx-auto max-w-7xl px-6 py-6">
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={() => router.back()}>
+        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={() => {
+                if (quoteData?.customerData?.registration) {
+                  router.push(`/get-quote?reg=${quoteData.customerData.registration}&view=review`);
+                } else {
+                  router.push('/'); // Fallback to home if reg is not found
+                }
+              }} >
           <ArrowLeft className="h-4 w-4" />
           Back to Quote
         </Button>
@@ -606,7 +603,7 @@ function QuoteCheckoutPage() {
                         {selectedPaymentMethod === 'airwallex' && (
                             <div id="airwallex-card-element" ref={airwallexCardRef} className="border border-border rounded-lg p-4 mb-6"></div>
                         )}
-                        {selectedPaymentMethod === 'square' && squareAppId && squareLocationId && (
+                        {selectedPaymentMethod === 'square' && squareAppId && squareLocationId && (settings?.square?.paymentMethods?.card || settings?.square?.paymentMethods?.googlePay || settings?.square?.paymentMethods?.applePay) && (
                             <PaymentForm
                                 applicationId={squareAppId}
                                 locationId={squareLocationId}
@@ -614,11 +611,13 @@ function QuoteCheckoutPage() {
                                 createPaymentRequest={createPaymentRequest}
                             >
                                 <div className="space-y-4 my-4">
-                                <SquareGooglePay />
-                                <SquareApplePay />
-                                <div className="border border-border rounded-lg p-4">
-                                    <SquareCreditCard />
-                                </div>
+                                {settings?.square?.paymentMethods?.googlePay && <SquareGooglePay />}
+                                {settings?.square?.paymentMethods?.applePay && <SquareApplePay />}
+                                {settings?.square?.paymentMethods?.card && (
+                                    <div className="border border-border rounded-lg p-4">
+                                        <SquareCreditCard />
+                                    </div>
+                                )}
                                 </div>
                             </PaymentForm>
                         )}

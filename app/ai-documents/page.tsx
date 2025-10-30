@@ -50,7 +50,7 @@ import { PaymentForm, CreditCard as SquareCreditCard } from 'react-square-web-pa
 import { useSettings } from "@/context/settings";
 
 const StripePayment = React.forwardRef(
-  ({ docData, user, tip, discount, totalWithTip, onProcessingChange }, ref) => {
+  ({ docData, user, discount, finalPrice, onProcessingChange }, ref) => {
     const stripe = useStripe();
     const elements = useElements();
     const { toast } = useToast();
@@ -77,7 +77,6 @@ const StripePayment = React.forwardRef(
               body: JSON.stringify({
                 docData,
                 user,
-                tip,
                 discount,
               }),
             }
@@ -143,7 +142,7 @@ const StripePayment = React.forwardRef(
                 docDetails: {
                   prompt: docData.prompt,
                   content: docData.content,
-                  price: totalWithTip,
+                  price: finalPrice,
                 },
                 userDetails: user,
                 transaction: paymentIntent,
@@ -155,15 +154,15 @@ const StripePayment = React.forwardRef(
                 }
                 return response.json();
               })
-              .then((data) => {
-                localStorage.setItem("aiDocumentContent", docData.content);
-                localStorage.setItem(
-                  "aiDocumentType",
-                  docData.prompt.substring(0, 100) + "..."
-                );
-                window.location.href = "/ai-payment-confirmation";
-              })
-              .catch((error) => {
+                              .then((data) => {
+                                localStorage.setItem("aiDocumentContent", docData.content);
+                                localStorage.setItem(
+                                  "aiDocumentType",
+                                  docData.prompt.substring(0, 100) + "..."
+                                );
+                                localStorage.setItem("aiDocumentUuid", data.documentUuid);
+                                window.location.href = "/ai-payment-confirmation";
+                              })              .catch((error) => {
                 console.error("Error saving AI document:", error);
                 toast({
                   variant: "destructive",
@@ -215,7 +214,6 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
   const [isGenerating, setIsGenerating] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
-  const [tipAmount, setTipAmount] = useState(0);
   const [discountCode, setDiscountCode] = useState("");
   const settings = useSettings();
   const [appliedDiscount, setAppliedDiscount] = useState(null);
@@ -229,10 +227,28 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const airwallexCardRef = useRef(null);
   const [airwallexElement, setAirwallexElement] = useState(null);
+  const [documentPrice, setDocumentPrice] = useState(settings?.openai?.price ?? 10);
   const stripePaymentRef = useRef<{ handlePayment: () => Promise<void> }>(null);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
 
-  const documentPrice = settings?.openai?.price ?? 10;
+  useEffect(() => {
+    const defaultPrice = 10;
+    if (settings && settings.openai) {
+      const minPrice = settings.openai.minPrice;
+      const maxPrice = settings.openai.maxPrice;
+
+      if (typeof minPrice === 'number' && typeof maxPrice === 'number' && minPrice < maxPrice) {
+        const randomPrice = Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
+        setDocumentPrice(randomPrice);
+      } else {
+        setDocumentPrice(settings.openai.price ?? defaultPrice);
+      }
+    } else {
+      setDocumentPrice(defaultPrice);
+    }
+  }, [settings]);
+
 
   const getDiscountAmount = useCallback(() => {
     if (!appliedDiscount || appliedDiscount.error) return 0;
@@ -260,7 +276,6 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                   price: documentPrice,
                 },
                 user: user,
-                tip: tipAmount,
                 discount: appliedDiscount ? getDiscountAmount() : 0,
               }),
             }
@@ -286,7 +301,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
       };
       initAirwallex();
     }
-  }, [paymentProvider, showPaymentPopup, documentRequest, generatedText, documentPrice, user, tipAmount, appliedDiscount, getDiscountAmount, toast]);
+  }, [paymentProvider, showPaymentPopup, documentRequest, generatedText, documentPrice, user, appliedDiscount, getDiscountAmount, toast]);
 
   const quickTemplates = useMemo(
     () => [
@@ -337,6 +352,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
 
       if (data.content) {
         setGeneratedText(data.content);
+        // setDocumentPrice(data.price);
         setShowOutput(true);
       } else {
         throw new Error("No content received from the server.");
@@ -368,8 +384,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
   }, []);
 
   const finalPrice = documentPrice - getDiscountAmount();
-  const totalWithTip = finalPrice + tipAmount;
-
+  
   const handlePayment = useCallback(async (token) => {
     switch (paymentProvider) {
       case 'square':
@@ -389,7 +404,6 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                             price: documentPrice,
                         },
                         user: user,
-                        tip: tipAmount,
                         discount: appliedDiscount ? getDiscountAmount() : 0,
                       }),
                   });
@@ -409,7 +423,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                           docDetails: {
                             prompt: documentRequest,
                             content: generatedText,
-                            price: totalWithTip,
+                            price: finalPrice,
                           },
                           userDetails: user,
                           transaction: 'paid',
@@ -427,6 +441,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                             "aiDocumentType",
                             documentRequest.substring(0, 100) + "..."
                           );
+                          localStorage.setItem("aiDocumentUuid", data.documentUuid);
                           window.location.href = "/ai-payment-confirmation";
                         })
                         .catch((error) => {
@@ -480,7 +495,6 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                 price: documentPrice,
               },
               user: user,
-              tip: tipAmount,
               discount: appliedDiscount ? getDiscountAmount() : 0,
             }),
           });
@@ -538,7 +552,6 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                 price: documentPrice,
               },
               user: user,
-              tip: tipAmount,
               discount: appliedDiscount ? getDiscountAmount() : 0,
             }),
           });
@@ -610,7 +623,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
         }
         break;
     }
-  }, [paddle, documentRequest, generatedText, documentPrice, user, tipAmount, appliedDiscount, toast, paymentProvider, airwallexElement, getDiscountAmount, totalWithTip]);
+  }, [paddle, documentRequest, generatedText, documentPrice, user, appliedDiscount, toast, paymentProvider, airwallexElement, getDiscountAmount, finalPrice]);
 
   const onPayClick = async () => {
       if (paymentProvider !== 'square') {
@@ -629,6 +642,8 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
       });
       return;
     }
+
+    setIsApplyingDiscount(true);
 
     try {
       const response = await fetch("/api/coupons/validate", {
@@ -672,6 +687,8 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
       });
+    } finally {
+      setIsApplyingDiscount(false);
     }
   }, [discountCode, documentPrice, toast]);
 
@@ -712,7 +729,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
               href="/"
               className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors"
             >
-              {settings?.siteName}
+              {settings.general?.siteName}
             </Link>
           </div>
 
@@ -1129,20 +1146,13 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                                 </div>
                                 )}
 
-                                {tipAmount > 0 && (
-                                <div className="flex justify-between items-center text-xs sm:text-sm">
-                                    <span>Tip</span>
-                                    <span>£{tipAmount.toFixed(2)}</span>
-                                </div>
-                                )}
-
                                 <div className="border-t pt-3 mt-3">
-                                <div className="flex justify-between items-center font-bold text-base sm:text-lg">
-                                    <span>Total</span>
-                                    <span className="text-teal-600">
-                                    £{totalWithTip.toFixed(2)}
-                                    </span>
-                                </div>
+                                  <div className="flex justify-between items-center font-bold text-base sm:text-lg">
+                                      <span className="text-gray-900">Total</span>
+                                      <span className="text-teal-600">
+                                      £{finalPrice.toFixed(2)}
+                                      </span>
+                                  </div>
                                 </div>
                             </div>
 
@@ -1175,10 +1185,17 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                                     <Button
                                     onClick={applyDiscountCode}
                                     variant="outline"
-                                    disabled={!discountCode.trim()}
+                                    disabled={!discountCode.trim() || isApplyingDiscount}
                                     className="h-12 text-sm sm:text-base touch-manipulation"
                                     >
-                                    Apply
+                                    {isApplyingDiscount ? (
+                                        <div className="flex items-center space-x-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span>Applying...</span>
+                                        </div>
+                                    ) : (
+                                        <span>Apply</span>
+                                    )}
                                     </Button>
                                 )}
                                 </div>
@@ -1201,75 +1218,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                                 onClick={() => {
                                     setIsSubmitting(true);
                                 }}
-                            >
-                               <SquareCreditCard />
-                            </div>
-
-                            {/* Collapsible Tip Section */}
-                            <div className="border border-gray-200 rounded-xl overflow-hidden">
-                                <button
-                                onClick={() => toggleSection("tip")}
-                                className="w-full flex justify-between items-center p-4 text-left bg-white hover:bg-gray-50 transition-colors touch-manipulation"
-                                >
-                                <div className="flex items-center">
-                                    <span className="font-medium text-sm sm:text-base">
-                                    {tipAmount > 0
-                                        ? `Tip: £${tipAmount}`
-                                        : "Tip (optional)"}
-                                    </span>
-                                </div>
-                                {expandedSection === "tip" ? (
-                                    <ChevronUp className="w-4 h-4 text-gray-500" />
-                                ) : (
-                                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                                )}
-                                </button>
-
-                                {expandedSection === "tip" && (
-                                <div className="p-4 border-t border-gray-200 bg-gray-50">
-                                    <p className="text-xs text-gray-600 mb-3">
-                                    Add a tip to show your appreciation for our service.
-                                    </p>
-                                    <input
-                                    type="range"
-                                    min="0"
-                                    max="50"
-                                    value={Math.min(tipAmount, 50)}
-                                    onChange={(e) =>
-                                        setTipAmount(Number(e.target.value))
-                                    }
-                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                                    style={{
-                                        background: `linear-gradient(to right, #0d9488 0%, #0d9488 ${
-                                        (Math.min(tipAmount, 50) / 50) * 100
-                                        }%, #e5e7eb ${
-                                        (Math.min(tipAmount, 50) / 50) * 100
-                                        }%, #e5e7eb 100%)`,
-                                    }}
-                                    />
-                                    <div className="flex justify-between text-xs text-gray-500 mt-1 mb-2">
-                                    <span>£0</span>
-                                    <span>£50</span>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                    <span className="text-gray-700">£</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="999"
-                                        value={tipAmount}
-                                        onChange={(e) => {
-                                        const value = Math.max(
-                                            0,
-                                            Math.min(999, Number(e.target.value) || 0)
-                                        );
-                                        setTipAmount(value);
-                                        }}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm sm:text-base text-gray-900 h-12"
-                                    />
-                                    </div>
-                                </div>
-                                )}
+                            >                               <SquareCreditCard />
                             </div>
                         </div>
                         <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
@@ -1303,22 +1252,15 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                                 </div>
                                 )}
 
-                                {tipAmount > 0 && (
-                                <div className="flex justify-between items-center text-xs sm:text-sm">
-                                    <span>Tip</span>
-                                    <span>£{tipAmount.toFixed(2)}</span>
-                                </div>
-                                )}
-
                                 <div className="border-t pt-3 mt-3">
                                 <div className="flex justify-between items-center font-bold text-base sm:text-lg">
-                                    <span>Total</span>
+                                    <span className="text-gray-900">Total</span>
                                     <span className="text-teal-600">
-                                    £{totalWithTip.toFixed(2)}
+                                    £{finalPrice.toFixed(2)}
                                     </span>
                                 </div>
                                 </div>
-                            </div>
+                            </div>                            
 
                             {/* Discount Code Section */}
                             <div className="space-y-3">
@@ -1349,10 +1291,17 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                                     <Button
                                     onClick={applyDiscountCode}
                                     variant="outline"
-                                    disabled={!discountCode.trim()}
+                                    disabled={!discountCode.trim() || isApplyingDiscount}
                                     className="h-12 text-sm sm:text-base touch-manipulation"
                                     >
-                                    Apply
+                                    {isApplyingDiscount ? (
+                                        <div className="flex items-center space-x-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span>Applying...</span>
+                                        </div>
+                                    ) : (
+                                        <span>Apply</span>
+                                    )}
                                     </Button>
                                 )}
                                 </div>
@@ -1379,9 +1328,8 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                                   price: documentPrice,
                                 }}
                                 user={user}
-                                tip={tipAmount}
                                 discount={appliedDiscount ? getDiscountAmount() : 0}
-                                totalWithTip={totalWithTip}
+                                finalPrice={finalPrice}
                                 onProcessingChange={setIsSubmitting}
                               />
                             )}
@@ -1393,73 +1341,6 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                                 className="border border-gray-200 rounded-xl p-4"
                                 ></div>
                             )}
-
-                            {/* Collapsible Tip Section */}
-                            <div className="border border-gray-200 rounded-xl overflow-hidden">
-                                <button
-                                onClick={() => toggleSection("tip")}
-                                className="w-full flex justify-between items-center p-4 text-left bg-white hover:bg-gray-50 transition-colors touch-manipulation"
-                                >
-                                <div className="flex items-center">
-                                    <span className="font-medium text-sm sm:text-base">
-                                    {tipAmount > 0
-                                        ? `Tip: £${tipAmount}`
-                                        : "Tip (optional)"}
-                                    </span>
-                                </div>
-                                {expandedSection === "tip" ? (
-                                    <ChevronUp className="w-4 h-4 text-gray-500" />
-                                ) : (
-                                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                                )}
-                                </button>
-
-                                {expandedSection === "tip" && (
-                                <div className="p-4 border-t border-gray-200 bg-gray-50">
-                                    <p className="text-xs text-gray-600 mb-3">
-                                    Add a tip to show your appreciation for our service.
-                                    </p>
-                                    <input
-                                    type="range"
-                                    min="0"
-                                    max="50"
-                                    value={Math.min(tipAmount, 50)}
-                                    onChange={(e) =>
-                                        setTipAmount(Number(e.target.value))
-                                    }
-                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                                    style={{
-                                        background: `linear-gradient(to right, #0d9488 0%, #0d9488 ${
-                                        (Math.min(tipAmount, 50) / 50) * 100
-                                        }%, #e5e7eb ${
-                                        (Math.min(tipAmount, 50) / 50) * 100
-                                        }%, #e5e7eb 100%)`,
-                                    }}
-                                    />
-                                    <div className="flex justify-between text-xs text-gray-500 mt-1 mb-2">
-                                    <span>£0</span>
-                                    <span>£50</span>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                    <span className="text-gray-700">£</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="999"
-                                        value={tipAmount}
-                                        onChange={(e) => {
-                                        const value = Math.max(
-                                            0,
-                                            Math.min(999, Number(e.target.value) || 0)
-                                        );
-                                        setTipAmount(value);
-                                        }}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm sm:text-base text-gray-900 h-12"
-                                    />
-                                    </div>
-                                </div>
-                                )}
-                            </div>
                         </div>
                         <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
                             <Button
@@ -1476,7 +1357,7 @@ function AIDocumentsPage({ paymentProvider }: { paymentProvider: string | null }
                             >
                                 {isSubmitting || isPaddleLoading
                                 ? "Processing..."
-                                : `Pay £${totalWithTip.toFixed(2)}`}
+                                : `Pay £${finalPrice.toFixed(2)}`}
                             </Button>
                         </div>
                     </>

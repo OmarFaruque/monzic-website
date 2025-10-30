@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         fullQuoteData.startTime,
         fullQuoteData.expiryTime,
         finalAmount,
-        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details?number=${quote.policyNumber}`,
         fullQuoteData.coverReason || 'N/A'
     );
 

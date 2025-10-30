@@ -541,6 +541,15 @@ export default function GetQuotePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!formData.occupation) {
+      toast({
+        variant: "destructive",
+        title: "Occupation is required",
+        description: "Please select your occupation.",
+      });
+      return;
+    }
+
     const calculatedQuote = calculateQuote();
     setQuote(calculatedQuote);
     localStorage.setItem('quoteCreationTimestamp', Date.now().toString());

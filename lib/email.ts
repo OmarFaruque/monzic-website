@@ -132,7 +132,7 @@ function buildEmailHtml(siteName: string, companyName: string, subject: string, 
   `;
 }
 
-export async function createAIDocumentPurchaseEmail(customerName: string, documentType: string, downloadLink: string) {
+export async function createAIDocumentPurchaseEmail(firstName: string, lastName: string, orderId: string, orderDate: string, amount: number, documentType: string, downloadLink: string) {
   const templates = await getEmailTemplates();
   const template = templates?.documentPurchase;
   if (!template) return { subject: "Error", html: "<body><p>Email template not found</p></body>" };
@@ -146,14 +146,19 @@ export async function createAIDocumentPurchaseEmail(customerName: string, docume
     companyName = parsedSettings.companyName || "Tempnow Solutions Ltd";
   }
 
-  const data = { customerName, documentType, downloadLink, siteName, companyName };
+  const data = { firstName, lastName, orderId, orderDate, amount: amount.toFixed(2), documentType, downloadLink, siteName, companyName };
   const subject = replaceEmailVariables(template.subject, data);
   const header = replaceEmailVariables(template.header, data);
-  const content = replaceEmailVariables(template.content, data);
   const footer = replaceEmailVariables(template.footer, data);
+
+  let content = replaceEmailVariables(template.content, data);
+  if (template.content.includes('{{downloadLink}}')) {
+      const buttonHtml = `<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"margin: 20px auto;\"><tr><td align=\"center\" style=\"background-color: #0d9488; border-radius: 6px;\"><a href=\"${downloadLink}\" target=\"_blank\" style=\"display: inline-block; color: white; text-decoration: none; padding: 12px 24px; font-weight: bold; border-radius: 6px; font-family: Arial, sans-serif; font-size: 16px;\"><span style=\"vertical-align: middle;\">&#128196;</span><span style=\"vertical-align: middle; margin-left: 8px;\">Download Document</span></a></td></tr></table>`;
+      content = content.replace(downloadLink, buttonHtml);
+  }
+  content = content.replace(/\n/g, '<br>');
+
   const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
-
-
 
   return { subject, html };
 }
@@ -212,6 +217,7 @@ export async function createInsurancePolicyEmail(
       const buttonHtml = `<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"margin: 20px auto;\"><tr><td align=\"center\" style=\"background-color: #0d9488; border-radius: 6px;\"><a href=\"${policyDocumentLink}\" target=\"_blank\" style=\"display: inline-block; color: white; text-decoration: none; padding: 12px 24px; font-weight: bold; border-radius: 6px; font-family: Arial, sans-serif; font-size: 16px;\"><span style=\"vertical-align: middle;\">&#128196;</span><span style=\"vertical-align: middle; margin-left: 8px;\">View Document</span></a></td></tr></table>`;
       content = content.replace(policyDocumentLink, buttonHtml);
   }
+  content = content.replace(/\n/g, '<br>');
 
   const html = buildEmailHtml(siteName, companyName, subject, header, content, footer);
 
@@ -235,7 +241,7 @@ export async function createAdminNotificationEmail(
 
   const subject = replaceEmailVariables(template.subject, data);
   const header = replaceEmailVariables(template.header, data);
-  const content = replaceEmailVariables(template.content, data);
+  const content = replaceEmailVariables(template.content, data).replace(/\n/g, '<br>');
   const footer = replaceEmailVariables(template.footer, data);
   const html = buildEmailHtml("", "", subject, header, content, footer); // No site/company name needed for admin emails
 

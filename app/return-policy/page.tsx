@@ -87,8 +87,8 @@ export default function ReturnPolicyPage() {
                     </div>
                   </div>
                   <p>
-                    This Return Policy ("Policy") governs the return and refund procedures for Tempnow Solutions Ltd's
-                    ("Tempnow," "we," "us," or "our") artificial intelligence-powered document generation services. Due
+                    This Return Policy ("Policy") governs the return and refund procedures for {settings?.companyName}
+                    ({settings?.aliases || '"Tempnow," "we," "us," or "our"'}) artificial intelligence-powered document generation services. Due
                     to the digital nature of our services and immediate delivery model, this Policy establishes our
                     approach to customer satisfaction and goodwill refunds.
                   </p>
@@ -116,7 +116,7 @@ export default function ReturnPolicyPage() {
                         <h3 className="text-lg font-bold text-amber-900 mb-2">Important Notice: No Returns Accepted</h3>
                         <p className="text-amber-800 text-sm mb-3">
                           <strong>
-                            Tempnow Solutions Ltd does not accept returns for our digital AI document generation
+                            {settings?.companyName} does not accept returns for our digital AI document generation
                             services.
                           </strong>
                           Once a document has been generated and delivered, the service has been fully performed and
@@ -141,7 +141,7 @@ export default function ReturnPolicyPage() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
                     <h3 className="text-lg font-semibold text-blue-900 mb-3">Exceptional Circumstances Refund</h3>
                     <p className="text-sm text-blue-800 mb-4">
-                      While we do not accept returns, Tempnow Solutions Ltd may, at our sole discretion, offer a
+                      While we do not accept returns, {settings?.companyName} may, at our sole discretion, offer a
                       <strong> one-time goodwill refund</strong> in exceptional circumstances where a customer
                       experiences genuine dissatisfaction with our service.
                     </p>
@@ -173,8 +173,7 @@ export default function ReturnPolicyPage() {
                         <h4 className="font-semibold text-red-900 mb-2">Service Access Termination</h4>
                         <p className="text-sm text-red-800">
                           <strong>
-                            If a goodwill refund is granted, you will permanently lose access to all Tempnow Solutions
-                            Ltd services.
+                            If a goodwill refund is granted, you will permanently lose access to all {settings?.companyName} services.
                           </strong>
                           This includes the inability to create new accounts, access existing accounts, or use any of
                           our AI document generation services in the future.

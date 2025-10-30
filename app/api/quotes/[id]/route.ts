@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quotes, users } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
+import { getSettings } from '@/lib/database';
 import { sendEmail, createInsurancePolicyEmail } from '@/lib/email';
 import { generateInvoicePdf } from '@/lib/invoice';
 
@@ -50,6 +51,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
     const user = userRecord[0];
 
+    const generalSettings = await getSettings("general");
+    const siteName = generalSettings?.siteName || "TEMPNOW"; // Fallback for siteName
+    console.log('siteName before PDF generation:', siteName); // Added console.log
+
     // Use the discounted price if available, otherwise the original total
     const effectivePrice = (quote.updatePrice && quote.updatePrice !== 'false') ? quote.updatePrice : quote.cpw;
     const finalAmount = parseFloat(effectivePrice || fullQuoteData.total);
@@ -57,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     fullQuoteData.paymentDate = quote.paymentDate; // Pass payment date to invoice generator
 
     // 3. Generate invoice
-    const pdfBytes = await generateInvoicePdf(fullQuoteData, user, quote.policyNumber);
+    const pdfBytes = await generateInvoicePdf(fullQuoteData, user, quote.policyNumber, siteName);
 
     // 4. Send confirmation email
     const vehicle = fullQuoteData.customerData.vehicle;
@@ -72,7 +77,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       fullQuoteData.startTime,
       fullQuoteData.expiryTime,
       finalAmount,
-      `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details?number=${quote.policyNumber}`,
       fullQuoteData.coverReason || 'N/A'
     );
 

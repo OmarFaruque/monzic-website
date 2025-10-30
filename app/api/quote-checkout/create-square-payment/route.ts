@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     let currency = "GBP"; // Default currency
     if (generalSettings && generalSettings.value) {
       const parsedSettings = JSON.parse(generalSettings.value);
-      siteName = parsedSettings.siteName || "";
+      siteName = parsedSettings.siteName || "TEMPNOW";
       currency = parsedSettings.currency || "GBP";
     }
 
@@ -101,24 +101,29 @@ export async function POST(req: NextRequest) {
       const finalAmount = parseFloat(effectivePrice || quoteData.total);
 
       // Generate invoice
-      const pdfBytes = await generateInvoicePdf({ ...quoteData, total: finalAmount, paymentDate: quote.paymentDate }, user, quote.policyNumber);
+      const pdfBytes = await generateInvoicePdf({ ...quoteData, total: finalAmount, paymentDate: quote.paymentDate }, user, quote.policyNumber, siteName);
 
       // Send confirmation email
       const vehicle = quoteData.customerData.vehicle;
+      
       const emailHtml = await createInsurancePolicyEmail(
         user.firstName || '',
         user.lastName || '',
         quote.policyNumber,
-        vehicle.registration,
+        quote.regNumber || '', // Use quote.regNumber from the database
         vehicle.make,
         vehicle.model,
         vehicle.year,
         quoteData.startTime,
         quoteData.expiryTime,
         finalAmount,
-        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details/${quote.policyNumber}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/policy/details?number=${quote.policyNumber}`,
         quoteData.coverReason || 'N/A'
       );
+
+
+
+
 
       await sendEmail({
         to: user.email,

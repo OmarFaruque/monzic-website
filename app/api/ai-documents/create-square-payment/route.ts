@@ -50,9 +50,11 @@ export async function POST(req: NextRequest) {
       where: eq(settings.param, 'general')
     });
     let siteName = "";
+    let currency = "GBP"; // Default currency
     if (generalSettings && generalSettings.value) {
       const parsedSettings = JSON.parse(generalSettings.value);
       siteName = parsedSettings.siteName || "";
+      currency = parsedSettings.currency || "GBP";
     }
 
     const payment = {
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
         locationId: appLocationId,
         amountMoney: {
             amount: totalAmount,
-            currency: "GBP", // Assuming GBP as default currency
+            currency: currency
         },
         note: `${siteName} AI Docs: ${docData.prompt.substring(0, 50)}...`,
       };

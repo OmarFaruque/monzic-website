@@ -27,12 +27,16 @@ export async function POST(req: Request) {
     (async () => {
       try {
         const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL}/api/ai-documents/download-pdf/${documentUuid}`;
-        const emailHtml = createAIDocumentPurchaseEmail(
+        const emailData = await createAIDocumentPurchaseEmail(
           userDetails.firstName,
+          userDetails.lastName,
+          documentId.toString(),
+          new Date().toLocaleDateString(),
+          docDetails.price,
           docDetails.prompt,
           downloadLink,
         );
-        const adminNotificationHtml = createAdminNotificationEmail(
+        const adminNotificationData = await createAdminNotificationEmail(
           "ai_document",
           userDetails.firstName,
           userDetails.email,
@@ -42,22 +46,22 @@ export async function POST(req: Request) {
 
         await sendEmail({
           to: userDetails.email,
-          subject: "Your AI Document is Ready - TEMPNOW",
-          html: emailHtml,
+          subject: emailData.subject,
+          html: emailData.html,
         });
 
         const adminEmail = await getAdminEmail();
         await sendEmail({
           to: adminEmail,
-          subject: `New Purchase Alert - AI Document`,
-          html: adminNotificationHtml,
+          subject: adminNotificationData.subject,
+          html: adminNotificationData.html,
         });
       } catch (emailError) {
         console.error("Error sending email in background:", emailError);
       }
     })();
 
-    return NextResponse.json({ success: true, documentId });
+    return NextResponse.json({ success: true, documentId, documentUuid });
 
   } catch (error) {
     console.error("Error saving document:", error);

@@ -97,8 +97,8 @@ export default function TermsOfServicesPage() {
                   </div>
                   <p>
                     These Terms of Services ("Terms") constitute a legally binding agreement between you ("User,"
-                    "Customer," "you," or "your") and Tempnow Solutions Ltd (Company Registration Number: {settings.companyRegistration}), a
-                    company incorporated in England and Wales ({settings.aliases}).
+                    "Customer," "you," or "your") and {settings?.companyName || 'Tempnow Solutions Ltd'} (Company Registration Number: {settings?.companyRegistration || '16414928'}), a
+                    company incorporated in England and Wales ({settings?.aliases || 'Tempnow Solutions Ltd'}).
                   </p>
                   <p>
                     By accessing, browsing, or using our artificial intelligence-powered document generation services,
@@ -251,11 +251,11 @@ export default function TermsOfServicesPage() {
                   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Tempnow Solutions Ltd Owns</h4>
+                        <h4 className="font-semibold text-gray-900 mb-3">{settings?.companyName || 'Tempnow Solutions Ltd'} Owns</h4>
                         <ul className="space-y-2 text-sm text-gray-700">
                           <li>• AI algorithms and technology</li>
                           <li>• Platform software and infrastructure</li>
-                          <li>• {settings.siteName} brand and trademarks</li>
+                          <li>• {settings?.siteName || 'Tempnow'} brand and trademarks</li>
                           <li>• Website design and content</li>
                         </ul>
                       </div>
@@ -356,7 +356,7 @@ export default function TermsOfServicesPage() {
                         <h4 className="font-semibold text-gray-900 mb-3">Company Information</h4>
                         <div className="text-sm text-gray-600 space-y-1">
                           <p>
-                            <strong>Tempnow Solutions Ltd</strong>
+                            <strong>{settings?.companyName || 'Tempnow Solutions Ltd'}</strong>
                           </p>
                           <p>Company Registration: 16414928</p>
                           <p>Registered in England and Wales</p>
@@ -374,7 +374,7 @@ export default function TermsOfServicesPage() {
               <div className="flex flex-col sm:flex-row justify-between items-center">
                 <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-0 text-center sm:text-left">
                   <p>
-                    <strong>Tempnow Solutions Ltd</strong> • Company Registration: 16414928 • Registered in England and
+                    <strong>{settings?.companyName || 'Tempnow Solutions Ltd'}</strong> • Company Registration: 16414928 • Registered in England and
                     Wales
                   </p>
                 </div>

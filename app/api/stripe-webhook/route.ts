@@ -93,15 +93,23 @@ export async function POST(req: NextRequest) {
           const documentUuid = newDocument[0].uuid;
 
           const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL}/api/ai-documents/download-pdf/${documentUuid}`;
-          const emailHtml = createAIDocumentPurchaseEmail(userDetails.firstName, docDetails.prompt, downloadLink);
+          const emailData = await createAIDocumentPurchaseEmail(
+            userDetails.firstName,
+            userDetails.lastName,
+            paymentIntent.id,
+            new Date(paymentIntent.created * 1000).toLocaleDateString(),
+            docDetails.price,
+            docDetails.prompt,
+            downloadLink
+          );
           
           await sendEmail({
               to: userDetails.email,
-              subject: "Your AI Document is Ready - TEMPNOW",
-              html: emailHtml,
+              subject: emailData.subject,
+              html: emailData.html,
           });
 
-          const adminNotificationHtml = createAdminNotificationEmail(
+          const adminNotificationData = await createAdminNotificationEmail(
               "ai_document",
               userDetails.firstName,
               userDetails.email,
@@ -111,8 +119,8 @@ export async function POST(req: NextRequest) {
           const adminEmail = await getAdminEmail();
           await sendEmail({
               to: adminEmail,
-              subject: `New Purchase Alert - AI Document`,
-              html: adminNotificationHtml,
+              subject: adminNotificationData.subject,
+              html: adminNotificationData.html,
           });
         }
       } catch (error) {

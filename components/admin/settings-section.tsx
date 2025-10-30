@@ -628,7 +628,8 @@ export function SettingsSection() {
     openai: {
       apiKey: "",
       model: "gpt-4",
-      price: 2048,
+      minPrice: 10,
+      maxPrice: 50,
       temperature: 0.7,
     },
     resend: {
@@ -648,6 +649,7 @@ export function SettingsSection() {
       allowedDomains: ["monzic.co.uk"],
     },
     general: {
+      logo: "",
       siteName: "MONZIC",
       supportEmail: "support@tempnow.uk",
       adminEmail: "admin@tempnow.uk",
@@ -756,6 +758,42 @@ export function SettingsSection() {
   const [testing, setTesting] = useState<Record<string, boolean>>({})
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    setLogoUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/admin/upload-logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Logo upload failed");
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        updateSetting("general", "logo", result.url);
+      } else {
+        throw new Error(result.error || "Unknown error during upload");
+      }
+    } catch (error) {
+      setLogoUploadError(error instanceof Error ? error.message : "An unexpected error occurred.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
 
   const updateSetting = (section: string, field: string, value: any) => {
     setSettings((prev) => ({
@@ -1617,7 +1655,7 @@ export function SettingsSection() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="openai-model">Model</Label>
                   <Select
@@ -1637,13 +1675,23 @@ export function SettingsSection() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="openai-max-tokens">Price</Label>
+                  <Label htmlFor="openai-min-price">Min Price</Label>
                   <Input
-                    id="openai-max-tokens"
+                    id="openai-min-price"
                     type="number"
-                    placeholder="2048"
-                    value={settings.openai.price}
-                    onChange={(e) => updateSetting("openai", "price", Number.parseInt(e.target.value))}
+                    placeholder="10"
+                    value={settings.openai.minPrice}
+                    onChange={(e) => updateSetting("openai", "minPrice", Number.parseInt(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="openai-max-price">Max Price</Label>
+                  <Input
+                    id="openai-max-price"
+                    type="number"
+                    placeholder="50"
+                    value={settings.openai.maxPrice}
+                    onChange={(e) => updateSetting("openai", "maxPrice", Number.parseInt(e.target.value))}
                   />
                 </div>
               </div>
@@ -1802,9 +1850,9 @@ export function SettingsSection() {
               </CardTitle>
               <CardDescription>Configure general application settings</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+            <CardContent className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
                   <Label htmlFor="site-name">Site Name</Label>
                   <Input
                     id="site-name"
@@ -1812,13 +1860,13 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "siteName", e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="currency">Currency</Label>
                   <Select
                     value={settings.general.currency}
                     onValueChange={(value) => updateSetting("general", "currency", value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1828,88 +1876,7 @@ export function SettingsSection() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="policy-schedule-visible">Policy Schedule Document</Label>
-                <Select
-                  value={settings.general.policyScheduleVisible ? "visible" : "hidden"}
-                  onValueChange={(value) => updateSetting("general", "policyScheduleVisible", value === "visible")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="visible">Visible to customers</SelectItem>
-                    <SelectItem value="hidden">Hidden from customers</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Control whether the Policy Schedule document appears in customer policy documents
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="product-information-visible">Product Information</Label>
-                <Select
-                  value={settings.general?.productInformationVisible ? "visible" : "hidden"}
-                  onValueChange={(value) => updateSetting("general", "productInformationVisible", value === "visible")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="visible">Visible to customers</SelectItem>
-                    <SelectItem value="hidden">Hidden from customers</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Control whether the Product Information appears in customer documents
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="statement-of-fact-visible">Statement of Fact</Label>
-                <Select
-                  value={settings.general?.statementOfFactVisible ? "visible" : "hidden"}
-                  onValueChange={(value) => updateSetting("general", "statementOfFactVisible", value === "visible")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="visible">Visible to customers</SelectItem>
-                    <SelectItem value="hidden">Hidden from customers</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Control whether the Statement of Face appears in customer documents
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="car-search-provider">Car Search API Provider</Label>
-                <Select
-                  value={settings.general.carSearchApiProvider}
-                  onValueChange={(value) => updateSetting("general", "carSearchApiProvider", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dayinsure">Dayinsure</SelectItem>
-                    <SelectItem value="mot">MOT</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Select the provider for vehicle registration lookups.
-                </p>
-              </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="support-email">Support Email</Label>
                   <Input
                     id="support-email"
@@ -1918,7 +1885,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "supportEmail", e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="admin-email">Admin Email</Label>
                   <Input
                     id="admin-email"
@@ -1927,8 +1894,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "adminEmail", e.target.value)}
                   />
                 </div>
-
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="site-domain">Site domain</Label>
                   <Input
                     id="site-domain"
@@ -1937,8 +1903,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "siteDomain", e.target.value)}
                   />
                 </div>
-
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="company-name">Company Name</Label>
                   <Input
                     id="company-name"
@@ -1947,9 +1912,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "companyName", e.target.value)}
                   />
                 </div>
-
-                
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="company-registration">Company Registration</Label>
                   <Input
                     id="company-registration"
@@ -1958,8 +1921,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "companyRegistration", e.target.value)}
                   />
                 </div>
-
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="effective-date">Effective Date</Label>
                   <Input
                     id="effective-date"
@@ -1968,8 +1930,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "effectiveDate", e.target.value)}
                   />
                 </div>
-
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="aliases">Aliases</Label>
                   <Input
                     id="aliases"
@@ -1978,8 +1939,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "aliases", e.target.value)}
                   />
                 </div>
-
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="businessActivity">Business Activity</Label>
                   <Input
                     id="businessActivity"
@@ -1988,7 +1948,7 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "businessActivity", e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="redirectUrl">Redirect URL</Label>
                   <Input
                     id="redirectUrl"
@@ -1997,42 +1957,113 @@ export function SettingsSection() {
                     onChange={(e) => updateSetting("general", "redirectUrl", e.target.value)}
                   />
                 </div>
-                <div>
-                <Label htmlFor="activeRedirection">Active Redirection</Label>
-                <Select
-                  value={settings.general?.activeRedirection}
-                  onValueChange={(value) => updateSetting("general", "activeRedirection", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Active Redirection" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">No</SelectItem>
-                    <SelectItem value="1">Yes</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  If enabled, the frontend will be redirected to the specified URL.
-                </p>
-              </div>
-                
-                
 
-              </div>
-              
-
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="company-registration">Checkbox content at checkout page</Label>
-                    <Textarea
-                      id="company-registration"
-                      placeholder='e.g., I confirm I’ve read and agree to the <a href="/customer-terms-of-business" target="_blank">Terms of Service</a> and understand this is a non-refundable digital document service. || I acknowledge that all purchases are final and the information I have entered is accurate'
-                      value={settings.general?.checkoutCheckboxContent}
-                      onChange={(e) => updateSetting("general", "checkoutCheckboxContent", e.target.value)}
-                    />
-                    <small>Each entry should be separeted by ||</small>
+                <div className="space-y-2">
+                  <Label>Site Logo</Label>
+                  <div className="flex items-center gap-4 rounded-lg border p-4">
+                    <div className="w-24 h-24 rounded-md flex items-center justify-center bg-gray-50 overflow-hidden">
+                      {settings.general.logo ? (
+                        <img src={settings.general.logo} alt="Logo Preview" className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="text-xs text-gray-500">No Logo</span>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        id="logo-upload"
+                        type="file"
+                        accept="image/png, image/jpeg, image/svg+xml"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+                      <Button asChild variant="outline">
+                        <label htmlFor="logo-upload" className="cursor-pointer w-full flex items-center justify-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                          {uploadingLogo ? "Uploading..." : "Upload Logo"}
+                        </label>
+                      </Button>
+                      <p className="text-xs text-gray-500">PNG, JPG, SVG. Max 2MB.</p>
+                      {logoUploadError && <p className="text-sm text-red-500 mt-1">{logoUploadError}</p>}
+                    </div>
                   </div>
+                </div>
               </div>
+
+              <div className="space-y-4 pt-6 border-t">
+                <h4 className="text-lg font-medium">Document Visibility</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="policy-schedule-visible">Policy Schedule</Label>
+                    <Select
+                      value={settings.general.policyScheduleVisible ? "visible" : "hidden"}
+                      onValueChange={(value) => updateSetting("general", "policyScheduleVisible", value === "visible")}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="visible">Visible</SelectItem>
+                        <SelectItem value="hidden">Hidden</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="product-information-visible">Product Information</Label>
+                    <Select
+                      value={settings.general?.productInformationVisible ? "visible" : "hidden"}
+                      onValueChange={(value) => updateSetting("general", "productInformationVisible", value === "visible")}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="visible">Visible</SelectItem>
+                        <SelectItem value="hidden">Hidden</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="statement-of-fact-visible">Statement of Fact</Label>
+                    <Select
+                      value={settings.general?.statementOfFactVisible ? "visible" : "hidden"}
+                      onValueChange={(value) => updateSetting("general", "statementOfFactVisible", value === "visible")}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="visible">Visible</SelectItem>
+                        <SelectItem value="hidden">Hidden</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-6 border-t">
+                <h4 className="text-lg font-medium">Car Search</h4>
+                <div className="max-w-md space-y-2">
+                  <Label htmlFor="car-search-provider">Car Search API Provider</Label>
+                  <Select
+                    value={settings.general.carSearchApiProvider}
+                    onValueChange={(value) => updateSetting("general", "carSearchApiProvider", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dayinsure">Dayinsure</SelectItem>
+                      <SelectItem value="mot">MOT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Select the provider for vehicle registration lookups.
+                  </p>
+                </div>
+              </div>
+
             </CardContent>
           </Card>
         </TabsContent>

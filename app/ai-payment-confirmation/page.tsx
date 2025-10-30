@@ -6,30 +6,24 @@ import Link from 'next/link';
 import { CheckCircle, Download } from 'lucide-react';
 
 export default function AIPaymentConfirmationPage() {
-  const [documentContent, setDocumentContent] = useState('');
   const [documentType, setDocumentType] = useState('');
+  const [documentUuid, setDocumentUuid] = useState('');
 
   useEffect(() => {
-    const content = localStorage.getItem("aiDocumentContent");
     const type = localStorage.getItem("aiDocumentType");
-    if (content) {
-      setDocumentContent(content);
-    }
+    const uuid = localStorage.getItem("aiDocumentUuid");
     if (type) {
       setDocumentType(type);
+    }
+    if (uuid) {
+      setDocumentUuid(uuid);
     }
   }, []);
 
   const handleDownload = () => {
-    // This is a placeholder for the PDF generation and download logic.
-    // For now, we can download as a text file.
-    const blob = new Blob([documentContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ai-document.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+    if (documentUuid) {
+      window.location.href = `/api/ai-documents/download-pdf/${documentUuid}`;
+    }
   };
 
   return (

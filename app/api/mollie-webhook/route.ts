@@ -41,12 +41,16 @@ export async function POST(request: NextRequest) {
             (async () => {
               try {
                 const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL}/api/ai-documents/download-pdf/${doc.uuid}`;
-                const emailHtml = createAIDocumentPurchaseEmail(
+                const emailData = await createAIDocumentPurchaseEmail(
                   doc.email.split('@')[0], // Using part of email as a placeholder for first name
+                  '', // Mollie does not provide customer last name
+                  payment.id,
+                  new Date(payment.createdAt).toLocaleDateString(),
+                  parseFloat(doc.amount as string),
                   doc.prompt,
                   downloadLink,
                 );
-                const adminNotificationHtml = createAdminNotificationEmail(
+                const adminNotificationData = await createAdminNotificationEmail(
                   "ai_document",
                   doc.email.split('@')[0],
                   doc.email,
@@ -56,15 +60,15 @@ export async function POST(request: NextRequest) {
         
                 await sendEmail({
                   to: doc.email,
-                  subject: "Your AI Document is Ready - TEMPNOW",
-                  html: emailHtml,
+                  subject: emailData.subject,
+                  html: emailData.html,
                 });
         
                 const adminEmail = await getAdminEmail();
                 await sendEmail({
                   to: adminEmail,
-                  subject: `New Purchase Alert - AI Document`,
-                  html: adminNotificationHtml,
+                  subject: adminNotificationData.subject,
+                  html: adminNotificationData.html,
                 });
               } catch (emailError) {
                 console.error("Error sending email in background:", emailError);

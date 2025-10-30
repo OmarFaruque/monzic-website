@@ -328,11 +328,11 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                 Conversation History
               </CardTitle>
               <CardDescription>
-                You can reply to this conversation and our MONZIC support team will be notified immediately.
+                You can reply to this conversation and our {settings?.siteName} support team will be notified immediately.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="space-y-6 mb-8">
+              <div className="h-96 overflow-y-auto space-y-6 mb-8">
                 {ticket.messages.map((message: any) => (
                   <div
                     key={message.id}
@@ -348,19 +348,17 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                       <div className="flex justify-between items-center mb-3">
                         <div className="flex items-center gap-2">
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${`
-                              message.sender === "admin" ? "bg-teal-600 text-white" : "bg-gray-600 text-white"
-                            `}`}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${message.sender === "admin" ? "bg-teal-600 text-white" : "bg-gray-600 text-white"}`}
                           >
                             {message.sender === "admin"
-                              ? "MS"
+                              ? "TS"
                               : ticket.customer.name
                                   .split(" ")
                                   .map((n: string) => n[0])
                                   .join("")}
                           </div>
                           <span className="font-semibold text-sm">
-                            {message.sender === "admin" ? "MONZIC Support" : ticket.customer.name}
+                            {message.sender === "admin" ? `${settings?.siteName} Suppor` : ticket.customer.name}
                           </span>
                         </div>
                         <span className="text-xs text-gray-500 bg-white/50 px-2 py-1 rounded-full">
