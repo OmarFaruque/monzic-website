@@ -78,7 +78,7 @@ export function DashboardSidebar({
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-800">{settings.siteName || 'TEMPNOW'}</h2>
+              <h2 className="text-xl font-bold text-gray-800">{settings?.general?.siteName || 'TEMPNOW'}</h2>
               {isMobile && (
                 <Button variant="ghost" size="icon" onClick={closeSidebar}>
                   <ChevronRight className="h-5 w-5" />

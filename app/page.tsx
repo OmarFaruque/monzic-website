@@ -151,8 +151,8 @@ export default function TempnowHomepage() {
           <div className="flex flex-col items-center space-y-4">
             <div className="relative w-68 h-12 sm:w-56 sm:h-14">
               <Image
-                src={settings.general?.logo || "/tempnow-logo-horizontal.png"}
-                alt={`${settings.siteName} Logo`}
+                src={settings?.general?.logo || "/tempnow-logo-horizontal.png"}
+                alt={`${settings?.general?.siteName} Logo`}
                 fill
                 style={{ objectFit: "contain" }}
               />

@@ -15,12 +15,15 @@ export function Header() {
   const { isAuthenticated } = useAuth()
   const settings = useSettings()
 
+
+  
+
   return (
     <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 shadow-md">
       <div className="flex justify-between items-center">
         <div className="flex items-center">
           <Link href="/" className="text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            {settings?.siteName || 'TEMPNOW'}
+            {settings?.general?.siteName || 'TEMPNOW'}
           </Link>
         </div>
 
