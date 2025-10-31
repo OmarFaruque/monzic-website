@@ -451,7 +451,7 @@ function QuoteCheckoutPage() {
       <header className="bg-primary px-6 py-4">
         <div className="mx-auto max-w-7xl">
           <Link href="/" className="text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            {settings?.siteName || 'MONZIC'}
+            {settings?.general?.siteName || 'MONZIC'}
           </Link>
         </div>
       </header>

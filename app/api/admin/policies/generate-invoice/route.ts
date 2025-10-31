@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { quotes, users } from '@/lib/schema';
+import { quotes, users, settings } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 import { generateInvoicePdf } from '@/lib/invoice';
 
@@ -32,8 +32,15 @@ export async function POST(req: NextRequest) {
     quoteData.total = finalAmount;
     quoteData.paymentDate = quote.paymentDate;
 
+    const generalSettings = await db.query.settings.findFirst({ where: eq(settings.param, 'general') });
+    let siteName = "Tempnow";
+    if (generalSettings && generalSettings.value) {
+        const parsedSettings = JSON.parse(generalSettings.value as string);
+        siteName = parsedSettings.siteName || "Tempnow";
+    }
+
     // 3. Generate the invoice PDF
-    const pdfBytes = await generateInvoicePdf(quoteData, user, policyNumber);
+    const pdfBytes = await generateInvoicePdf(quoteData, user, policyNumber, siteName);
 
     // 4. Return the PDF as a response
     return new NextResponse(pdfBytes, {

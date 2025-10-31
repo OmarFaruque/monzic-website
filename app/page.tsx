@@ -162,7 +162,7 @@ export default function TempnowHomepage() {
           {/* Main Heading */}
           <div className="space-y-2">
             <h2 className="text-lg sm:text-xl font-medium text-teal-700 px-2">Affordable, Lightning-Fast Delivery</h2>
-            <p className="text-base sm:text-lg text-teal-500">Only at {settings?.siteName || 'Tempnow'}</p>
+            <p className="text-base sm:text-lg text-teal-500">Only at {settings?.general?.siteName || 'Tempnow'}</p>
           </div>
 
           {/* Message Display */}

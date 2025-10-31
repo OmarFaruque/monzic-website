@@ -43,15 +43,15 @@ export default function TermsOfServicesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-slate-200">{settings.companyName}</p>
+                    <p className="text-slate-200">{settings?.general?.companyName}</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
-                    <p className="text-slate-200">{settings.companyRegistration}</p>
+                    <p className="text-slate-200">{settings?.general?.companyRegistration}</p>
                   </div>
                   <div>
                     <p className="font-medium">Effective Date</p>
-                    <p className="text-slate-200">{new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-slate-200">{new Date(settings?.general?.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
               </div>
@@ -72,10 +72,10 @@ export default function TermsOfServicesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p>
-                          <strong>Legal Name:</strong> {settings?.companyName}
+                          <strong>Legal Name:</strong> {settings?.general?.companyName}
                         </p>
                         <p>
-                          <strong>Company Number:</strong> {settings?.companyRegistration}
+                          <strong>Company Number:</strong> {settings?.general?.companyRegistration}
                         </p>
                         <p>
                           <strong>Jurisdiction:</strong> England and Wales
@@ -83,11 +83,11 @@ export default function TermsOfServicesPage() {
                       </div>
                       <div>
                         <p>
-                          <strong>Business Activity:</strong> {settings?.businessActivity} 
+                          <strong>Business Activity:</strong> {settings?.general?.businessActivity} 
                           {/* AI Document Generation Services */}
                         </p>
                         <p>
-                          <strong>Service Brand:</strong> {settings?.siteName}
+                          <strong>Service Brand:</strong> {settings?.general?.siteName}
                         </p>
                         <p>
                           <strong>Contact Method:</strong> Website contact form
@@ -255,7 +255,7 @@ export default function TermsOfServicesPage() {
                         <ul className="space-y-2 text-sm text-gray-700">
                           <li>• AI algorithms and technology</li>
                           <li>• Platform software and infrastructure</li>
-                          <li>• {settings?.siteName || 'Tempnow'} brand and trademarks</li>
+                          <li>• {settings?.general?.siteName || 'Tempnow'} brand and trademarks</li>
                           <li>• Website design and content</li>
                         </ul>
                       </div>

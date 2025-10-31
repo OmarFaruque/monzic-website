@@ -227,7 +227,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                 Return Policy
               </Link>
             </div>
-            <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© {new Date().getFullYear()} {settings?.companyName || 'Mozero AI Ltd'}. All rights reserved.</div>
+            <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© {new Date().getFullYear()} {settings?.general?.companyName || 'Mozero AI Ltd'}. All rights reserved.</div>
           </div>
         </footer>
       </div>
@@ -328,7 +328,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                 Conversation History
               </CardTitle>
               <CardDescription>
-                You can reply to this conversation and our {settings?.siteName} support team will be notified immediately.
+                You can reply to this conversation and our {settings?.general?.siteName} support team will be notified immediately.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
@@ -358,7 +358,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
                                   .join("")}
                           </div>
                           <span className="font-semibold text-sm">
-                            {message.sender === "admin" ? `${settings?.siteName} Suppor` : ticket.customer.name}
+                            {message.sender === "admin" ? 'Support Agent' : ticket.customer.name}
                           </span>
                         </div>
                         <span className="text-xs text-gray-500 bg-white/50 px-2 py-1 rounded-full">
@@ -499,7 +499,7 @@ export default function TicketPage({ params }: { params: { id: string } }) {
               Return Policy
             </Link>
           </div>
-          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© {new Date().getFullYear()} {settings?.companyName || 'Mozero AI Ltd'}. All rights reserved.</div>
+          <div className="text-center mt-3 sm:mt-4 text-xs text-teal-100">© {new Date().getFullYear()} {settings?.general?.companyName || 'Mozero AI Ltd'}. All rights reserved.</div>
         </div>
       </footer>
     </div>

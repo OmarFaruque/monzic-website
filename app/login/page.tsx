@@ -269,7 +269,7 @@ export default function LoginPage() {
       <header className="bg-teal-600 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-md relative">
         <div className="flex items-center">
           <Link href="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            {settings?.siteName || "TEMPNOW"}
+            {settings?.general?.siteName || "TEMPNOW"}
           </Link>
         </div>
 
@@ -325,7 +325,7 @@ export default function LoginPage() {
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
             {/* Form Header */}
             <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-6 text-white text-center">
-              <h2 className="text-2xl font-bold mb-2">{isLogin ? "Welcome Back" : `Join ${settings?.siteName || 'MONZIC'}`}</h2>
+              <h2 className="text-2xl font-bold mb-2">{isLogin ? "Welcome Back" : `Join ${settings?.general?.siteName || 'MONZIC'}`}</h2>
               <p className="text-teal-100 text-sm">
                 {isLogin ? "Sign in to your account" : "Create your account to get started"}
               </p>
@@ -567,7 +567,7 @@ export default function LoginPage() {
             </Link>
           </div>
           <div className="text-center mt-2 text-xs text-teal-100">
-            © {new Date().getFullYear()} {settings?.siteName || "Tempnow Solutions Ltd."}. All rights reserved.
+            © {new Date().getFullYear()} {settings?.general?.siteName || "Tempnow Solutions Ltd."}. All rights reserved.
           </div>
         </div>
       </footer>

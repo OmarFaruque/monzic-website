@@ -38,15 +38,15 @@ export default function ReturnPolicyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-red-100">{settings.companyName}</p>
+                    <p className="text-red-100">{settings?.general?.companyName}</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
-                    <p className="text-red-100">{settings.companyRegistration}</p>
+                    <p className="text-red-100">{settings?.general?.companyRegistration}</p>
                   </div>
                   <div>
                     <p className="font-medium">Effective Date</p>
-                    <p className="text-red-100">{new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-red-100">{new Date(settings?.general?.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
               </div>
@@ -67,10 +67,10 @@ export default function ReturnPolicyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p>
-                          <strong>Legal Name:</strong> {settings.companyName}
+                          <strong>Legal Name:</strong> {settings?.general?.companyName}
                         </p>
                         <p>
-                          <strong>Company Number:</strong> {settings.companyRegistration}
+                          <strong>Company Number:</strong> {settings?.general?.companyRegistration}
                         </p>
                         <p>
                           <strong>Jurisdiction:</strong> England and Wales
@@ -78,7 +78,7 @@ export default function ReturnPolicyPage() {
                       </div>
                       <div>
                         <p>
-                          <strong>Service Type:</strong> {settings.businessActivity}
+                          <strong>Service Type:</strong> {settings?.general?.businessActivity}
                         </p>
                         <p>
                           <strong>Contact Method:</strong> Website contact form
@@ -87,8 +87,8 @@ export default function ReturnPolicyPage() {
                     </div>
                   </div>
                   <p>
-                    This Return Policy ("Policy") governs the return and refund procedures for {settings?.companyName}
-                    ({settings?.aliases || '"Tempnow," "we," "us," or "our"'}) artificial intelligence-powered document generation services. Due
+                    This Return Policy ("Policy") governs the return and refund procedures for {settings?.general?.companyName}
+                    ({settings?.general?.aliases || '"Tempnow," "we," "us," or "our"'}) artificial intelligence-powered document generation services. Due
                     to the digital nature of our services and immediate delivery model, this Policy establishes our
                     approach to customer satisfaction and goodwill refunds.
                   </p>
@@ -379,11 +379,11 @@ export default function ReturnPolicyPage() {
               <div className="flex flex-col sm:flex-row justify-between items-center">
                 <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-0 text-center sm:text-left">
                   <p>
-                    <strong>{settings.companyName}</strong> • Company Registration: {settings.companyRegistration} • Registered in England and
+                    <strong>{settings?.general?.companyName}</strong> • Company Registration: {settings?.general?.companyRegistration} • Registered in England and
                     Wales
                   </p>
                 </div>
-                <div className="text-xs sm:text-sm text-gray-500">Last updated: {new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                <div className="text-xs sm:text-sm text-gray-500">Last updated: {new Date(settings?.general?.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
               </div>
             </div>
           </div>
@@ -405,7 +405,7 @@ export default function ReturnPolicyPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © {new Date().getFullYear()} {settings.companyName}. All rights reserved.
+            © {new Date().getFullYear()} {settings?.general?.companyName}. All rights reserved.
           </div>
         </div>
       </footer>

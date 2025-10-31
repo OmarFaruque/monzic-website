@@ -17,8 +17,8 @@ export function SettingsProvider({ children, settings }: { children: ReactNode; 
   const pathname = usePathname()
 
   useEffect(() => {
-   
-    if (settings?.activeRedirection === "1" && settings?.redirectUrl) {
+
+    if (settings?.general?.activeRedirection === "1" && settings?.general?.redirectUrl) {
       const isAdminPath = pathname.startsWith("/administrator") || pathname.startsWith("/admin-login")
       if (!isAdminPath) {
         router.replace(settings.redirectUrl)

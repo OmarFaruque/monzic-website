@@ -87,7 +87,7 @@ export async function generateInvoicePdf(quoteData: any, user: any, policyNumber
   page1.drawText('DELIVER TO', { x: col2X, y: yPos, font: boldFont, size: 9, color: tealColor });
 
   yPos -= (6 * mmToPt);
-  const toName = `${user.firstName || ''} ${user.lastName || ''}`;
+  const toName = `${quoteData.customerData.firstName || ''} ${quoteData.customerData.lastName || ''}`;
   const toEmail = user.email || 'N/A';
   const toAddress = quoteData.customerData.address || 'N/A';
   page1.drawText(toName, { x: col1X, y: yPos, font: boldFont, size: 10, color: darkColor });
