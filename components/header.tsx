@@ -20,7 +20,7 @@ export function Header() {
       <div className="flex justify-between items-center">
         <div className="flex items-center">
           <Link href="/" className="text-2xl font-bold text-white hover:text-teal-100 transition-colors">
-            {settings?.siteName || 'MONZIC'}
+            {settings?.siteName || 'TEMPNOW'}
           </Link>
         </div>
 
