@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
 
     // 3. Send confirmation email
     const emailData = await createInsurancePolicyEmail(
-        user.firstName || '',
-        user.lastName || '',
+        user.firstName || quote?.firstName || '',
+        user.lastName || quote?.lastName || '',
         quote.policyNumber,
         fullQuoteData.customerData.registration,
         fullQuoteData.customerData.vehicle.make,

@@ -43,15 +43,15 @@ export default function PrivacyPolicyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="font-medium">Company</p>
-                    <p className="text-teal-100">{settings?.companyName}</p>
+                    <p className="text-teal-100">{settings?.general?.companyName}</p>
                   </div>
                   <div>
                     <p className="font-medium">Registration</p>
-                    <p className="text-teal-100">{settings?.companyRegistration}</p>
+                    <p className="text-teal-100">{settings?.general?.companyRegistration}</p>
                   </div>
                   <div>
                     <p className="font-medium">Effective Date</p>
-                    <p className="text-teal-100">{settings?.effectiveDate ? new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ""}</p>
+                    <p className="text-teal-100">{settings?.general?.effectiveDate ? new Date(settings.general.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ""}</p>
                   </div>
                 </div>
               </div>
@@ -72,10 +72,10 @@ export default function PrivacyPolicyPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                       <div>
                         <p>
-                          <strong>Company Name:</strong> {settings?.companyName}
+                          <strong>Company Name:</strong> {settings?.general?.companyName}
                         </p>
                         <p>
-                          <strong>Registration Number:</strong> {settings?.companyRegistration}
+                          <strong>Registration Number:</strong> {settings?.general?.companyRegistration}
                         </p>
                         <p>
                           <strong>Registered in:</strong> England and Wales
@@ -92,7 +92,7 @@ export default function PrivacyPolicyPage() {
                     </div>
                   </div>
                   <p className="text-sm sm:text-base leading-relaxed">
-                    {settings?.companyName} ({settings?.aliases}) is committed to protecting and respecting your
+                    {settings?.general?.companyName} ({settings?.general?.aliases}) is committed to protecting and respecting your
                     privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your personal
                     information when you access or use our artificial intelligence-powered document generation services
                     (the "Services") through our website and platform.
@@ -341,7 +341,7 @@ export default function PrivacyPolicyPage() {
                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Contact {settings.companyName}</h4>
+                        <h4 className="font-semibold text-gray-900 mb-3">Contact {settings?.general?.companyName}</h4>
                         <p className="text-sm text-gray-600 mb-2">
                           For privacy-related inquiries, please use our contact form and mark your message as "Data
                           Protection" or "Privacy Inquiry".
@@ -369,11 +369,11 @@ export default function PrivacyPolicyPage() {
               <div className="flex flex-col sm:flex-row justify-between items-center">
                 <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-0 text-center sm:text-left">
                   <p>
-                    <strong>{settings?.companyName}</strong> • Company Registration: {settings?.companyRegistration} • Registered in England and
+                    <strong>{settings?.general?.companyName}</strong> • Company Registration: {settings?.general?.companyRegistration} • Registered in England and
                     Wales
                   </p>
                 </div>
-                <div className="text-xs sm:text-sm text-gray-500">Last updated: {settings?.effectiveDate ? new Date(settings.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ""}</div>
+                <div className="text-xs sm:text-sm text-gray-500">Last updated: {settings?.general?.effectiveDate ? new Date(settings.general.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ""}</div>
               </div>
             </div>
           </div>
@@ -395,7 +395,7 @@ export default function PrivacyPolicyPage() {
             </Link>
           </div>
           <div className="text-center mt-2 sm:mt-4 text-xs text-teal-100">
-            © {new Date().getFullYear()} {settings?.companyName}. All rights reserved.
+            © {new Date().getFullYear()} {settings?.general?.companyName || 'Mozero AI Ltd'}. All rights reserved.
           </div>
         </div>
       </footer>
